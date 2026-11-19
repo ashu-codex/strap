@@ -35,8 +35,7 @@ export default function ContactPage() {
               <Mail className="h-4 w-4 text-brand-DEFAULT" />
               <span>Direct Support</span>
             </h3>
-            <p className="text-xs text-zinc-400">support@strapfitness.com</p>
-            <p className="text-xs text-zinc-400">admin@strapfitness.com</p>
+            <p className="text-xs text-zinc-400">straptrainorg@gmail.com</p>
           </div>
 
           <div className="rounded-2xl border border-card-border bg-card p-5 space-y-3">
