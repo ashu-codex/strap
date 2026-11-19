@@ -1,0 +1,207 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 97%;
+    --foreground: 240 10% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 8%;
+    --primary: 81 88% 62%;
+    --primary-foreground: 240 10% 8%;
+    --secondary: 240 5% 92%;
+    --secondary-foreground: 240 10% 12%;
+    --muted: 240 5% 92%;
+    --muted-foreground: 240 4% 38%;
+    --accent: 81 88% 62%;
+    --accent-foreground: 240 10% 8%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 6% 84%;
+    --input: 240 6% 84%;
+    --ring: 81 88% 62%;
+    --radius: 0.75rem;
+    --surface: #ffffff;
+    --surface-2: #f4f4f5;
+    --page-bg: #f4f4f5;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 81 88% 62%;
+    --primary-foreground: 240 10% 8%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 81 88% 62%;
+    --accent-foreground: 240 10% 8%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 81 88% 62%;
+    --surface: #121217;
+    --surface-2: #18181f;
+    --page-bg: #09090b;
+  }
+}
+
+body {
+  background-color: var(--page-bg);
+  color: hsl(var(--foreground));
+  font-feature-settings: "rlig" 1, "calt" 1;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B7F34A;
+}
+
+/* Brand glow effects */
+.glow-lime {
+  box-shadow: 0 0 20px -3px rgba(183, 243, 74, 0.25);
+}
+
+.glow-lime-lg {
+  box-shadow: 0 0 35px -5px rgba(183, 243, 74, 0.4);
+}
+
+.glow-lime-border {
+  border: 1px solid rgba(183, 243, 74, 0.4);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, currentColor 30%, hsl(var(--muted-foreground)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-lime-gradient {
+  background: linear-gradient(135deg, #d9f99d 0%, #B7F34A 50%, #84cc16 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@layer components {
+  .btn-primary {
+    background-color: #B7F34A;
+    color: #0a0a0d;
+    font-weight: 700;
+    border-radius: 0.75rem;
+    box-shadow: 0 0 25px -5px rgba(183, 243, 74, 0.25);
+    transition: background-color 150ms ease, transform 150ms ease;
+  }
+  .btn-primary:hover {
+    background-color: #c8f86a;
+    color: #0a0a0d;
+  }
+}
+
+/* Light theme remaps for existing dark-first utility classes */
+html.light .text-white {
+  color: #111118 !important;
+}
+html.light .text-zinc-100,
+html.light .text-zinc-200 {
+  color: #18181b !important;
+}
+html.light .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light .bg-zinc-950,
+html.light .bg-\[\#09090b\] {
+  background-color: #f4f4f5 !important;
+}
+html.light .bg-zinc-900,
+html.light .bg-zinc-900\/90,
+html.light .bg-zinc-900\/95 {
+  background-color: #ffffff !important;
+}
+html.light .bg-zinc-800,
+html.light .bg-zinc-800\/60,
+html.light .bg-zinc-800\/80 {
+  background-color: #e4e4e7 !important;
+}
+html.light .hover\:bg-zinc-800:hover,
+html.light .hover\:bg-zinc-800\/60:hover,
+html.light .hover\:bg-zinc-900:hover {
+  background-color: #e4e4e7 !important;
+}
+html.light .hover\:text-white:hover {
+  color: #09090b !important;
+}
+html.light .border-zinc-800,
+html.light .border-zinc-800\/80,
+html.light .border-zinc-900,
+html.light .border-zinc-700 {
+  border-color: #d4d4d8 !important;
+}
+html.light .divide-zinc-900 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e4e4e7 !important;
+}
+html.light .placeholder-zinc-500::placeholder {
+  color: #a1a1aa !important;
+}
+html.light .bg-black\/80 {
+  background-color: rgba(24, 24, 27, 0.45) !important;
+}
+html.light header,
+html.light footer {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+
+/* STRAP global brand and action system */
+:root { --strap-lime: #B7F34A; --strap-lime-hover: #A7E438; --strap-ink: #111318; }
+html body { accent-color: var(--strap-lime); }
+.strap-primary, a.strap-primary, button.strap-primary, [role="button"].strap-primary {
+  background: var(--strap-lime) !important;
+  background-color: var(--strap-lime) !important;
+  color: var(--strap-ink) !important;
+  border-color: transparent !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 22px -7px rgba(183,243,74,.45);
+  transition: background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.strap-primary:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--strap-lime-hover) !important;
+  background-color: var(--strap-lime-hover) !important;
+  color: var(--strap-ink) !important;
+  box-shadow: 0 0 26px -5px rgba(183,243,74,.42);
+}
+.strap-primary:disabled, .strap-primary[aria-disabled="true"] {
+  opacity: .52; cursor: not-allowed; box-shadow: none;
+}
+.strap-brand-word { opacity: 1 !important; filter: none !important; mix-blend-mode: normal !important; }
+html.light .strap-brand-word { color: #17191D !important; }
+html.dark .strap-brand-word { color: #F5F5F5 !important; }
+.strap-brand-mark { background: var(--strap-lime) !important; color: var(--strap-ink) !important; opacity: 1 !important; filter: none !important; mix-blend-mode: normal !important; }
+.strap-brand-ai { color: var(--strap-lime) !important; background: rgba(183,243,74,.12) !important; border: 1px solid rgba(183,243,74,.35) !important; opacity: 1 !important; }
+html.light body { background-color: #F5F6F8; color: #17191D; }

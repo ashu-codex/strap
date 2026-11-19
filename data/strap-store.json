@@ -1,0 +1,477 @@
+{
+  "users": [
+    [
+      "user-demo-1",
+      {
+        "id": "user-demo-1",
+        "email": "alex@strapfitness.com",
+        "full_name": "Alex Mercer",
+        "role": "user",
+        "created_at": "2026-11-05T05:59:52.833Z",
+        "updated_at": "2026-11-19T05:59:52.833Z"
+      }
+    ],
+    [
+      "admin-demo-1",
+      {
+        "id": "admin-demo-1",
+        "email": "ashutosh@strapfitness.com",
+        "full_name": "Ashutosh (Admin)",
+        "role": "admin",
+        "created_at": "2026-10-20T05:59:52.833Z",
+        "updated_at": "2026-11-19T05:59:52.833Z"
+      }
+    ],
+    [
+      "user-1795067993153",
+      {
+        "id": "user-1795067993153",
+        "email": "athlete-1795067992851@strap.test",
+        "full_name": "Test Athlete",
+        "role": "user",
+        "created_at": "2026-11-19T05:59:53.153Z",
+        "updated_at": "2026-11-19T05:59:53.153Z"
+      }
+    ],
+    [
+      "user-1795068178798",
+      {
+        "id": "user-1795068178798",
+        "email": "ashutoshkkr6200@gmail.com",
+        "full_name": "Ashutosh ",
+        "role": "user",
+        "created_at": "2026-11-19T06:02:58.798Z",
+        "updated_at": "2026-11-19T06:02:58.798Z"
+      }
+    ]
+  ],
+  "goals": [
+    [
+      "user-demo-1",
+      {
+        "id": "goal-demo-1",
+        "user_id": "user-demo-1",
+        "primary_goal": "muscle_gain",
+        "target_weight_kg": 80,
+        "weekly_workout_days": 4,
+        "target_date": "2027-02-17",
+        "created_at": "2026-11-19T05:59:52.833Z",
+        "updated_at": "2026-11-19T05:59:52.833Z"
+      }
+    ],
+    [
+      "user-1795068178798",
+      {
+        "id": "goal-user-1795068178798",
+        "user_id": "user-1795068178798",
+        "primary_goal": "fat_loss",
+        "target_weight_kg": 70,
+        "weekly_workout_days": 6,
+        "created_at": "2026-11-19T06:04:12.178Z",
+        "updated_at": "2026-11-19T06:04:12.178Z"
+      }
+    ]
+  ],
+  "metrics": [
+    [
+      "user-demo-1",
+      {
+        "id": "metrics-demo-1",
+        "user_id": "user-demo-1",
+        "age": 26,
+        "gender": "male",
+        "height_cm": 178,
+        "current_weight_kg": 74.5,
+        "body_fat_pct": 15.5,
+        "chest_cm": 102,
+        "waist_cm": 82,
+        "hips_cm": 96,
+        "arms_cm": 37,
+        "experience_level": "intermediate",
+        "workout_location": "gym",
+        "workout_duration_mins": 60,
+        "equipment": [
+          "Barbell",
+          "Dumbbell",
+          "Cable",
+          "Machine"
+        ],
+        "strength_levels": {
+          "bench_press_kg": 85,
+          "squat_kg": 110,
+          "deadlift_kg": 140,
+          "overhead_press_kg": 55,
+          "pullups_reps": 12
+        },
+        "limitations": "Mild lower back tightness during deep flexion",
+        "diet_preference": "non_vegetarian",
+        "sleep_hours_avg": 7.5,
+        "daily_activity_level": "moderately_active",
+        "daily_steps_avg": 9000,
+        "rest_days_preferred": 3,
+        "updated_at": "2026-11-19T05:59:52.833Z"
+      }
+    ],
+    [
+      "user-1795068178798",
+      {
+        "id": "metrics-user-1795068178798",
+        "user_id": "user-1795068178798",
+        "age": 20,
+        "gender": "male",
+        "height_cm": 178,
+        "current_weight_kg": 80,
+        "body_fat_pct": 30,
+        "chest_cm": 98,
+        "waist_cm": 80,
+        "hips_cm": 94,
+        "arms_cm": 35,
+        "experience_level": "intermediate",
+        "workout_location": "gym",
+        "workout_duration_mins": 60,
+        "equipment": [
+          "Barbell",
+          "Dumbbell",
+          "Cable",
+          "Machine"
+        ],
+        "strength_levels": {
+          "bench_press_kg": 80,
+          "squat_kg": 100,
+          "deadlift_kg": 130
+        },
+        "limitations": "",
+        "diet_preference": "non_vegetarian",
+        "sleep_hours_avg": 8,
+        "daily_activity_level": "moderately_active",
+        "daily_steps_avg": 8000,
+        "rest_days_preferred": 1,
+        "updated_at": "2026-11-19T06:04:11.403Z"
+      }
+    ]
+  ],
+  "subscriptions": [
+    [
+      "user-demo-1",
+      {
+        "id": "sub-demo-1",
+        "user_id": "user-demo-1",
+        "plan": "premium",
+        "status": "active",
+        "price_inr": 100,
+        "current_period_start": "2026-11-14T05:59:52.833Z",
+        "current_period_end": "2026-12-14T05:59:52.833Z",
+        "created_at": "2026-11-19T05:59:52.833Z",
+        "updated_at": "2026-11-19T05:59:52.833Z"
+      }
+    ],
+    [
+      "admin-demo-1",
+      {
+        "id": "sub-admin-1",
+        "user_id": "admin-demo-1",
+        "plan": "premium",
+        "status": "active",
+        "price_inr": 0,
+        "current_period_start": "2026-11-19T05:59:52.833Z",
+        "current_period_end": "2027-11-19T05:59:52.833Z",
+        "created_at": "2026-11-19T05:59:52.833Z",
+        "updated_at": "2026-11-19T05:59:52.833Z"
+      }
+    ],
+    [
+      "user-1795067993153",
+      {
+        "id": "sub-user-1795067993153",
+        "user_id": "user-1795067993153",
+        "plan": "premium",
+        "status": "active",
+        "price_inr": 100,
+        "current_period_start": "2026-11-19T05:59:53.153Z",
+        "current_period_end": "2026-12-19T05:59:54.800Z",
+        "created_at": "2026-11-19T05:59:53.153Z",
+        "updated_at": "2026-11-19T05:59:54.800Z"
+      }
+    ],
+    [
+      "user-1795068178798",
+      {
+        "id": "sub-user-1795068178798",
+        "user_id": "user-1795068178798",
+        "plan": "premium",
+        "status": "active",
+        "price_inr": 100,
+        "current_period_start": "2026-11-19T06:02:58.798Z",
+        "current_period_end": "2026-12-19T06:05:47.715Z",
+        "created_at": "2026-11-19T06:02:58.798Z",
+        "updated_at": "2026-11-19T06:05:47.715Z"
+      }
+    ]
+  ],
+  "payments": [
+    {
+      "id": "pay-1795068327671",
+      "user_id": "user-1795068178798",
+      "user_email": "ashutoshkkr6200@gmail.com",
+      "user_name": "Ashutosh ",
+      "amount_inr": 100,
+      "currency": "INR",
+      "payment_method": "upi_manual",
+      "payment_status": "approved",
+      "upi_id": "ashutosh-k82@ptyes",
+      "utr_reference": "220868696814",
+      "created_at": "2026-11-19T06:05:27.671Z",
+      "updated_at": "2026-11-19T06:05:47.715Z",
+      "admin_notes": "Verified against bank credit ledger.",
+      "verified_by": "ashutosh@strapfitness.com",
+      "verified_at": "2026-11-19T06:05:47.715Z"
+    },
+    {
+      "id": "pay-1795067993724",
+      "user_id": "user-1795067993153",
+      "user_email": "athlete-1795067992851@strap.test",
+      "user_name": "Test Athlete",
+      "amount_inr": 100,
+      "currency": "INR",
+      "payment_method": "upi_manual",
+      "payment_status": "approved",
+      "upi_id": "ashutosh-k82@ptyes",
+      "utr_reference": "UTR1795067992851",
+      "created_at": "2026-11-19T05:59:53.724Z",
+      "updated_at": "2026-11-19T05:59:54.799Z",
+      "admin_notes": "Bank credit confirmed in test.",
+      "verified_by": "ashutosh@strapfitness.com",
+      "verified_at": "2026-11-19T05:59:54.799Z"
+    },
+    {
+      "id": "pay-101",
+      "user_id": "user-demo-1",
+      "user_email": "alex@strapfitness.com",
+      "user_name": "Alex Mercer",
+      "amount_inr": 100,
+      "currency": "INR",
+      "payment_method": "upi_manual",
+      "payment_status": "approved",
+      "upi_id": "ashutosh-k82@ptyes",
+      "utr_reference": "UTR49281740192",
+      "admin_notes": "Verified against bank passbook.",
+      "verified_by": "ashutosh@strapfitness.com",
+      "verified_at": "2026-11-14T05:59:52.833Z",
+      "created_at": "2026-11-14T05:59:52.833Z",
+      "updated_at": "2026-11-19T05:59:52.833Z"
+    },
+    {
+      "id": "pay-102",
+      "user_id": "user-demo-2",
+      "user_email": "rohan.sharma@example.com",
+      "user_name": "Rohan Sharma",
+      "amount_inr": 100,
+      "currency": "INR",
+      "payment_method": "upi_manual",
+      "payment_status": "pending",
+      "upi_id": "ashutosh-k82@ptyes",
+      "utr_reference": "UTR99837102941",
+      "created_at": "2026-11-19T05:29:52.833Z",
+      "updated_at": "2026-11-19T05:59:52.833Z"
+    }
+  ],
+  "workouts": [
+    {
+      "id": "w-1",
+      "name": "Day 1: Upper Power & Hypertrophy",
+      "split_type": "Upper / Lower",
+      "start_time": "2026-11-17T05:59:52.833Z",
+      "exercises": [
+        {
+          "exercise_id": "ex-bench-press",
+          "exercise_name": "Barbell Bench Press",
+          "target_muscle": "Chest",
+          "rest_seconds": 120,
+          "sets": [
+            {
+              "set_number": 1,
+              "weight_kg": 80,
+              "reps": 8,
+              "is_completed": true,
+              "rpe": 8
+            },
+            {
+              "set_number": 2,
+              "weight_kg": 80,
+              "reps": 8,
+              "is_completed": true,
+              "rpe": 8
+            },
+            {
+              "set_number": 3,
+              "weight_kg": 82.5,
+              "reps": 7,
+              "is_completed": true,
+              "rpe": 9
+            },
+            {
+              "set_number": 4,
+              "weight_kg": 82.5,
+              "reps": 6,
+              "is_completed": true,
+              "rpe": 9.5
+            }
+          ]
+        },
+        {
+          "exercise_id": "ex-barbell-row",
+          "exercise_name": "Bent-Over Barbell Row",
+          "target_muscle": "Back",
+          "rest_seconds": 90,
+          "sets": [
+            {
+              "set_number": 1,
+              "weight_kg": 70,
+              "reps": 10,
+              "is_completed": true,
+              "rpe": 8
+            },
+            {
+              "set_number": 2,
+              "weight_kg": 70,
+              "reps": 10,
+              "is_completed": true,
+              "rpe": 8
+            },
+            {
+              "set_number": 3,
+              "weight_kg": 75,
+              "reps": 8,
+              "is_completed": true,
+              "rpe": 8.5
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sleepLogs": [
+    {
+      "id": "sl-1",
+      "user_id": "user-demo-1",
+      "log_date": "2026-11-17",
+      "sleep_hours": 8,
+      "sleep_quality": 5,
+      "notes": "Felt well rested"
+    },
+    {
+      "id": "sl-2",
+      "user_id": "user-demo-1",
+      "log_date": "2026-11-18",
+      "sleep_hours": 7.2,
+      "sleep_quality": 4,
+      "notes": "Slight fatigue from late meeting"
+    },
+    {
+      "id": "sl-3",
+      "user_id": "user-demo-1",
+      "log_date": "2026-11-19",
+      "sleep_hours": 7.8,
+      "sleep_quality": 4,
+      "notes": "Good recovery"
+    }
+  ],
+  "recoveryLogs": [
+    {
+      "id": "rl-1",
+      "user_id": "user-demo-1",
+      "log_date": "2026-11-17",
+      "fatigue_level": 2,
+      "muscle_soreness_score": 2,
+      "recovery_score_pct": 88,
+      "readiness_status": "ready"
+    },
+    {
+      "id": "rl-2",
+      "user_id": "user-demo-1",
+      "log_date": "2026-11-18",
+      "fatigue_level": 3,
+      "muscle_soreness_score": 3,
+      "recovery_score_pct": 74,
+      "readiness_status": "ready"
+    },
+    {
+      "id": "rl-3",
+      "user_id": "user-demo-1",
+      "log_date": "2026-11-19",
+      "fatigue_level": 2,
+      "muscle_soreness_score": 2,
+      "recovery_score_pct": 82,
+      "readiness_status": "ready"
+    }
+  ],
+  "measurements": [
+    {
+      "id": "m-1",
+      "user_id": "user-demo-1",
+      "recorded_date": "2026-10-15",
+      "weight_kg": 72.8,
+      "body_fat_pct": 16.2,
+      "chest_cm": 100,
+      "waist_cm": 83
+    },
+    {
+      "id": "m-2",
+      "user_id": "user-demo-1",
+      "recorded_date": "2026-11-01",
+      "weight_kg": 73.6,
+      "body_fat_pct": 15.8,
+      "chest_cm": 101,
+      "waist_cm": 82.5
+    },
+    {
+      "id": "m-3",
+      "user_id": "user-demo-1",
+      "recorded_date": "2026-11-15",
+      "weight_kg": 74.5,
+      "body_fat_pct": 15.5,
+      "chest_cm": 102,
+      "waist_cm": 82
+    }
+  ],
+  "progressRecords": [
+    {
+      "id": "pr-1",
+      "user_id": "user-demo-1",
+      "exercise_name": "Barbell Bench Press",
+      "record_type": "1rm",
+      "value": 97.5,
+      "achieved_at": "2026-11-12"
+    },
+    {
+      "id": "pr-2",
+      "user_id": "user-demo-1",
+      "exercise_name": "Barbell Back Squat",
+      "record_type": "1rm",
+      "value": 130,
+      "achieved_at": "2026-11-08"
+    },
+    {
+      "id": "pr-3",
+      "user_id": "user-demo-1",
+      "exercise_name": "Conventional Barbell Deadlift",
+      "record_type": "1rm",
+      "value": 165,
+      "achieved_at": "2026-11-02"
+    },
+    {
+      "id": "pr-4",
+      "user_id": "user-demo-1",
+      "exercise_name": "Pull-ups",
+      "record_type": "max_reps",
+      "value": 14,
+      "achieved_at": "2026-11-14"
+    }
+  ],
+  "adminSettings": {
+    "price_inr": 100,
+    "billing_period": "monthly",
+    "upi_id": "ashutosh-k82@ptyes",
+    "default_model": "gemini-1.5-flash"
+  }
+}
