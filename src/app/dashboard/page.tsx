@@ -101,8 +101,8 @@ export default function DashboardPage() {
               Athlete Central
             </span>
             {isPremium ? (
-              <span className="text-xs font-bold text-black bg-brand-DEFAULT px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-glow">
-                <Sparkles className="h-3 w-3 fill-black" />
+              <span className="text-xs font-extrabold text-[#111318] bg-[#B7F34A] px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-glow">
+                <Sparkles className="h-3 w-3 fill-[#111318] text-[#111318]" />
                 PREMIUM ACTIVE
               </span>
             ) : (
