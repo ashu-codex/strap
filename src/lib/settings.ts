@@ -13,6 +13,6 @@ export async function getSettings(): Promise<AppSettings> {
     price_inr: Number(row?.price_inr) || Number(process.env.NEXT_PUBLIC_PREMIUM_PRICE_INR) || 100,
     billing_period: row?.billing_period || 'monthly',
     upi_id: row?.upi_id || process.env.NEXT_PUBLIC_UPI_ID || '',
-    default_model: row?.default_model || process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    default_model: row?.default_model || process.env.GEMINI_MODEL || 'gemini-3.8-flash',
   };
 }

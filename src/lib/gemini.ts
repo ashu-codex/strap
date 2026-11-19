@@ -11,8 +11,9 @@ import {
 import { calculateBMR, calculateTDEE } from "./utils";
 
 const apiKey = process.env.GEMINI_API_KEY || "";
-const rawModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-const modelName = rawModel === "gemini-1.5-flash" || rawModel === "gemini-1.5-pro" ? "gemini-2.5-flash" : rawModel;
+const rawModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+const RETIRED_MODELS = new Set(["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash", "gemini-2.5-flash"]);
+const modelName = RETIRED_MODELS.has(rawModel) ? "gemini-3.8-flash" : rawModel;
 
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
