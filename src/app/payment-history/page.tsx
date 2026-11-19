@@ -29,7 +29,7 @@ export default function PaymentHistoryPage() {
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-DEFAULT border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
       </div>
     );
   }
@@ -38,7 +38,7 @@ export default function PaymentHistoryPage() {
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-6">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-DEFAULT bg-brand-DEFAULT/10 border border-brand-DEFAULT/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 px-2.5 py-0.5 rounded-full">
             Financial Ledger
           </span>
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">Payment History</h1>
@@ -49,7 +49,7 @@ export default function PaymentHistoryPage() {
 
         <a
           href="/checkout"
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow shrink-0 strap-primary"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow shrink-0 strap-primary"
         >
           <span>Submit New Payment</span>
           <ArrowRight className="h-4 w-4" />
@@ -65,7 +65,7 @@ export default function PaymentHistoryPage() {
           </p>
           <a
             href="/checkout"
-            className="inline-block mt-2 px-5 py-2 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black strap-primary"
+            className="inline-block mt-2 px-5 py-2 rounded-xl bg-brand text-xs font-bold text-black strap-primary"
           >
             Upgrade to Premium (₹100)
           </a>

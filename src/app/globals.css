@@ -30,6 +30,11 @@
     --strap-lime: #B7F34A;
     --strap-lime-hover: #A7E438;
     --strap-ink: #111318;
+    --dark-btn-bg: #232630;
+    --dark-btn-hover: #2E3340;
+    --dark-btn-border: #3B4050;
+    --dark-btn-text: #E5E7EB;
+    --dark-btn-text-hover: #FFFFFF;
     color-scheme: dark;
   }
 }
@@ -193,7 +198,7 @@ html.light footer {
   border-top-color: #E1E4E8 !important;
 }
 
-/* Global Dark Theme Surface & Border */
+/* Global Dark Theme Surface, Border & Interactive Control Contrast */
 html.dark .bg-card {
   background-color: #1B1D22 !important;
 }
@@ -207,4 +212,59 @@ html.dark header {
 html.dark footer {
   background-color: #1B1D22 !important;
   border-top-color: #30333A !important;
+}
+
+/* Dark mode: guarantee crisp contrast on all dark-surface buttons, tabs, filters, and pills */
+html.dark button.bg-zinc-900,
+html.dark button.bg-zinc-950,
+html.dark button.bg-zinc-800,
+html.dark a.bg-zinc-900,
+html.dark a.bg-zinc-950,
+html.dark a.bg-zinc-800 {
+  background-color: var(--dark-btn-bg);
+  color: var(--dark-btn-text);
+  border: 1px solid var(--dark-btn-border);
+}
+html.dark button.bg-zinc-900:hover:not(:disabled),
+html.dark button.bg-zinc-950:hover:not(:disabled),
+html.dark button.bg-zinc-800:hover:not(:disabled),
+html.dark a.bg-zinc-900:hover,
+html.dark a.bg-zinc-950:hover,
+html.dark a.bg-zinc-800:hover {
+  background-color: var(--dark-btn-hover);
+  color: var(--dark-btn-text-hover);
+  border-color: rgba(183, 243, 74, 0.5);
+}
+
+/* Dark mode: guarantee active lime buttons/tabs/badges always have dark ink & visible icons */
+html.dark button.bg-brand,
+html.dark a.bg-brand,
+html.dark button.bg-\[\#B7F34A\],
+html.dark a.bg-\[\#B7F34A\] {
+  background-color: var(--strap-lime);
+  color: var(--strap-ink);
+}
+html.dark button.bg-brand:hover:not(:disabled),
+html.dark a.bg-brand:hover,
+html.dark button.bg-\[\#B7F34A\]:hover:not(:disabled),
+html.dark a.bg-\[\#B7F34A\]:hover {
+  background-color: var(--strap-lime-hover);
+  color: var(--strap-ink);
+}
+html.dark button.bg-brand svg,
+html.dark a.bg-brand svg,
+html.dark .btn-primary svg,
+html.dark .strap-primary svg {
+  color: var(--strap-ink);
+}
+
+/* Dark mode: accessible focus-visible ring & disabled state across all buttons */
+html.dark button:focus-visible,
+html.dark a:focus-visible {
+  outline: 2px solid var(--strap-lime);
+  outline-offset: 2px;
+}
+html.dark button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

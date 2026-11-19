@@ -95,7 +95,7 @@ export default function AiAssistantPage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-DEFAULT border-t-transparent shadow-glow" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent shadow-glow" />
       </div>
     );
   }
@@ -103,11 +103,11 @@ export default function AiAssistantPage() {
   if (!isPremium) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8 text-center">
-        <div className="rounded-3xl border border-brand-DEFAULT/30 bg-card p-10 shadow-glow-lg max-w-2xl mx-auto">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-DEFAULT/20 border border-brand-DEFAULT/40 text-brand-DEFAULT mx-auto mb-4 shadow-glow">
+        <div className="rounded-3xl border border-brand/30 bg-card p-10 shadow-glow-lg max-w-2xl mx-auto">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/20 border border-brand/40 text-brand mx-auto mb-4 shadow-glow">
             <Lock className="h-7 w-7" />
           </div>
-          <span className="text-xs font-bold uppercase tracking-widest text-brand-DEFAULT bg-brand-DEFAULT/10 px-3 py-1 rounded-full border border-brand-DEFAULT/20">
+          <span className="text-xs font-bold uppercase tracking-widest text-brand bg-brand/10 px-3 py-1 rounded-full border border-brand/20">
             STRAP Premium Exclusive
           </span>
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-3 mb-2">
@@ -118,7 +118,7 @@ export default function AiAssistantPage() {
           </p>
           <a
             href="/checkout"
-            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-brand-DEFAULT text-sm font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-brand text-sm font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
           >
             <span>Upgrade to Premium (₹100/mo)</span>
             <ArrowRight className="h-4 w-4" />
@@ -133,13 +133,13 @@ export default function AiAssistantPage() {
       {/* Top Bar */}
       <div className="flex items-center justify-between border-b border-zinc-800 pb-4 mb-4 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-DEFAULT/20 border border-brand-DEFAULT text-brand-DEFAULT shadow-glow">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/20 border border-brand text-brand shadow-glow">
             <Bot className="h-5 w-5" />
           </div>
           <div>
             <h1 className="text-lg font-bold text-white flex items-center gap-1.5">
               STRAP AI Fitness Coach
-              <span className="text-[10px] font-bold text-brand-DEFAULT bg-brand-DEFAULT/10 px-2 py-0.5 rounded-full border border-brand-DEFAULT/30">
+              <span className="text-[10px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-full border border-brand/30">
                 Gemini 1.5
               </span>
             </h1>
@@ -166,7 +166,7 @@ export default function AiAssistantPage() {
                 className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 text-xs font-bold ${
                   isUser
                     ? 'bg-zinc-800 text-white'
-                    : 'bg-brand-DEFAULT text-black shadow-glow'
+                    : 'bg-brand text-black shadow-glow'
                 }`}
               >
                 {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
@@ -175,7 +175,7 @@ export default function AiAssistantPage() {
               <div
                 className={`max-w-[80%] rounded-2xl p-4 text-xs leading-relaxed ${
                   isUser
-                    ? 'bg-brand-DEFAULT/15 border border-brand-DEFAULT/30 text-white'
+                    ? 'bg-brand/15 border border-brand/30 text-white'
                     : 'bg-card border border-card-border text-zinc-200'
                 }`}
               >
@@ -187,11 +187,11 @@ export default function AiAssistantPage() {
 
         {sending && (
           <div className="flex items-start gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-DEFAULT text-black shrink-0 shadow-glow">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-black shrink-0 shadow-glow">
               <Bot className="h-4 w-4" />
             </div>
             <div className="rounded-2xl p-4 bg-card border border-card-border text-xs text-zinc-400 flex items-center gap-2">
-              <div className="h-3 w-3 animate-spin rounded-full border-2 border-brand-DEFAULT border-t-transparent" />
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-brand border-t-transparent" />
               <span>Analyzing biomechanical patterns...</span>
             </div>
           </div>
@@ -206,7 +206,7 @@ export default function AiAssistantPage() {
           <button
             key={idx}
             onClick={() => handleSend(prompt)}
-            className="px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-brand-DEFAULT/40 whitespace-nowrap transition-colors"
+            className="px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-brand/40 whitespace-nowrap transition-colors"
           >
             {prompt}
           </button>
@@ -226,12 +226,12 @@ export default function AiAssistantPage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask STRAP Coach regarding splits, form, recovery, or macros..."
-          className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 py-3.5 pl-4 pr-12 text-xs text-white placeholder-zinc-500 focus:border-brand-DEFAULT focus:outline-none focus:ring-1 focus:ring-brand-DEFAULT shadow-glow"
+          className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 py-3.5 pl-4 pr-12 text-xs text-white placeholder-zinc-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand shadow-glow"
         />
         <button
           type="submit"
           disabled={!input.trim() || sending}
-          className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-xl bg-brand-DEFAULT flex items-center justify-center text-black hover:bg-brand-400 transition-colors shadow-glow disabled:opacity-40 strap-primary"
+          className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-xl bg-brand flex items-center justify-center text-black hover:bg-brand-400 transition-colors shadow-glow disabled:opacity-40 strap-primary"
         >
           <Send className="h-4 w-4" />
         </button>

@@ -186,7 +186,7 @@ export default function AdminPage() {
       </div>
 
       {message && (
-        <div className="rounded-xl border border-brand-DEFAULT/30 bg-brand-DEFAULT/10 p-3.5 text-xs text-brand-DEFAULT flex items-center gap-2">
+        <div className="rounded-xl border border-brand/30 bg-brand/10 p-3.5 text-xs text-brand flex items-center gap-2">
           <Check className="h-4 w-4" />
           <span>{message}</span>
         </div>
@@ -204,7 +204,7 @@ export default function AdminPage() {
 
         <div className="rounded-2xl border border-card-border bg-card p-5">
           <span className="text-[10px] text-zinc-400 uppercase font-semibold">Verified Revenue</span>
-          <div className="text-3xl font-black text-brand-DEFAULT mt-1 flex items-baseline">
+          <div className="text-3xl font-black text-brand mt-1 flex items-baseline">
             ₹{stats?.totalRevenueINR || 0}
           </div>
           <p className="text-[11px] text-zinc-500 mt-1">
@@ -282,7 +282,7 @@ export default function AdminPage() {
                         <div className="font-bold text-white">{p.user_name || 'Athlete'}</div>
                         <div className="text-[11px] text-zinc-400">{p.user_email || p.user_id}</div>
                       </td>
-                      <td className="font-black text-brand-DEFAULT font-mono text-sm">
+                      <td className="font-black text-brand font-mono text-sm">
                         ₹{p.amount_inr}
                       </td>
                       <td className="font-mono text-white font-bold bg-zinc-900 px-2 py-1 rounded inline-block">
@@ -322,7 +322,7 @@ export default function AdminPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Users className="h-5 w-5 text-brand-DEFAULT" />
+              <Users className="h-5 w-5 text-brand" />
               <span>Registered Athletes & Subscriptions</span>
             </h2>
             <p className="text-xs text-zinc-400 mt-0.5">Search and inspect athlete membership tiers.</p>
@@ -365,7 +365,7 @@ export default function AdminPage() {
                   </td>
                   <td>
                     {u.subscriptionPlan === 'premium' ? (
-                      <span className="text-[10px] font-bold text-brand-DEFAULT bg-brand-DEFAULT/10 border border-brand-DEFAULT/30 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-bold text-brand bg-brand/10 border border-brand/30 px-2 py-0.5 rounded-full">
                         PREMIUM
                       </span>
                     ) : (
@@ -390,7 +390,7 @@ export default function AdminPage() {
       {/* PLATFORM SETTINGS */}
       <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
         <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <Settings className="h-5 w-5 text-brand-DEFAULT" />
+          <Settings className="h-5 w-5 text-brand" />
           <span>Platform Pricing & Engine Settings</span>
         </h2>
 
@@ -436,7 +436,7 @@ export default function AdminPage() {
           <div className="sm:col-span-3 pt-2">
             <button
               type="submit"
-              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow strap-primary"
+              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow strap-primary"
             >
               <Save className="h-4 w-4" />
               <span>Update Platform Settings</span>

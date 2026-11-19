@@ -39,7 +39,7 @@ export default function PricingPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8 space-y-12">
       <div className="text-center max-w-3xl mx-auto">
-        <span className="text-xs font-bold uppercase tracking-widest text-brand-DEFAULT bg-brand-DEFAULT/10 px-3 py-1 rounded-full border border-brand-DEFAULT/20">
+        <span className="text-xs font-bold uppercase tracking-widest text-brand bg-brand/10 px-3 py-1 rounded-full border border-brand/20">
           Transparent Athletic Subscription
         </span>
         <h1 className="text-3xl sm:text-5xl font-black text-white mt-3 mb-4">
@@ -89,17 +89,17 @@ export default function PricingPage() {
         </div>
 
         {/* PREMIUM PLAN */}
-        <div className="relative rounded-3xl border-2 border-brand-DEFAULT bg-card p-8 flex flex-col justify-between shadow-glow-lg">
-          <div className="absolute -top-3.5 right-8 bg-brand-DEFAULT text-black font-extrabold text-[10px] uppercase tracking-wider px-3.5 py-0.5 rounded-full shadow-glow">
+        <div className="relative rounded-3xl border-2 border-brand bg-card p-8 flex flex-col justify-between shadow-glow-lg">
+          <div className="absolute -top-3.5 right-8 bg-brand text-black font-extrabold text-[10px] uppercase tracking-wider px-3.5 py-0.5 rounded-full shadow-glow">
             Recommended
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-white flex items-center gap-1.5">
-                STRAP Premium <Sparkles className="h-4 w-4 text-brand-DEFAULT fill-brand-DEFAULT" />
+                STRAP Premium <Sparkles className="h-4 w-4 text-brand fill-brand" />
               </h2>
-              <span className="text-xs font-bold bg-brand-DEFAULT/20 text-brand-DEFAULT px-3 py-1 rounded-full border border-brand-DEFAULT/30">
+              <span className="text-xs font-bold bg-brand/20 text-brand px-3 py-1 rounded-full border border-brand/30">
                 Full AI Stack
               </span>
             </div>
@@ -115,7 +115,7 @@ export default function PricingPage() {
             <div className="space-y-2.5 mb-8 max-h-80 overflow-y-auto pr-1">
               {premiumFeatures.map((f, i) => (
                 <div key={i} className="flex items-start gap-2.5 text-xs text-zinc-200">
-                  <CheckCircle2 className="h-4 w-4 text-brand-DEFAULT shrink-0 mt-0.5" />
+                  <CheckCircle2 className="h-4 w-4 text-brand shrink-0 mt-0.5" />
                   <span>{f}</span>
                 </div>
               ))}
@@ -124,7 +124,7 @@ export default function PricingPage() {
 
           <a
             href="/checkout"
-            className="w-full flex items-center justify-center gap-2 text-center py-3.5 rounded-xl bg-brand-DEFAULT text-xs font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-[1.02] strap-primary"
+            className="w-full flex items-center justify-center gap-2 text-center py-3.5 rounded-xl bg-brand text-xs font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-[1.02] strap-primary"
           >
             <span>Upgrade to Premium (₹100)</span>
             <ArrowRight className="h-4 w-4" />
@@ -134,7 +134,7 @@ export default function PricingPage() {
 
       {/* Security note */}
       <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 text-center max-w-2xl mx-auto space-y-2">
-        <ShieldCheck className="h-6 w-6 text-brand-DEFAULT mx-auto" />
+        <ShieldCheck className="h-6 w-6 text-brand mx-auto" />
         <h4 className="text-sm font-bold text-white">Manual UPI & Secure Bank Verification</h4>
         <p className="text-xs text-zinc-400 leading-relaxed">
           Payments are verified directly via UPI ID <strong className="text-zinc-200">ashutosh-k82@ptyes</strong> against bank transaction records. Unverified attempts never activate access.

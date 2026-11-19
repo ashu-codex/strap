@@ -47,7 +47,7 @@ export default function GoalsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-DEFAULT border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
       </div>
     );
   }
@@ -72,7 +72,7 @@ export default function GoalsPage() {
       </div>
 
       {message && (
-        <div className="rounded-xl border border-brand-DEFAULT/30 bg-brand-DEFAULT/10 p-3.5 text-xs text-brand-DEFAULT flex items-center gap-2">
+        <div className="rounded-xl border border-brand/30 bg-brand/10 p-3.5 text-xs text-brand flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4" />
           <span>{message}</span>
         </div>
@@ -82,7 +82,7 @@ export default function GoalsPage() {
         {/* Goal Selection Cards */}
         <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
           <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <Target className="h-4 w-4 text-brand-DEFAULT" />
+            <Target className="h-4 w-4 text-brand" />
             Select Primary Training Goal
           </h2>
 
@@ -96,13 +96,13 @@ export default function GoalsPage() {
                   onClick={() => setGoal({ ...goal, primary_goal: opt.id })}
                   className={`p-4 rounded-xl border text-left transition-all ${
                     isSelected
-                      ? 'border-brand-DEFAULT bg-brand-DEFAULT/10 shadow-glow'
+                      ? 'border-brand bg-brand/10 shadow-glow'
                       : 'border-zinc-800 bg-zinc-950 hover:border-zinc-700'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-white">{opt.name}</span>
-                    {isSelected && <CheckCircle2 className="h-4 w-4 text-brand-DEFAULT" />}
+                    {isSelected && <CheckCircle2 className="h-4 w-4 text-brand" />}
                   </div>
                   <p className="text-[11px] text-zinc-400 mt-1">{opt.desc}</p>
                 </button>
@@ -123,7 +123,7 @@ export default function GoalsPage() {
                 step="0.5"
                 value={goal.target_weight_kg || ''}
                 onChange={(e) => setGoal({ ...goal, target_weight_kg: Number(e.target.value) })}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
               />
             </div>
 
@@ -134,7 +134,7 @@ export default function GoalsPage() {
               <select
                 value={goal.weekly_workout_days}
                 onChange={(e) => setGoal({ ...goal, weekly_workout_days: Number(e.target.value) })}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
               >
                 <option value={2}>2 Days / Week (Full Body Maintenance)</option>
                 <option value={3}>3 Days / Week (Full Body Power)</option>
@@ -150,7 +150,7 @@ export default function GoalsPage() {
                 type="date"
                 value={goal.target_date || ''}
                 onChange={(e) => setGoal({ ...goal, target_date: e.target.value })}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
               />
             </div>
           </div>
@@ -159,7 +159,7 @@ export default function GoalsPage() {
         <button
           type="submit"
           disabled={saving}
-          className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black hover:bg-brand-400 transition-all shadow-glow disabled:opacity-50 strap-primary"
+          className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-all shadow-glow disabled:opacity-50 strap-primary"
         >
           <Save className="h-4 w-4" />
           <span>{saving ? 'Updating...' : 'Save Goals & Re-align Engine'}</span>

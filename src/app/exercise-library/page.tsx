@@ -86,7 +86,7 @@ export default function ExerciseLibraryPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-brand-DEFAULT bg-brand-DEFAULT/10 border border-brand-DEFAULT/20 px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 px-2.5 py-0.5 rounded-full">
               Biomechanical Movement Library
             </span>
             <span className="text-xs text-zinc-400 font-mono">12 Target Categories</span>
@@ -100,7 +100,7 @@ export default function ExerciseLibraryPage() {
         {isLocked && (
           <button
             onClick={() => setModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow shrink-0"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow shrink-0"
           >
             <Sparkles className="h-4 w-4" />
             <span>Unlock Full Library (₹100)</span>
@@ -118,7 +118,7 @@ export default function ExerciseLibraryPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search exercises by name, muscle group, or equipment (e.g. Bench, Squat, Delts)..."
-            className="w-full rounded-xl border border-zinc-800 bg-zinc-950 py-3 pl-10 pr-4 text-xs text-white placeholder-zinc-500 focus:border-brand-DEFAULT focus:outline-none focus:ring-1 focus:ring-brand-DEFAULT"
+            className="w-full rounded-xl border border-zinc-800 bg-zinc-950 py-3 pl-10 pr-4 text-xs text-white placeholder-zinc-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
         </div>
 
@@ -132,7 +132,7 @@ export default function ExerciseLibraryPage() {
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
                   isSelected
-                    ? 'bg-brand-DEFAULT text-black font-bold shadow-glow'
+                    ? 'bg-brand text-black font-bold shadow-glow'
                     : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'
                 }`}
               >
@@ -149,7 +149,7 @@ export default function ExerciseLibraryPage() {
             <select
               value={selectedEquipment}
               onChange={(e) => setSelectedEquipment(e.target.value)}
-              className="rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+              className="rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs text-white focus:border-brand focus:outline-none"
             >
               {equipmentOptions.map((eq) => (
                 <option key={eq} value={eq}>{eq}</option>
@@ -162,7 +162,7 @@ export default function ExerciseLibraryPage() {
             <select
               value={selectedDifficulty}
               onChange={(e) => setSelectedDifficulty(e.target.value)}
-              className="rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+              className="rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs text-white focus:border-brand focus:outline-none"
             >
               {difficulties.map((diff) => (
                 <option key={diff} value={diff}>{diff}</option>
@@ -175,8 +175,8 @@ export default function ExerciseLibraryPage() {
       {/* LOCKED VIEW FOR FREE USERS */}
       {isLocked ? (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-brand-DEFAULT/30 bg-card p-8 text-center shadow-glow">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-DEFAULT/20 text-brand-DEFAULT mx-auto mb-3 shadow-glow">
+          <div className="rounded-2xl border border-brand/30 bg-card p-8 text-center shadow-glow">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand/20 text-brand mx-auto mb-3 shadow-glow">
               <Lock className="h-6 w-6" />
             </div>
             <h2 className="text-xl font-bold text-white">Full Exercise Catalog Locked</h2>
@@ -185,7 +185,7 @@ export default function ExerciseLibraryPage() {
             </p>
             <button
               onClick={() => setModalOpen(true)}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand-DEFAULT text-xs font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand text-xs font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105"
             >
               <span>Unlock STRAP Premium (₹100)</span>
               <ArrowRight className="h-4 w-4" />
@@ -197,7 +197,7 @@ export default function ExerciseLibraryPage() {
             {preview.map((ex) => (
               <div key={ex.id} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] uppercase font-bold text-brand-DEFAULT">{ex.category}</span>
+                  <span className="text-[10px] uppercase font-bold text-brand">{ex.category}</span>
                   <Lock className="h-3.5 w-3.5 text-zinc-500" />
                 </div>
                 <h3 className="text-base font-bold text-white mb-1">{ex.name}</h3>
@@ -211,7 +211,7 @@ export default function ExerciseLibraryPage() {
         <div>
           {loading ? (
             <div className="flex min-h-[30vh] items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-DEFAULT border-t-transparent" />
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
             </div>
           ) : exercises.length === 0 ? (
             <div className="text-center py-12 text-zinc-400 text-xs">
@@ -223,10 +223,10 @@ export default function ExerciseLibraryPage() {
                 <div
                   key={ex.id}
                   onClick={() => setSelectedExercise(ex)}
-                  className="rounded-2xl border border-card-border bg-card p-5 hover:border-brand-DEFAULT/50 transition-all cursor-pointer hover:-translate-y-0.5 group"
+                  className="rounded-2xl border border-card-border bg-card p-5 hover:border-brand/50 transition-all cursor-pointer hover:-translate-y-0.5 group"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand-DEFAULT bg-brand-DEFAULT/10 border border-brand-DEFAULT/20 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-full">
                       {ex.category}
                     </span>
                     <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded">
@@ -234,7 +234,7 @@ export default function ExerciseLibraryPage() {
                     </span>
                   </div>
 
-                  <h3 className="text-base font-bold text-white group-hover:text-brand-DEFAULT transition-colors mb-1">
+                  <h3 className="text-base font-bold text-white group-hover:text-brand transition-colors mb-1">
                     {ex.name}
                   </h3>
                   <p className="text-xs text-zinc-300 font-medium mb-3">
@@ -243,7 +243,7 @@ export default function ExerciseLibraryPage() {
 
                   <div className="flex items-center justify-between text-[11px] text-zinc-400 pt-3 border-t border-zinc-900">
                     <span>{ex.difficulty} • {ex.exercise_type}</span>
-                    <span className="text-brand-DEFAULT font-semibold flex items-center gap-1 group-hover:underline">
+                    <span className="text-brand font-semibold flex items-center gap-1 group-hover:underline">
                       Form Guide →
                     </span>
                   </div>
@@ -257,7 +257,7 @@ export default function ExerciseLibraryPage() {
       {/* Detailed Exercise Modal */}
       {selectedExercise && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-brand-DEFAULT/30 bg-card p-6 shadow-glow-lg text-white max-h-[90vh] overflow-y-auto">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-brand/30 bg-card p-6 shadow-glow-lg text-white max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setSelectedExercise(null)}
               className="absolute right-4 top-4 rounded-lg p-1 text-zinc-400 hover:text-white hover:bg-zinc-800"
@@ -266,7 +266,7 @@ export default function ExerciseLibraryPage() {
             </button>
 
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-brand-DEFAULT bg-brand-DEFAULT/10 border border-brand-DEFAULT/20 px-2.5 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 px-2.5 py-0.5 rounded-full">
                 {selectedExercise.category}
               </span>
               <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 px-2.5 py-0.5 rounded-full">
@@ -279,7 +279,7 @@ export default function ExerciseLibraryPage() {
 
             <h2 className="text-2xl font-black text-white mb-2">{selectedExercise.name}</h2>
             <p className="text-xs text-zinc-300 font-semibold mb-4">
-              Primary Target: <span className="text-brand-DEFAULT">{selectedExercise.target_muscle}</span>
+              Primary Target: <span className="text-brand">{selectedExercise.target_muscle}</span>
             </p>
 
             {selectedExercise.secondary_muscles?.length > 0 && (
@@ -309,7 +309,7 @@ export default function ExerciseLibraryPage() {
               </div>
               <div>
                 <span className="text-[10px] text-zinc-400 uppercase">Rest Interval</span>
-                <strong className="block text-sm text-brand-DEFAULT">{selectedExercise.default_rest_sec} Sec</strong>
+                <strong className="block text-sm text-brand">{selectedExercise.default_rest_sec} Sec</strong>
               </div>
             </div>
 

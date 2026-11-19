@@ -70,7 +70,7 @@ export default function WorkoutPlannerPage() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-DEFAULT border-t-transparent shadow-glow" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent shadow-glow" />
           <span className="text-xs text-zinc-400 font-mono tracking-wider">Synthesizing Gemini Workout Architecture...</span>
         </div>
       </div>
@@ -81,12 +81,12 @@ export default function WorkoutPlannerPage() {
   if (!isPremium) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8 text-center">
-        <div className="rounded-3xl border border-brand-DEFAULT/30 bg-card p-10 shadow-glow-lg max-w-2xl mx-auto">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-DEFAULT/20 border border-brand-DEFAULT/40 text-brand-DEFAULT mx-auto mb-4 shadow-glow">
+        <div className="rounded-3xl border border-brand/30 bg-card p-10 shadow-glow-lg max-w-2xl mx-auto">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/20 border border-brand/40 text-brand mx-auto mb-4 shadow-glow">
             <Lock className="h-7 w-7" />
           </div>
 
-          <span className="text-xs font-bold uppercase tracking-widest text-brand-DEFAULT bg-brand-DEFAULT/10 px-3 py-1 rounded-full border border-brand-DEFAULT/20">
+          <span className="text-xs font-bold uppercase tracking-widest text-brand bg-brand/10 px-3 py-1 rounded-full border border-brand/20">
             STRAP Premium Exclusive
           </span>
 
@@ -111,7 +111,7 @@ export default function WorkoutPlannerPage() {
 
           <a
             href="/checkout"
-            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-brand-DEFAULT text-sm font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-brand text-sm font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
           >
             <span>Upgrade to Premium (₹100/mo)</span>
             <ArrowRight className="h-4 w-4" />
@@ -129,7 +129,7 @@ export default function WorkoutPlannerPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-brand-DEFAULT bg-brand-DEFAULT/10 border border-brand-DEFAULT/20 px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 px-2.5 py-0.5 rounded-full">
               Gemini AI Workout Architecture
             </span>
             <span className="text-xs font-semibold text-zinc-400 font-mono">
@@ -147,9 +147,9 @@ export default function WorkoutPlannerPage() {
         <button
           onClick={handleRegenerate}
           disabled={generating}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-bold text-white hover:border-brand-DEFAULT/60 hover:bg-zinc-800 transition-colors shadow-glow shrink-0 disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-bold text-white hover:border-brand/60 hover:bg-zinc-800 transition-colors shadow-glow shrink-0 disabled:opacity-50"
         >
-          <RefreshCw className={`h-4 w-4 text-brand-DEFAULT ${generating ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 text-brand ${generating ? 'animate-spin' : ''}`} />
           <span>{generating ? 'Regenerating...' : 'Regenerate with Gemini'}</span>
         </button>
       </div>
@@ -170,7 +170,7 @@ export default function WorkoutPlannerPage() {
               onClick={() => setActiveDayIdx(idx)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 isActive
-                  ? 'bg-brand-DEFAULT text-black shadow-glow'
+                  ? 'bg-brand text-black shadow-glow'
                   : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'
               }`}
             >
@@ -187,7 +187,7 @@ export default function WorkoutPlannerPage() {
           {/* Day Overview Banner */}
           <div className="rounded-2xl border border-card-border bg-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-brand-DEFAULT">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-brand">
                 Day {activeDay.day_number} Overview
               </span>
               <h2 className="text-xl font-bold text-white">{activeDay.day_title}</h2>
@@ -196,7 +196,7 @@ export default function WorkoutPlannerPage() {
 
             <a
               href="/workout-tracker"
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 shrink-0 strap-primary"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 shrink-0 strap-primary"
             >
               <Dumbbell className="h-4 w-4" />
               <span>Start This Workout Now</span>
@@ -215,7 +215,7 @@ export default function WorkoutPlannerPage() {
                     key={i}
                     className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300"
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5 text-brand-DEFAULT" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-brand" />
                     <span>{item}</span>
                   </span>
                 ))}
@@ -237,7 +237,7 @@ export default function WorkoutPlannerPage() {
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
                     <div className="flex items-start gap-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono font-bold text-brand-DEFAULT shrink-0">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono font-bold text-brand shrink-0">
                         0{i + 1}
                       </span>
                       <div>
@@ -251,7 +251,7 @@ export default function WorkoutPlannerPage() {
                       <span className="text-zinc-500">•</span>
                       <span className="font-mono font-bold text-white">{ex.reps} Reps</span>
                       <span className="text-zinc-500">•</span>
-                      <span className="font-mono text-brand-DEFAULT">Rest: {ex.rest_seconds}s</span>
+                      <span className="font-mono text-brand">Rest: {ex.rest_seconds}s</span>
                     </div>
                   </div>
 
@@ -280,15 +280,15 @@ export default function WorkoutPlannerPage() {
 
           {/* Progressive Overload Engine Rules */}
           {plan?.progressive_overload_rules && (
-            <div className="rounded-2xl border border-brand-DEFAULT/20 bg-brand-DEFAULT/5 p-6">
-              <h3 className="text-sm font-bold text-brand-DEFAULT uppercase tracking-wider mb-3 flex items-center gap-2">
+            <div className="rounded-2xl border border-brand/20 bg-brand/5 p-6">
+              <h3 className="text-sm font-bold text-brand uppercase tracking-wider mb-3 flex items-center gap-2">
                 <Flame className="h-4 w-4" />
                 <span>Systemic Progressive Overload Directive</span>
               </h3>
               <ul className="space-y-2 text-xs text-zinc-300">
                 {plan.progressive_overload_rules.map((rule: string, i: number) => (
                   <li key={i} className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-brand-DEFAULT shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-4 w-4 text-brand shrink-0 mt-0.5" />
                     <span>{rule}</span>
                   </li>
                 ))}

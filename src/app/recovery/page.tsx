@@ -88,7 +88,7 @@ export default function RecoveryPage() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-DEFAULT border-t-transparent shadow-glow" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent shadow-glow" />
           <span className="text-xs text-zinc-400 font-mono">Analyzing Autonomic Readiness...</span>
         </div>
       </div>
@@ -98,11 +98,11 @@ export default function RecoveryPage() {
   if (!isPremium) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8 text-center">
-        <div className="rounded-3xl border border-brand-DEFAULT/30 bg-card p-10 shadow-glow-lg max-w-2xl mx-auto">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-DEFAULT/20 border border-brand-DEFAULT/40 text-brand-DEFAULT mx-auto mb-4 shadow-glow">
+        <div className="rounded-3xl border border-brand/30 bg-card p-10 shadow-glow-lg max-w-2xl mx-auto">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/20 border border-brand/40 text-brand mx-auto mb-4 shadow-glow">
             <Lock className="h-7 w-7" />
           </div>
-          <span className="text-xs font-bold uppercase tracking-widest text-brand-DEFAULT bg-brand-DEFAULT/10 px-3 py-1 rounded-full border border-brand-DEFAULT/20">
+          <span className="text-xs font-bold uppercase tracking-widest text-brand bg-brand/10 px-3 py-1 rounded-full border border-brand/20">
             STRAP Premium Exclusive
           </span>
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-3 mb-2">
@@ -113,7 +113,7 @@ export default function RecoveryPage() {
           </p>
           <a
             href="/checkout"
-            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-brand-DEFAULT text-sm font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-brand text-sm font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
           >
             <span>Upgrade to Premium (₹100/mo)</span>
             <ArrowRight className="h-4 w-4" />
@@ -148,7 +148,7 @@ export default function RecoveryPage() {
       {/* Header */}
       <div className="border-b border-zinc-800 pb-6">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-DEFAULT bg-brand-DEFAULT/10 border border-brand-DEFAULT/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 px-2.5 py-0.5 rounded-full">
             Autonomic Readiness
           </span>
           <span className="text-xs font-mono text-zinc-400">Sleep & Fatigue Modeling</span>
@@ -160,7 +160,7 @@ export default function RecoveryPage() {
       </div>
 
       {message && (
-        <div className="rounded-xl border border-brand-DEFAULT/30 bg-brand-DEFAULT/10 p-3.5 text-xs text-brand-DEFAULT flex items-center gap-2">
+        <div className="rounded-xl border border-brand/30 bg-brand/10 p-3.5 text-xs text-brand flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4" />
           <span>{message}</span>
         </div>
@@ -190,7 +190,7 @@ export default function RecoveryPage() {
         {/* Quick Log Form */}
         <div className="rounded-2xl border border-card-border bg-card p-6 md:col-span-2 space-y-4">
           <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <BatteryCharging className="h-4 w-4 text-brand-DEFAULT" />
+            <BatteryCharging className="h-4 w-4 text-brand" />
             Log Today's Recovery Telemetry
           </h3>
 
@@ -207,7 +207,7 @@ export default function RecoveryPage() {
                   step={0.5}
                   value={sleepHours}
                   onChange={(e) => setSleepHours(Number(e.target.value))}
-                  className="w-full accent-brand-DEFAULT cursor-pointer"
+                  className="w-full accent-brand cursor-pointer"
                 />
               </div>
 
@@ -221,7 +221,7 @@ export default function RecoveryPage() {
                   max={5}
                   value={sleepQuality}
                   onChange={(e) => setSleepQuality(Number(e.target.value))}
-                  className="w-full accent-brand-DEFAULT cursor-pointer"
+                  className="w-full accent-brand cursor-pointer"
                 />
               </div>
             </div>
@@ -237,7 +237,7 @@ export default function RecoveryPage() {
                   max={5}
                   value={fatigueLevel}
                   onChange={(e) => setFatigueLevel(Number(e.target.value))}
-                  className="w-full accent-brand-DEFAULT cursor-pointer"
+                  className="w-full accent-brand cursor-pointer"
                 />
               </div>
 
@@ -251,7 +251,7 @@ export default function RecoveryPage() {
                   max={5}
                   value={sorenessScore}
                   onChange={(e) => setSorenessScore(Number(e.target.value))}
-                  className="w-full accent-brand-DEFAULT cursor-pointer"
+                  className="w-full accent-brand cursor-pointer"
                 />
               </div>
             </div>
@@ -259,7 +259,7 @@ export default function RecoveryPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black hover:bg-brand-400 transition-all shadow-glow disabled:opacity-50 strap-primary"
+              className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-all shadow-glow disabled:opacity-50 strap-primary"
             >
               <Save className="h-4 w-4" />
               <span>{submitting ? 'Calculating...' : 'Record Telemetry & Update Score'}</span>
@@ -271,7 +271,7 @@ export default function RecoveryPage() {
       {/* Historical Telemetry Log Table */}
       <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
         <h3 className="text-base font-bold text-white flex items-center gap-2">
-          <Activity className="h-4 w-4 text-brand-DEFAULT" />
+          <Activity className="h-4 w-4 text-brand" />
           Recent Autonomic Recovery Records
         </h3>
 
@@ -293,7 +293,7 @@ export default function RecoveryPage() {
                   <tr key={i} className="hover:bg-zinc-950/40">
                     <td className="py-3 font-mono text-zinc-400">{log.log_date}</td>
                     <td className="font-semibold text-white">{matchedSleep.sleep_hours} hrs</td>
-                    <td className="font-bold text-brand-DEFAULT font-mono">{log.recovery_score_pct}%</td>
+                    <td className="font-bold text-brand font-mono">{log.recovery_score_pct}%</td>
                     <td>
                       <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${getStatusColor(log.readiness_status)}`}>
                         {log.readiness_status?.replace('_', ' ')}

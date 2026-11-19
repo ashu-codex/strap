@@ -184,7 +184,7 @@ export default function WorkoutTrackerPage() {
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-DEFAULT border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
       </div>
     );
   }
@@ -192,11 +192,11 @@ export default function WorkoutTrackerPage() {
   if (!isPremium) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8 text-center">
-        <div className="rounded-3xl border border-brand-DEFAULT/30 bg-card p-10 shadow-glow-lg max-w-2xl mx-auto">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-DEFAULT/20 border border-brand-DEFAULT/40 text-brand-DEFAULT mx-auto mb-4 shadow-glow">
+        <div className="rounded-3xl border border-brand/30 bg-card p-10 shadow-glow-lg max-w-2xl mx-auto">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/20 border border-brand/40 text-brand mx-auto mb-4 shadow-glow">
             <Lock className="h-7 w-7" />
           </div>
-          <span className="text-xs font-bold uppercase tracking-widest text-brand-DEFAULT bg-brand-DEFAULT/10 px-3 py-1 rounded-full border border-brand-DEFAULT/20">
+          <span className="text-xs font-bold uppercase tracking-widest text-brand bg-brand/10 px-3 py-1 rounded-full border border-brand/20">
             STRAP Premium Exclusive
           </span>
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-3 mb-2">
@@ -207,7 +207,7 @@ export default function WorkoutTrackerPage() {
           </p>
           <a
             href="/checkout"
-            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-brand-DEFAULT text-sm font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-brand text-sm font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
           >
             <span>Upgrade to Premium (₹100/mo)</span>
             <ArrowRight className="h-4 w-4" />
@@ -221,12 +221,12 @@ export default function WorkoutTrackerPage() {
   if (completedSummary) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-brand-DEFAULT/40 bg-card p-8 text-center shadow-glow-lg">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-DEFAULT/20 border border-brand-DEFAULT text-brand-DEFAULT mx-auto mb-4 shadow-glow">
+        <div className="rounded-3xl border border-brand/40 bg-card p-8 text-center shadow-glow-lg">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand/20 border border-brand text-brand mx-auto mb-4 shadow-glow">
             <Award className="h-8 w-8" />
           </div>
 
-          <span className="text-xs font-bold uppercase tracking-widest text-brand-DEFAULT">Workout Logged</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-brand">Workout Logged</span>
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-1 mb-2">
             Exceptional Work! Session Recorded.
           </h1>
@@ -243,15 +243,15 @@ export default function WorkoutTrackerPage() {
             </div>
             <div>
               <span className="text-[10px] text-zinc-500 uppercase font-semibold">Exercises Logged</span>
-              <div className="text-2xl font-black text-brand-DEFAULT">
+              <div className="text-2xl font-black text-brand">
                 {exercises.length} <span className="text-xs font-normal text-zinc-400">Movements</span>
               </div>
             </div>
           </div>
 
           {completedSummary.newPrs?.length > 0 && (
-            <div className="mb-6 p-4 rounded-2xl bg-brand-DEFAULT/10 border border-brand-DEFAULT/30 text-left max-w-md mx-auto">
-              <span className="text-xs font-bold text-brand-DEFAULT flex items-center gap-1.5 mb-2">
+            <div className="mb-6 p-4 rounded-2xl bg-brand/10 border border-brand/30 text-left max-w-md mx-auto">
+              <span className="text-xs font-bold text-brand flex items-center gap-1.5 mb-2">
                 <Sparkles className="h-4 w-4" />
                 <span>New Personal Record Achieved!</span>
               </span>
@@ -272,7 +272,7 @@ export default function WorkoutTrackerPage() {
             </a>
             <a
               href="/analytics"
-              className="px-6 py-2.5 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow strap-primary"
+              className="px-6 py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow strap-primary"
             >
               View Analytics
             </a>
@@ -287,7 +287,7 @@ export default function WorkoutTrackerPage() {
       {/* Top Banner & Rest Timer Bar */}
       <div className="rounded-2xl border border-card-border bg-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-glow">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-brand-DEFAULT bg-brand-DEFAULT/10 border border-brand-DEFAULT/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 px-2.5 py-0.5 rounded-full">
             Active Session Telemetry
           </span>
           <h1 className="text-2xl font-black text-white mt-1">{workoutName}</h1>
@@ -297,7 +297,7 @@ export default function WorkoutTrackerPage() {
         {/* REST TIMER COMPONENT */}
         <div className="flex items-center gap-4 bg-zinc-950/90 border border-zinc-800 p-3 rounded-2xl">
           <div className="flex items-center gap-2">
-            <Clock className={`h-5 w-5 ${timerActive ? 'text-brand-DEFAULT animate-pulse' : 'text-zinc-500'}`} />
+            <Clock className={`h-5 w-5 ${timerActive ? 'text-brand animate-pulse' : 'text-zinc-500'}`} />
             <div>
               <span className="text-[10px] text-zinc-400 font-semibold block uppercase">Rest Timer</span>
               <span className="text-xl font-mono font-black text-white">
@@ -339,7 +339,7 @@ export default function WorkoutTrackerPage() {
             <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-DEFAULT text-black font-black text-xs">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand text-black font-black text-xs">
                     {exIdx + 1}
                   </span>
                   {ex.exercise_name}
@@ -347,7 +347,7 @@ export default function WorkoutTrackerPage() {
                 <span className="text-[11px] text-zinc-400">Target: {ex.target_muscle}</span>
               </div>
 
-              <span className="text-xs font-mono text-brand-DEFAULT">
+              <span className="text-xs font-mono text-brand">
                 Rest: {ex.rest_seconds}s
               </span>
             </div>
@@ -366,7 +366,7 @@ export default function WorkoutTrackerPage() {
                   key={setIdx}
                   className={`grid grid-cols-12 gap-2 items-center p-2.5 rounded-xl border transition-colors ${
                     set.is_completed
-                      ? 'border-brand-DEFAULT/30 bg-brand-DEFAULT/5'
+                      ? 'border-brand/30 bg-brand/5'
                       : 'border-zinc-800 bg-zinc-950/70'
                   }`}
                 >
@@ -399,7 +399,7 @@ export default function WorkoutTrackerPage() {
                       onClick={() => handleToggleSet(exIdx, setIdx)}
                       className={`h-7 w-7 rounded-lg flex items-center justify-center transition-colors ${
                         set.is_completed
-                          ? 'bg-brand-DEFAULT text-black shadow-glow'
+                          ? 'bg-brand text-black shadow-glow'
                           : 'bg-zinc-800 text-zinc-500 hover:text-white'
                       }`}
                     >
@@ -413,7 +413,7 @@ export default function WorkoutTrackerPage() {
             <button
               type="button"
               onClick={() => handleAddSet(exIdx)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-brand-DEFAULT hover:underline pt-1"
+              className="flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline pt-1"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Add Set</span>
@@ -431,7 +431,7 @@ export default function WorkoutTrackerPage() {
         <button
           onClick={handleFinishWorkout}
           disabled={finishing}
-          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-DEFAULT text-xs font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 disabled:opacity-50 strap-primary"
+          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-xs font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 disabled:opacity-50 strap-primary"
         >
           <Save className="h-4 w-4" />
           <span>{finishing ? 'Recording Session...' : 'Finish & Save Workout'}</span>

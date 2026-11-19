@@ -72,7 +72,7 @@ export default function DashboardPage() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-DEFAULT border-t-transparent shadow-glow" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent shadow-glow" />
           <span className="text-xs text-zinc-400 font-mono tracking-wider">Syncing STRAP telemetry...</span>
         </div>
       </div>
@@ -97,7 +97,7 @@ export default function DashboardPage() {
       <div className="rounded-2xl border border-card-border bg-gradient-to-r from-card to-zinc-950 p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-glow">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-brand-DEFAULT bg-brand-DEFAULT/10 border border-brand-DEFAULT/20 px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 px-2.5 py-0.5 rounded-full">
               Athlete Central
             </span>
             {isPremium ? (
@@ -127,7 +127,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <a
             href="/workout-tracker"
-            className="flex items-center gap-2 rounded-xl bg-brand-DEFAULT px-5 py-3 text-xs font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
+            className="flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-xs font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
           >
             <Dumbbell className="h-4 w-4" />
             <span>Start Today's Workout</span>
@@ -151,7 +151,7 @@ export default function DashboardPage() {
         <div className="rounded-xl border border-card-border bg-card p-5">
           <div className="flex items-center justify-between text-zinc-400 mb-2">
             <span className="text-xs font-semibold">Body Weight</span>
-            <Scale className="h-4 w-4 text-brand-DEFAULT" />
+            <Scale className="h-4 w-4 text-brand" />
           </div>
           <div className="text-2xl font-black text-white">{currentWeight} <span className="text-xs font-normal text-zinc-400">kg</span></div>
           <p className="text-[11px] text-zinc-500 mt-1">
@@ -208,14 +208,14 @@ export default function DashboardPage() {
           <div className="rounded-2xl border border-card-border bg-card p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <span className="text-[11px] font-bold text-brand-DEFAULT uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-brand uppercase tracking-wider">
                   Today's Prescribed Session
                 </span>
                 <h3 className="text-lg font-bold text-white">Upper Day 1: Horizontal Push & Pull</h3>
               </div>
               <a
                 href="/workout-planner"
-                className="text-xs font-semibold text-brand-DEFAULT hover:underline flex items-center gap-1"
+                className="text-xs font-semibold text-brand hover:underline flex items-center gap-1"
               >
                 <span>View Full Split</span>
                 <ChevronRight className="h-3.5 w-3.5" />
@@ -236,7 +236,7 @@ export default function DashboardPage() {
                   className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-xs"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-zinc-800 text-[11px] font-mono font-bold text-brand-DEFAULT">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-zinc-800 text-[11px] font-mono font-bold text-brand">
                       0{i + 1}
                     </span>
                     <div>
@@ -256,7 +256,7 @@ export default function DashboardPage() {
               <span className="text-xs text-zinc-400">Estimated Duration: ~60 mins</span>
               <a
                 href="/workout-tracker"
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow strap-primary"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow strap-primary"
               >
                 <span>Launch Workout Tracker</span>
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -268,10 +268,10 @@ export default function DashboardPage() {
           <div className="rounded-2xl border border-card-border bg-card p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Award className="h-5 w-5 text-brand-DEFAULT" />
+                <Award className="h-5 w-5 text-brand" />
                 Verified Personal Records (1RM)
               </h3>
-              <a href="/analytics" className="text-xs text-brand-DEFAULT hover:underline">
+              <a href="/analytics" className="text-xs text-brand hover:underline">
                 View Progression
               </a>
             </div>
@@ -296,8 +296,8 @@ export default function DashboardPage() {
         {/* Right Column (1 Col): AI Engine & Locked Cards for Free Users */}
         <div className="space-y-6">
           {/* Gemini AI Coach Card */}
-          <div className="relative rounded-2xl border border-brand-DEFAULT/30 bg-card p-6 shadow-glow">
-            <div className="flex items-center gap-2 text-xs font-bold text-brand-DEFAULT mb-3">
+          <div className="relative rounded-2xl border border-brand/30 bg-card p-6 shadow-glow">
+            <div className="flex items-center gap-2 text-xs font-bold text-brand mb-3">
               <Bot className="h-4 w-4" />
               <span>STRAP AI Coach Feedback</span>
             </div>
@@ -310,7 +310,7 @@ export default function DashboardPage() {
                 <div className="pt-2">
                   <a
                     href="/ai-assistant"
-                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-bold text-white hover:border-brand-DEFAULT transition-colors"
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-bold text-white hover:border-brand transition-colors"
                   >
                     <span>Ask AI Coach</span>
                     <ArrowRight className="h-3.5 w-3.5" />
@@ -319,7 +319,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="text-center py-4">
-                <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-full bg-zinc-900 text-brand-DEFAULT mb-2">
+                <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-full bg-zinc-900 text-brand mb-2">
                   <Lock className="h-4 w-4" />
                 </div>
                 <h4 className="text-xs font-bold text-white">AI Coach Insights Locked</h4>
@@ -328,7 +328,7 @@ export default function DashboardPage() {
                 </p>
                 <button
                   onClick={() => openLock('AI Coach Insights', 'Unlock live conversational Gemini workout adaptations and progressive overload coaching.')}
-                  className="w-full py-2 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black shadow-glow"
+                  className="w-full py-2 rounded-xl bg-brand text-xs font-bold text-black shadow-glow"
                 >
                   Unlock AI Insights
                 </button>
@@ -340,7 +340,7 @@ export default function DashboardPage() {
           <div className="rounded-2xl border border-card-border bg-card p-6">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-brand-DEFAULT" />
+                <Sparkles className="h-4 w-4 text-brand" />
                 Daily Calorie & Macro Target
               </span>
               {!isPremium && <Lock className="h-3.5 w-3.5 text-zinc-500" />}
@@ -350,7 +350,7 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-2xl font-black text-white">2,650</span>
-                  <span className="text-xs text-brand-DEFAULT font-semibold">+250 kcal (Surplus)</span>
+                  <span className="text-xs text-brand font-semibold">+250 kcal (Surplus)</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                   <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
@@ -366,7 +366,7 @@ export default function DashboardPage() {
                     <strong className="text-white">75g</strong>
                   </div>
                 </div>
-                <a href="/nutrition" className="text-[11px] text-brand-DEFAULT hover:underline block text-right pt-1">
+                <a href="/nutrition" className="text-[11px] text-brand hover:underline block text-right pt-1">
                   View Full Meal Timing →
                 </a>
               </div>
@@ -377,7 +377,7 @@ export default function DashboardPage() {
                 </p>
                 <button
                   onClick={() => openLock('Metabolic Nutrition Target', 'Get precise protein, carbohydrate, and fat targets based on your biometric weight and goals.')}
-                  className="w-full py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-bold text-white hover:border-brand-DEFAULT transition-colors"
+                  className="w-full py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-bold text-white hover:border-brand transition-colors"
                 >
                   View Macro Breakdown
                 </button>
@@ -395,7 +395,7 @@ export default function DashboardPage() {
               className="flex items-center justify-between p-2.5 rounded-lg text-xs font-semibold text-zinc-300 hover:text-white hover:bg-zinc-900 transition-colors"
             >
               <div className="flex items-center gap-2">
-                <Dumbbell className="h-4 w-4 text-brand-DEFAULT" />
+                <Dumbbell className="h-4 w-4 text-brand" />
                 <span>Exercise Library (12 Categories)</span>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-zinc-500" />

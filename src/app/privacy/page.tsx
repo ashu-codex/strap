@@ -7,7 +7,7 @@ export default function PrivacyPolicyPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8 space-y-8 text-zinc-300 text-xs leading-relaxed">
       <div className="border-b border-zinc-800 pb-6 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-DEFAULT/10 border border-brand-DEFAULT/30 text-brand-DEFAULT mx-auto mb-3 shadow-glow">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand/10 border border-brand/30 text-brand mx-auto mb-3 shadow-glow">
           <ShieldCheck className="h-6 w-6" />
         </div>
         <h1 className="text-3xl font-black text-white">STRAP Privacy Policy</h1>

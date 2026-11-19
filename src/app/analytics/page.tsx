@@ -87,7 +87,7 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-DEFAULT border-t-transparent shadow-glow" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent shadow-glow" />
       </div>
     );
   }
@@ -95,11 +95,11 @@ export default function AnalyticsPage() {
   if (!isPremium) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8 text-center">
-        <div className="rounded-3xl border border-brand-DEFAULT/30 bg-card p-10 shadow-glow-lg max-w-2xl mx-auto">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-DEFAULT/20 border border-brand-DEFAULT/40 text-brand-DEFAULT mx-auto mb-4 shadow-glow">
+        <div className="rounded-3xl border border-brand/30 bg-card p-10 shadow-glow-lg max-w-2xl mx-auto">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/20 border border-brand/40 text-brand mx-auto mb-4 shadow-glow">
             <Lock className="h-7 w-7" />
           </div>
-          <span className="text-xs font-bold uppercase tracking-widest text-brand-DEFAULT bg-brand-DEFAULT/10 px-3 py-1 rounded-full border border-brand-DEFAULT/20">
+          <span className="text-xs font-bold uppercase tracking-widest text-brand bg-brand/10 px-3 py-1 rounded-full border border-brand/20">
             STRAP Premium Exclusive
           </span>
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-3 mb-2">
@@ -110,7 +110,7 @@ export default function AnalyticsPage() {
           </p>
           <a
             href="/checkout"
-            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-brand-DEFAULT text-sm font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-brand text-sm font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
           >
             <span>Upgrade to Premium (₹100/mo)</span>
             <ArrowRight className="h-4 w-4" />
@@ -155,7 +155,7 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="border-b border-zinc-800 pb-6">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-DEFAULT bg-brand-DEFAULT/10 border border-brand-DEFAULT/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 px-2.5 py-0.5 rounded-full">
             Empirical Telemetry
           </span>
           <span className="text-xs font-mono text-zinc-400">Recharts Visual Intelligence</span>
@@ -172,10 +172,10 @@ export default function AnalyticsPage() {
         <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Scale className="h-4 w-4 text-brand-DEFAULT" />
+              <Scale className="h-4 w-4 text-brand" />
               Body Weight Trajectory (kg)
             </h3>
-            <span className="text-[11px] font-mono text-brand-DEFAULT font-semibold">
+            <span className="text-[11px] font-mono text-brand font-semibold">
               +1.7 kg Overall
             </span>
           </div>
@@ -206,7 +206,7 @@ export default function AnalyticsPage() {
         <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-brand-DEFAULT" />
+              <TrendingUp className="h-4 w-4 text-brand" />
               Cumulative Weekly Training Volume (kg)
             </h3>
             <span className="text-[11px] font-mono text-emerald-400 font-semibold">
@@ -234,7 +234,7 @@ export default function AnalyticsPage() {
       <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-brand-DEFAULT" />
+            <Calendar className="h-4 w-4 text-brand" />
             Sleep Duration Consistency (Hours / Night)
           </h3>
           <span className="text-[11px] font-mono text-zinc-400">Target: 7.5 - 8.5 Hours</span>
@@ -260,7 +260,7 @@ export default function AnalyticsPage() {
         {/* Verified PR List */}
         <div className="lg:col-span-2 rounded-2xl border border-card-border bg-card p-6 space-y-4">
           <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Award className="h-4 w-4 text-brand-DEFAULT" />
+            <Award className="h-4 w-4 text-brand" />
             Verified Personal Records (1RM)
           </h3>
 
@@ -283,7 +283,7 @@ export default function AnalyticsPage() {
         {/* Add Measurement Quick Form */}
         <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
           <h3 className="text-base font-bold text-white flex items-center gap-1.5">
-            <Plus className="h-4 w-4 text-brand-DEFAULT" />
+            <Plus className="h-4 w-4 text-brand" />
             Log Weight Check-In
           </h3>
 
@@ -314,7 +314,7 @@ export default function AnalyticsPage() {
             <button
               type="submit"
               disabled={savingM}
-              className="w-full py-2.5 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow disabled:opacity-50 strap-primary"
+              className="w-full py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow disabled:opacity-50 strap-primary"
             >
               {savingM ? 'Logging...' : 'Record Weight Log'}
             </button>

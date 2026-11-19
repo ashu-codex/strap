@@ -46,7 +46,7 @@ export default function NutritionPage() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-DEFAULT border-t-transparent shadow-glow" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent shadow-glow" />
           <span className="text-xs text-zinc-400 font-mono tracking-wider">Calibrating Metabolic Energetics...</span>
         </div>
       </div>
@@ -56,11 +56,11 @@ export default function NutritionPage() {
   if (!isPremium) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8 text-center">
-        <div className="rounded-3xl border border-brand-DEFAULT/30 bg-card p-10 shadow-glow-lg max-w-2xl mx-auto">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-DEFAULT/20 border border-brand-DEFAULT/40 text-brand-DEFAULT mx-auto mb-4 shadow-glow">
+        <div className="rounded-3xl border border-brand/30 bg-card p-10 shadow-glow-lg max-w-2xl mx-auto">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/20 border border-brand/40 text-brand mx-auto mb-4 shadow-glow">
             <Lock className="h-7 w-7" />
           </div>
-          <span className="text-xs font-bold uppercase tracking-widest text-brand-DEFAULT bg-brand-DEFAULT/10 px-3 py-1 rounded-full border border-brand-DEFAULT/20">
+          <span className="text-xs font-bold uppercase tracking-widest text-brand bg-brand/10 px-3 py-1 rounded-full border border-brand/20">
             STRAP Premium Exclusive
           </span>
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-3 mb-2">
@@ -71,7 +71,7 @@ export default function NutritionPage() {
           </p>
           <a
             href="/checkout"
-            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-brand-DEFAULT text-sm font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-brand text-sm font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
           >
             <span>Upgrade to Premium (₹100/mo)</span>
             <ArrowRight className="h-4 w-4" />
@@ -108,7 +108,7 @@ export default function NutritionPage() {
       {/* Header */}
       <div className="border-b border-zinc-800 pb-6">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-DEFAULT bg-brand-DEFAULT/10 border border-brand-DEFAULT/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 px-2.5 py-0.5 rounded-full">
             Biometric Energetics
           </span>
           <span className="text-xs font-mono text-zinc-400">Mifflin-St Jeor Validated</span>
@@ -137,11 +137,11 @@ export default function NutritionPage() {
           <p className="text-[11px] text-zinc-500 mt-0.5">Based on training frequency</p>
         </div>
 
-        <div className="rounded-2xl border border-brand-DEFAULT/40 bg-card p-5 shadow-glow md:col-span-2">
-          <span className="text-[10px] text-brand-DEFAULT uppercase font-bold block">Target Caloric Intake</span>
+        <div className="rounded-2xl border border-brand/40 bg-card p-5 shadow-glow md:col-span-2">
+          <span className="text-[10px] text-brand uppercase font-bold block">Target Caloric Intake</span>
           <div className="text-3xl font-black text-white mt-1 flex items-baseline gap-2">
             {p.target_calories} <span className="text-xs font-normal text-zinc-400">kcal / day</span>
-            <span className="text-xs font-semibold text-brand-DEFAULT">
+            <span className="text-xs font-semibold text-brand">
               ({p.target_calories > p.tdee ? `+${p.target_calories - p.tdee} Surplus` : `${p.target_calories - p.tdee} Deficit`})
             </span>
           </div>
@@ -152,7 +152,7 @@ export default function NutritionPage() {
       {/* Macronutrient Distribution */}
       <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
         <h3 className="text-base font-bold text-white flex items-center gap-2">
-          <PieChart className="h-4 w-4 text-brand-DEFAULT" />
+          <PieChart className="h-4 w-4 text-brand" />
           Prescribed Daily Macronutrient Distribution
         </h3>
 
@@ -190,7 +190,7 @@ export default function NutritionPage() {
       {p.meal_timing && (
         <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
           <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Clock className="h-4 w-4 text-brand-DEFAULT" />
+            <Clock className="h-4 w-4 text-brand" />
             Nutrient Timing & Meal Distribution
           </h3>
 
@@ -199,7 +199,7 @@ export default function NutritionPage() {
               <div key={i} className="p-4 rounded-xl bg-zinc-950/70 border border-zinc-800 text-xs space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-white">{m.meal_name}</span>
-                  <span className="font-mono text-brand-DEFAULT font-semibold">{m.suggested_time}</span>
+                  <span className="font-mono text-brand font-semibold">{m.suggested_time}</span>
                 </div>
                 <div className="text-[11px] text-zinc-400">Share: {m.calorie_share_pct}% of daily calories</div>
                 <p className="text-zinc-300 pt-1 leading-snug">{m.recommendation}</p>
@@ -213,7 +213,7 @@ export default function NutritionPage() {
       {p.sample_foods && (
         <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
           <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Utensils className="h-4 w-4 text-brand-DEFAULT" />
+            <Utensils className="h-4 w-4 text-brand" />
             Recommended Whole Food Staples
           </h3>
 

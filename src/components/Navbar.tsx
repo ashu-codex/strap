@@ -70,7 +70,7 @@ export default function Navbar() {
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-xs font-semibold transition-all ${
                       isActive
                         ? 'bg-[#B7F34A]/15 text-[#111318] dark:text-[#B7F34A] border border-[#B7F34A]/40 shadow-glow'
-                        : 'text-[#9496A1] hover:text-[#F5F5F5] dark:hover:text-[#FFFFFF] light:hover:text-[#111318] hover:bg-[#1B1D22] dark:hover:bg-[#1B1D22] light:hover:bg-[#F0F2F5]'
+                        : 'text-[#52525B] dark:text-[#D1D5DB] hover:text-[#111318] dark:hover:text-[#FFFFFF] hover:bg-[#F0F2F5] dark:hover:bg-[#232630]'
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -192,7 +192,7 @@ export default function Navbar() {
               <button
                 onClick={handleLogout}
                 title="Logout"
-                className="rounded-[10px] p-2 text-[#9496A1] hover:text-red-400 hover:bg-[#1B1D22] dark:hover:bg-[#1B1D22] light:hover:bg-[#F0F2F5] transition-colors"
+                className="rounded-[10px] p-2 text-[#52525B] dark:text-[#D1D5DB] hover:text-red-400 hover:bg-[#F0F2F5] dark:hover:bg-[#232630] transition-colors"
               >
                 <LogOut className="h-4 w-4" />
               </button>
@@ -201,7 +201,7 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <a
                 href="/login"
-                className="text-xs font-bold text-[#9496A1] hover:text-[#111318] dark:hover:text-white px-3 py-1.5 rounded-[10px] hover:bg-[#1B1D22] dark:hover:bg-[#1B1D22] light:hover:bg-[#F0F2F5] transition-colors"
+                className="text-xs font-bold text-[#52525B] dark:text-[#E5E7EB] hover:text-[#111318] dark:hover:text-white px-3 py-1.5 rounded-[10px] hover:bg-[#F0F2F5] dark:hover:bg-[#232630] transition-colors"
               >
                 Sign In
               </a>
@@ -264,8 +264,8 @@ export default function Navbar() {
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-2 p-2.5 rounded-[10px] text-xs font-semibold transition-colors ${
                     isActive
-                      ? 'bg-[#B7F34A]/15 text-[#B7F34A] border border-[#B7F34A]/40'
-                      : 'text-[#9496A1] hover:text-white hover:bg-[#1B1D22]'
+                      ? 'bg-[#B7F34A]/15 text-[#111318] dark:text-[#B7F34A] border border-[#B7F34A]/40'
+                      : 'text-[#52525B] dark:text-[#E5E7EB] dark:bg-[#1B1D22] dark:border dark:border-[#30333A] hover:text-[#111318] dark:hover:text-white dark:hover:bg-[#232630]'
                   }`}
                 >
                   <Icon className="h-4 w-4" />

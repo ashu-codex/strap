@@ -82,7 +82,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-DEFAULT border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
       </div>
     );
   }
@@ -97,7 +97,7 @@ export default function ProfilePage() {
       </div>
 
       {message && (
-        <div className="rounded-xl border border-brand-DEFAULT/30 bg-brand-DEFAULT/10 p-3.5 text-xs text-brand-DEFAULT flex items-center gap-2">
+        <div className="rounded-xl border border-brand/30 bg-brand/10 p-3.5 text-xs text-brand flex items-center gap-2">
           <Check className="h-4 w-4" />
           <span>{message}</span>
         </div>
@@ -112,7 +112,7 @@ export default function ProfilePage() {
               {isPremium ? 'STRAP Premium Plan' : 'STRAP Free Plan'}
             </span>
             {isPremium ? (
-              <span className="text-[10px] font-bold text-brand-DEFAULT bg-brand-DEFAULT/10 border border-brand-DEFAULT/30 px-2 py-0.5 rounded-full shadow-glow">
+              <span className="text-[10px] font-bold text-brand bg-brand/10 border border-brand/30 px-2 py-0.5 rounded-full shadow-glow">
                 ACTIVE
               </span>
             ) : (
@@ -139,7 +139,7 @@ export default function ProfilePage() {
           ) : (
             <a
               href="/checkout"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow strap-primary"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow strap-primary"
             >
               <Sparkles className="h-3.5 w-3.5" />
               <span>Upgrade (₹100)</span>
@@ -152,7 +152,7 @@ export default function ProfilePage() {
         {/* Personal Details */}
         <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
           <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <User className="h-4 w-4 text-brand-DEFAULT" />
+            <User className="h-4 w-4 text-brand" />
             General Account Information
           </h2>
 
@@ -163,7 +163,7 @@ export default function ProfilePage() {
                 type="text"
                 value={profile.full_name || ''}
                 onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
               />
             </div>
 
@@ -182,7 +182,7 @@ export default function ProfilePage() {
         {/* Physical Biometrics */}
         <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
           <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <Scale className="h-4 w-4 text-brand-DEFAULT" />
+            <Scale className="h-4 w-4 text-brand" />
             Biometric Measurements
           </h2>
 
@@ -194,7 +194,7 @@ export default function ProfilePage() {
                 step="0.1"
                 value={metrics.current_weight_kg || ''}
                 onChange={(e) => setMetrics({ ...metrics, current_weight_kg: Number(e.target.value) })}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
               />
             </div>
 
@@ -204,7 +204,7 @@ export default function ProfilePage() {
                 type="number"
                 value={metrics.height_cm || ''}
                 onChange={(e) => setMetrics({ ...metrics, height_cm: Number(e.target.value) })}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
               />
             </div>
 
@@ -214,7 +214,7 @@ export default function ProfilePage() {
                 type="number"
                 value={metrics.age || ''}
                 onChange={(e) => setMetrics({ ...metrics, age: Number(e.target.value) })}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
               />
             </div>
 
@@ -225,7 +225,7 @@ export default function ProfilePage() {
                 step="0.1"
                 value={metrics.body_fat_pct || ''}
                 onChange={(e) => setMetrics({ ...metrics, body_fat_pct: Number(e.target.value) })}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
               />
             </div>
           </div>
@@ -278,7 +278,7 @@ export default function ProfilePage() {
         <button
           type="submit"
           disabled={saving}
-          className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black hover:bg-brand-400 transition-all shadow-glow disabled:opacity-50 strap-primary"
+          className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-all shadow-glow disabled:opacity-50 strap-primary"
         >
           <Save className="h-4 w-4" />
           <span>{saving ? 'Updating...' : 'Save Profile Changes'}</span>

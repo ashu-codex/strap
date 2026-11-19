@@ -132,14 +132,14 @@ export default function OnboardingPage() {
         {/* Progress Bar & Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between text-xs font-semibold text-zinc-400 mb-2">
-            <span className="text-brand-DEFAULT font-bold uppercase tracking-wider">
+            <span className="text-brand font-bold uppercase tracking-wider">
               Step {step} of 4: {step === 1 ? 'Biometrics' : step === 2 ? 'Training & Gear' : step === 3 ? 'Goals & Nutrition' : 'Recovery'}
             </span>
             <span>{step * 25}% Completed</span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
             <div
-              className="h-full bg-brand-DEFAULT transition-all duration-300 shadow-glow"
+              className="h-full bg-brand transition-all duration-300 shadow-glow"
               style={{ width: `${step * 25}%` }}
             />
           </div>
@@ -156,7 +156,7 @@ export default function OnboardingPage() {
           <div className="space-y-5 animate-in fade-in duration-200">
             <div>
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Scale className="h-5 w-5 text-brand-DEFAULT" />
+                <Scale className="h-5 w-5 text-brand" />
                 Personal Biometrics
               </h2>
               <p className="text-xs text-zinc-400 mt-0.5">
@@ -173,7 +173,7 @@ export default function OnboardingPage() {
                   max={90}
                   value={formData.age}
                   onChange={(e) => setFormData({ ...formData, age: Number(e.target.value) })}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 />
               </div>
 
@@ -182,7 +182,7 @@ export default function OnboardingPage() {
                 <select
                   value={formData.gender}
                   onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 >
                   <option value="male">Male</option>
                   <option value="female">Female</option>
@@ -197,7 +197,7 @@ export default function OnboardingPage() {
                   type="number"
                   value={formData.height_cm}
                   onChange={(e) => setFormData({ ...formData, height_cm: Number(e.target.value) })}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 />
               </div>
             </div>
@@ -210,7 +210,7 @@ export default function OnboardingPage() {
                   step="0.1"
                   value={formData.current_weight_kg}
                   onChange={(e) => setFormData({ ...formData, current_weight_kg: Number(e.target.value) })}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 />
               </div>
 
@@ -221,7 +221,7 @@ export default function OnboardingPage() {
                   step="0.1"
                   value={formData.target_weight_kg}
                   onChange={(e) => setFormData({ ...formData, target_weight_kg: Number(e.target.value) })}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 />
               </div>
 
@@ -232,7 +232,7 @@ export default function OnboardingPage() {
                   step="0.5"
                   value={formData.body_fat_pct}
                   onChange={(e) => setFormData({ ...formData, body_fat_pct: Number(e.target.value) })}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 />
               </div>
             </div>
@@ -289,7 +289,7 @@ export default function OnboardingPage() {
           <div className="space-y-5 animate-in fade-in duration-200">
             <div>
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Dumbbell className="h-5 w-5 text-brand-DEFAULT" />
+                <Dumbbell className="h-5 w-5 text-brand" />
                 Training Profile & Gear
               </h2>
               <p className="text-xs text-zinc-400 mt-0.5">
@@ -303,7 +303,7 @@ export default function OnboardingPage() {
                 <select
                   value={formData.experience_level}
                   onChange={(e) => setFormData({ ...formData, experience_level: e.target.value })}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 >
                   <option value="beginner">Beginner (&lt; 1 year consistent lifting)</option>
                   <option value="intermediate">Intermediate (1 - 3 years training)</option>
@@ -316,7 +316,7 @@ export default function OnboardingPage() {
                 <select
                   value={formData.workout_location}
                   onChange={(e) => setFormData({ ...formData, workout_location: e.target.value })}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 >
                   <option value="gym">Commercial Gym (Full Equipment)</option>
                   <option value="home">Home Gym (Dumbbells / Bodyweight)</option>
@@ -336,7 +336,7 @@ export default function OnboardingPage() {
                   max={6}
                   value={formData.weekly_workout_days}
                   onChange={(e) => setFormData({ ...formData, weekly_workout_days: Number(e.target.value) })}
-                  className="w-full accent-brand-DEFAULT cursor-pointer"
+                  className="w-full accent-brand cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] text-zinc-500 font-mono mt-1">
                   <span>2 days</span>
@@ -352,7 +352,7 @@ export default function OnboardingPage() {
                 <select
                   value={formData.workout_duration_mins}
                   onChange={(e) => setFormData({ ...formData, workout_duration_mins: Number(e.target.value) })}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 >
                   <option value={45}>45 Minutes (Express)</option>
                   <option value={60}>60 Minutes (Standard)</option>
@@ -375,12 +375,12 @@ export default function OnboardingPage() {
                       onClick={() => handleEquipmentToggle(eq)}
                       className={`p-2.5 rounded-xl border text-xs font-semibold text-left flex items-center justify-between transition-colors ${
                         checked
-                          ? 'border-brand-DEFAULT bg-brand-DEFAULT/10 text-brand-DEFAULT'
+                          ? 'border-brand bg-brand/10 text-brand'
                           : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white'
                       }`}
                     >
                       <span>{eq}</span>
-                      {checked && <CheckCircle2 className="h-3.5 w-3.5 text-brand-DEFAULT" />}
+                      {checked && <CheckCircle2 className="h-3.5 w-3.5 text-brand" />}
                     </button>
                   );
                 })}
@@ -397,7 +397,7 @@ export default function OnboardingPage() {
                 value={formData.limitations}
                 onChange={(e) => setFormData({ ...formData, limitations: e.target.value })}
                 placeholder="e.g. Mild lower back tightness, avoided deep squats in the past"
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white placeholder-zinc-500 focus:border-brand-DEFAULT focus:outline-none"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white placeholder-zinc-500 focus:border-brand focus:outline-none"
               />
             </div>
           </div>
@@ -408,7 +408,7 @@ export default function OnboardingPage() {
           <div className="space-y-5 animate-in fade-in duration-200">
             <div>
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Target className="h-5 w-5 text-brand-DEFAULT" />
+                <Target className="h-5 w-5 text-brand" />
                 Fitness Goals & Nutrition Preferences
               </h2>
               <p className="text-xs text-zinc-400 mt-0.5">
@@ -436,13 +436,13 @@ export default function OnboardingPage() {
                       onClick={() => setFormData({ ...formData, primary_goal: g.id })}
                       className={`p-3 rounded-xl border text-left transition-all ${
                         isSelected
-                          ? 'border-brand-DEFAULT bg-brand-DEFAULT/10 text-white shadow-glow'
+                          ? 'border-brand bg-brand/10 text-white shadow-glow'
                           : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-white">{g.name}</span>
-                        {isSelected && <CheckCircle2 className="h-4 w-4 text-brand-DEFAULT" />}
+                        {isSelected && <CheckCircle2 className="h-4 w-4 text-brand" />}
                       </div>
                       <p className="text-[11px] text-zinc-400 mt-1 leading-snug">{g.desc}</p>
                     </button>
@@ -467,7 +467,7 @@ export default function OnboardingPage() {
                     onClick={() => setFormData({ ...formData, diet_preference: d.id })}
                     className={`p-2.5 rounded-xl border text-xs font-semibold text-center transition-colors ${
                       formData.diet_preference === d.id
-                        ? 'border-brand-DEFAULT bg-brand-DEFAULT/10 text-brand-DEFAULT font-bold'
+                        ? 'border-brand bg-brand/10 text-brand font-bold'
                         : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white'
                     }`}
                   >
@@ -484,7 +484,7 @@ export default function OnboardingPage() {
           <div className="space-y-5 animate-in fade-in duration-200">
             <div>
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Moon className="h-5 w-5 text-brand-DEFAULT" />
+                <Moon className="h-5 w-5 text-brand" />
                 Sleep & Autonomic Recovery
               </h2>
               <p className="text-xs text-zinc-400 mt-0.5">
@@ -504,7 +504,7 @@ export default function OnboardingPage() {
                   step={0.5}
                   value={formData.sleep_hours_avg}
                   onChange={(e) => setFormData({ ...formData, sleep_hours_avg: Number(e.target.value) })}
-                  className="w-full accent-brand-DEFAULT cursor-pointer"
+                  className="w-full accent-brand cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] text-zinc-500 font-mono mt-1">
                   <span>5h (Deficit)</span>
@@ -518,7 +518,7 @@ export default function OnboardingPage() {
                 <select
                   value={formData.daily_activity_level}
                   onChange={(e) => setFormData({ ...formData, daily_activity_level: e.target.value })}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 >
                   <option value="sedentary">Sedentary (Desk Job, &lt; 5k steps)</option>
                   <option value="lightly_active">Lightly Active (5k - 8k steps)</option>
@@ -536,7 +536,7 @@ export default function OnboardingPage() {
                   step={500}
                   value={formData.daily_steps_avg}
                   onChange={(e) => setFormData({ ...formData, daily_steps_avg: Number(e.target.value) })}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 />
               </div>
 
@@ -545,7 +545,7 @@ export default function OnboardingPage() {
                 <select
                   value={formData.rest_days_preferred}
                   onChange={(e) => setFormData({ ...formData, rest_days_preferred: Number(e.target.value) })}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 >
                   <option value={1}>1 Rest Day (High frequency)</option>
                   <option value={2}>2 Rest Days (Standard 5-day split)</option>
@@ -556,8 +556,8 @@ export default function OnboardingPage() {
             </div>
 
             {/* Summary card before launch */}
-            <div className="rounded-xl border border-brand-DEFAULT/30 bg-brand-DEFAULT/10 p-4">
-              <div className="flex items-center gap-2 text-brand-DEFAULT font-bold text-xs mb-1">
+            <div className="rounded-xl border border-brand/30 bg-brand/10 p-4">
+              <div className="flex items-center gap-2 text-brand font-bold text-xs mb-1">
                 <Sparkles className="h-4 w-4" />
                 <span>Ready to Synthesize Your STRAP Architecture</span>
               </div>
@@ -587,7 +587,7 @@ export default function OnboardingPage() {
             <button
               type="button"
               onClick={() => setStep(step + 1)}
-              className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black hover:bg-brand-400 transition-all shadow-glow"
+              className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-all shadow-glow"
             >
               <span>Continue</span>
               <ArrowRight className="h-3.5 w-3.5" />
@@ -597,7 +597,7 @@ export default function OnboardingPage() {
               type="button"
               disabled={loading}
               onClick={handleFinish}
-              className="flex items-center gap-2 px-8 py-2.5 rounded-xl bg-brand-DEFAULT text-xs font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow disabled:opacity-50 strap-primary"
+              className="flex items-center gap-2 px-8 py-2.5 rounded-xl bg-brand text-xs font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow disabled:opacity-50 strap-primary"
             >
               <span>{loading ? 'Initializing Engine...' : 'Complete Onboarding & Go to Dashboard'}</span>
               <ArrowRight className="h-4 w-4" />

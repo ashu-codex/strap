@@ -18,7 +18,7 @@ export default function ContactPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8 space-y-8">
       <div className="text-center max-w-xl mx-auto">
-        <span className="text-xs font-bold uppercase tracking-widest text-brand-DEFAULT bg-brand-DEFAULT/10 px-3 py-1 rounded-full border border-brand-DEFAULT/20">
+        <span className="text-xs font-bold uppercase tracking-widest text-brand bg-brand/10 px-3 py-1 rounded-full border border-brand/20">
           Athlete Support
         </span>
         <h1 className="text-3xl font-black text-white mt-3">Contact STRAP Team</h1>
@@ -32,7 +32,7 @@ export default function ContactPage() {
         <div className="space-y-4">
           <div className="rounded-2xl border border-card-border bg-card p-5 space-y-3">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Mail className="h-4 w-4 text-brand-DEFAULT" />
+              <Mail className="h-4 w-4 text-brand" />
               <span>Direct Support</span>
             </h3>
             <p className="text-xs text-zinc-400">straptrainorg@gmail.com</p>
@@ -40,7 +40,7 @@ export default function ContactPage() {
 
           <div className="rounded-2xl border border-card-border bg-card p-5 space-y-3">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-brand-DEFAULT" />
+              <MapPin className="h-4 w-4 text-brand" />
               <span>Location</span>
             </h3>
             <p className="text-xs text-zinc-400 leading-relaxed">
@@ -54,7 +54,7 @@ export default function ContactPage() {
         <div className="md:col-span-2 rounded-2xl border border-card-border bg-card p-6">
           {sent ? (
             <div className="text-center py-10 space-y-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-DEFAULT/20 text-brand-DEFAULT mx-auto shadow-glow">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand/20 text-brand mx-auto shadow-glow">
                 <CheckCircle2 className="h-6 w-6" />
               </div>
               <h3 className="text-lg font-bold text-white">Message Dispatched</h3>
@@ -73,7 +73,7 @@ export default function ContactPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Alex Mercer"
-                    className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                    className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                   />
                 </div>
                 <div>
@@ -84,7 +84,7 @@ export default function ContactPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="alex@example.com"
-                    className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                    className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                   />
                 </div>
               </div>
@@ -94,7 +94,7 @@ export default function ContactPage() {
                 <select
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 >
                   <option value="Payment Verification / Support">Payment Verification / UTR Inquiry</option>
                   <option value="AI Recommendation Feedback">AI Recommendation Feedback</option>
@@ -111,13 +111,13 @@ export default function ContactPage() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Describe your inquiry or include your payment reference..."
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand-DEFAULT focus:outline-none"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 />
               </div>
 
               <button
                 type="submit"
-                className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand-DEFAULT text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow strap-primary"
+                className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow strap-primary"
               >
                 <Send className="h-4 w-4" />
                 <span>Send Support Message</span>
