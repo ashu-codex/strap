@@ -161,6 +161,24 @@ export const db = {
     return data!;
   },
 
+  /** Insert only if no matching row exists on `onConflict`; NEVER overwrites existing data. */
+  async insertIfMissing(table: string, row: Row, onConflict: string): Promise<Row | null> {
+    const b = backend();
+    if (b.kind === 'local') {
+      const keys = onConflict.split(',').map((s) => s.trim());
+      const existing = localSelect(table, { eq: Object.fromEntries(keys.map((k) => [k, row[k]])) })[0];
+      if (existing) return existing;
+      return localInsert(table, row);
+    }
+    const { data, error } = await b.client
+      .from(table)
+      .upsert(row, { onConflict, ignoreDuplicates: true })
+      .select()
+      .maybeSingle();
+    if (error) wrap(error);
+    return data;
+  },
+
   async update(table: string, match: Row, patch: Row): Promise<Row[]> {
     const b = backend();
     if (b.kind === 'local') return localUpdate(table, match, patch);

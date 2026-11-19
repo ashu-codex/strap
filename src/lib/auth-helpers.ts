@@ -106,14 +106,22 @@ function safeCookie(name: string): string | undefined {
 async function loadProfile(id: string, email: string, meta?: Record<string, any>): Promise<UserProfile> {
   let p = await db.selectOne('user_profiles', { eq: { id } });
   if (!p) {
-    // Missing-profile recovery: trigger may have failed. Create safely (idempotent).
+    // Missing-profile recovery: trigger may have failed. Insert safely without ever overwriting existing rows.
     try {
-      p = await db.upsert(
+      await db.insertIfMissing(
         'user_profiles',
         { id, email, full_name: meta?.full_name || meta?.name || email.split('@')[0], avatar_url: meta?.avatar_url ?? null, role: 'user' },
         'id'
       );
-      await db.upsert('subscriptions', { user_id: id, plan: 'free', status: 'active', price_inr: 0 }, 'user_id').catch(() => null);
+      await db.insertIfMissing('subscriptions', { user_id: id, plan: 'free', status: 'active', price_inr: 0 }, 'user_id').catch(() => null);
+      p = (await db.selectOne('user_profiles', { eq: { id } })) || {
+        id,
+        email,
+        full_name: meta?.full_name || meta?.name || email.split('@')[0],
+        role: 'user',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
     } catch {
       p = { id, email, full_name: email.split('@')[0], role: 'user', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
     }

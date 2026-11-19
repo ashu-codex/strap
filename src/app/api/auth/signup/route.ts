@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { ConfigError, getSiteUrl, isDevFallbackAllowed, isSupabaseConfigured } from '@/lib/config';
 import { burstLimit, clientIp, emailSchema, handleError, json, parseBody, passwordSchema } from '@/lib/api';
-import { ensureProfile } from '@/lib/auth-flow';
+import { ensureProfile, lookupAuthAccount } from '@/lib/auth-flow';
 import { DEV_SESSION_COOKIE, devCreateUser, signSession } from '@/lib/dev-auth';
 import { db } from '@/lib/db';
 
@@ -22,6 +22,23 @@ export async function POST(req: NextRequest) {
     const { email, password, full_name } = await parseBody(req, schema);
     const name = full_name || email.split('@')[0];
 
+    // Check if the email is already registered BEFORE attempting signup (prevents duplicates)
+    const existingAccount = await lookupAuthAccount(email);
+    if (existingAccount.exists) {
+      const oauthOnly =
+        existingAccount.providers.includes('google') && !existingAccount.providers.includes('email');
+      return json(
+        {
+          error: oauthOnly
+            ? 'This email is already registered with Google. Please sign in with Google.'
+            : 'This email is already registered. Please sign in to your existing account.',
+          code: 'ACCOUNT_EXISTS',
+          providers: existingAccount.providers,
+        },
+        409
+      );
+    }
+
     // ---------------------------------------------------------------- Supabase
     if (isSupabaseConfigured()) {
       const supabase = createServerClient();
@@ -39,14 +56,23 @@ export async function POST(req: NextRequest) {
       if (error) {
         const code = (error as any).code as string | undefined;
         if (code === 'user_already_exists' || /already registered/i.test(error.message)) {
-          return json({ error: 'An account with this email may already exist. Try signing in or reset your password.', code: 'DUPLICATE' }, 409);
+          return json(
+            { error: 'This email is already registered. Please sign in to your existing account.', code: 'ACCOUNT_EXISTS' },
+            409
+          );
         }
-        if (code === 'weak_password') return json({ error: 'That password is too weak. Use at least 8 characters with letters and numbers.', code: 'WEAK_PASSWORD' }, 400);
+        if (code === 'weak_password') {
+          return json({ error: 'That password is too weak. Use at least 8 characters with letters and numbers.', code: 'WEAK_PASSWORD' }, 400);
+        }
         if (code === 'over_email_send_rate_limit' || (error as any).status === 429) {
           return json({ error: 'Too many emails requested. Please wait a few minutes and try again.', code: 'RATE_LIMITED' }, 429);
         }
-        if (code === 'email_address_invalid') return json({ error: 'Please enter a valid email address.', code: 'INVALID_EMAIL' }, 400);
-        if (code === 'signup_disabled') return json({ error: 'Sign-ups are currently disabled.', code: 'SIGNUP_DISABLED' }, 403);
+        if (code === 'email_address_invalid') {
+          return json({ error: 'Please enter a valid email address.', code: 'INVALID_EMAIL' }, 400);
+        }
+        if (code === 'signup_disabled') {
+          return json({ error: 'Sign-ups are currently disabled.', code: 'SIGNUP_DISABLED' }, 403);
+        }
         if (error.name === 'AuthRetryableFetchError' || (error as any).status === 0 || ((error as any).status ?? 0) >= 500) {
           return json({ error: 'Cannot reach the authentication service. Please try again shortly.', code: 'AUTH_UNAVAILABLE' }, 503);
         }
@@ -54,17 +80,18 @@ export async function POST(req: NextRequest) {
         return json({ error: 'Could not create your account. Please try again.', code: 'SIGNUP_FAILED' }, 400);
       }
 
-      // Supabase returns an obfuscated user with empty identities when the email is already registered
-      // (to avoid account enumeration). No profile must be created for it.
+      // Supabase returns an obfuscated user with empty identities if the email already exists.
       if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-        return json({ error: 'An account with this email may already exist. Try signing in or reset your password.', code: 'DUPLICATE' }, 409);
+        return json(
+          { error: 'This email is already registered. Please sign in to your existing account.', code: 'ACCOUNT_EXISTS' },
+          409
+        );
       }
 
       if (data.user) {
         try {
           await ensureProfile(data.user.id, email, { full_name: name });
         } catch {
-          // Non-fatal: the DB trigger or the next login's loadProfile() will recover the profile.
           console.error('[signup] profile creation deferred');
         }
       }
@@ -83,7 +110,12 @@ export async function POST(req: NextRequest) {
     // ---------------------------------------------------------------- Dev fallback
     if (isDevFallbackAllowed()) {
       const id = await devCreateUser(email, password, name);
-      if (!id) return json({ error: 'An account with this email may already exist. Try signing in.', code: 'DUPLICATE' }, 409);
+      if (!id) {
+        return json(
+          { error: 'This email is already registered. Please sign in to your existing account.', code: 'ACCOUNT_EXISTS' },
+          409
+        );
+      }
       await db.selectOne('user_profiles', { eq: { id } });
       const res = json({ success: true, requiresEmailVerification: false, redirectTo: '/onboarding', devMode: true });
       res.cookies.set(DEV_SESSION_COOKIE, signSession(id), { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 7 });
