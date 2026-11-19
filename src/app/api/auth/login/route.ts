@@ -1,88 +1,77 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { createClient as createServerClient } from '@/lib/supabase/server';
-import { persistStore, strapStore } from '@/lib/store';
-import { ADMIN_EMAIL } from '@/lib/auth-helpers';
-import { SESSION_COOKIE, sessionCookieOptions } from '@/lib/session';
+import { ConfigError, isDevFallbackAllowed, isSupabaseConfigured } from '@/lib/config';
+import { burstLimit, clientIp, emailSchema, handleError, json, parseBody } from '@/lib/api';
+import { ensureProfile, postAuthDestination } from '@/lib/auth-flow';
+import { DEV_SESSION_COOKIE, devCheckLogin, signSession } from '@/lib/dev-auth';
+
+const schema = z.object({
+  email: emailSchema,
+  password: z.string({ required_error: 'Password is required.' }).min(1, 'Password is required.').max(200),
+  next: z.string().optional(),
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { email, password, demoType } = body;
+    const { email, password, next } = await parseBody(req, schema);
 
-    // Handle Quick Demo Login for instant zero-config testing
-    if (demoType === 'admin') {
-      const response = NextResponse.json({
-        success: true,
-        user: strapStore.users.get('admin-demo-1'),
-        redirectTo: '/admin',
-      });
-      response.cookies.set(SESSION_COOKIE, 'admin-demo-1', sessionCookieOptions);
-      return response;
+    // Brute-force throttle: per IP+email
+    if (!burstLimit(`login:${clientIp(req)}:${email}`, 8, 5 * 60_000)) {
+      return json({ error: 'Too many sign-in attempts. Please wait a few minutes and try again.', code: 'RATE_LIMITED' }, 429);
     }
 
-    if (demoType === 'user' || demoType === 'alex') {
-      const response = NextResponse.json({
-        success: true,
-        user: strapStore.users.get('user-demo-1'),
-        redirectTo: '/dashboard',
-      });
-      response.cookies.set(SESSION_COOKIE, 'user-demo-1', sessionCookieOptions);
-      return response;
-    }
+    // ---------------------------------------------------------------- Supabase
+    if (isSupabaseConfigured()) {
+      const supabase = createServerClient();
+      if (!supabase) throw new ConfigError();
 
-    // Standard email/password check
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
-    }
-
-    // Try Supabase Auth
-    const supabase = createServerClient();
-    if (supabase) {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 401 });
+        const code = (error as any).code as string | undefined;
+        const status = (error as any).status as number | undefined;
+        if (code === 'email_not_confirmed') {
+          return json({ error: 'Your email is not verified yet. Check your inbox for the verification link, or request a new one.', code: 'EMAIL_NOT_VERIFIED' }, 403);
+        }
+        if (code === 'invalid_credentials' || /invalid login credentials/i.test(error.message)) {
+          // Supabase intentionally does not reveal whether the account exists.
+          return json({ error: 'Incorrect email or password.', code: 'INVALID_CREDENTIALS' }, 401);
+        }
+        if (code === 'over_request_rate_limit' || status === 429) {
+          return json({ error: 'Too many attempts. Please wait a few minutes and try again.', code: 'RATE_LIMITED' }, 429);
+        }
+        if (code === 'user_banned') return json({ error: 'This account has been suspended.', code: 'BANNED' }, 403);
+        if (error.name === 'AuthRetryableFetchError' || status === 0 || (status ?? 0) >= 500) {
+          return json({ error: 'Cannot reach the authentication service. Please try again shortly.', code: 'AUTH_UNAVAILABLE' }, 503);
+        }
+        console.error('[login] supabase error:', code, error.message);
+        return json({ error: 'Sign-in failed. Please try again.', code: 'SIGNIN_FAILED' }, 400);
       }
 
-      const isAdmin = data.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-
-      const response = NextResponse.json({
-        success: true,
-        user: data.user,
-        redirectTo: isAdmin ? '/admin' : '/dashboard',
-      });
-
-      response.cookies.set(SESSION_COOKIE, data.user.id, sessionCookieOptions);
-
-      return response;
+      const user = data.user;
+      // Heal a missing profile (e.g. trigger failure) instead of failing the login.
+      try {
+        await ensureProfile(user.id, email, user.user_metadata);
+      } catch {
+        console.error('[login] profile recovery deferred');
+      }
+      const redirectTo = await postAuthDestination(user.id, email, next).catch(() => '/dashboard');
+      return json({ success: true, redirectTo });
     }
 
-    // Fallback store login
-    let matchedUser = Array.from(strapStore.users.values()).find(
-      (u) => u.email.toLowerCase() === email.toLowerCase()
-    );
-
-    if (!matchedUser) {
-      return NextResponse.json({ error: 'Invalid credentials. Create an account first.' }, { status: 401 });
+    // ---------------------------------------------------------------- Dev fallback
+    if (isDevFallbackAllowed()) {
+      const id = await devCheckLogin(email, password);
+      if (!id) return json({ error: 'Incorrect email or password.', code: 'INVALID_CREDENTIALS' }, 401);
+      const redirectTo = await postAuthDestination(id, email, next);
+      const res = json({ success: true, redirectTo, devMode: true });
+      res.cookies.set(DEV_SESSION_COOKIE, signSession(id), { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 7 });
+      return res;
     }
 
-    persistStore();
-
-    const isAdmin = matchedUser.role === 'admin' || matchedUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-
-    const response = NextResponse.json({
-      success: true,
-      user: matchedUser,
-      redirectTo: isAdmin ? '/admin' : '/dashboard',
-    });
-
-    response.cookies.set(SESSION_COOKIE, matchedUser.id, sessionCookieOptions);
-
-    return response;
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Login failed' }, { status: 500 });
+    throw new ConfigError();
+  } catch (e) {
+    return handleError(e);
   }
 }

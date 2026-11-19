@@ -1,28 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-helpers';
-import { strapStore } from '@/lib/store';
+import { NextRequest } from 'next/server';
+import { handleError, json, requireUser } from '@/lib/api';
+import { getSettings } from '@/lib/settings';
 
 export async function GET(req: NextRequest) {
   try {
-    const { user, subscription, isPremium, isAdmin } = await getAuthUser(req);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const adminSettings = strapStore.adminSettings;
-
-    return NextResponse.json(
-      {
-        subscription,
-        isPremium,
-        isAdmin,
-        planConfig: {
-          price_inr: adminSettings.price_inr,
-          billing_period: adminSettings.billing_period,
-          upi_id: adminSettings.upi_id,
-        },
-      },
-      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
-    );
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const { subscription, isPremium, isAdmin } = await requireUser(req);
+    const s = await getSettings();
+    return json({
+      subscription,
+      isPremium,
+      isAdmin,
+      planConfig: { price_inr: s.price_inr, billing_period: s.billing_period, upi_id: s.upi_id },
+    });
+  } catch (e) {
+    return handleError(e);
   }
 }

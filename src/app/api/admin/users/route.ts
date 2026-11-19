@@ -1,42 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-helpers';
-import { strapStore } from '@/lib/store';
+import { NextRequest } from 'next/server';
+import { db } from '@/lib/db';
+import { handleError, json } from '@/lib/api';
+import { isActivePremium, isOwnerEmail, requireOwnerAdmin } from '@/lib/auth-helpers';
 
 export async function GET(req: NextRequest) {
   try {
-    const { isAdmin } = await getAuthUser(req);
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Unauthorized: Admin privileges required.' }, { status: 403 });
-    }
+    await requireOwnerAdmin(req);
+    const search = new URL(req.url).searchParams.get('search')?.toLowerCase();
+    const [profiles, subs] = await Promise.all([
+      db.select('user_profiles', { order: ['created_at', 'desc'], limit: 1000 }),
+      db.select('subscriptions'),
+    ]);
+    const subByUser = new Map(subs.map((s) => [s.user_id, s]));
 
-    const { searchParams } = new URL(req.url);
-    const search = searchParams.get('search')?.toLowerCase();
-
-    let users = Array.from(strapStore.users.values()).map((u) => {
-      const sub = strapStore.subscriptions.get(u.id);
-      const isNotExpired = !sub?.current_period_end || new Date(sub.current_period_end) > new Date();
-      const isPrem = sub?.plan === 'premium' && sub?.status === 'active' && isNotExpired;
-
+    let users = profiles.map((u) => {
+      const sub = subByUser.get(u.id);
+      const prem = isActivePremium(sub as any);
       return {
         id: u.id,
         email: u.email,
         full_name: u.full_name,
-        role: u.role,
+        role: isOwnerEmail(u.email) ? 'admin' : 'user',
         created_at: u.created_at,
-        subscriptionPlan: isPrem ? 'premium' : 'free',
+        subscriptionPlan: prem ? 'premium' : 'free',
         subscriptionStatus: sub?.status || 'active',
         expiresAt: sub?.current_period_end || null,
       };
     });
-
-    if (search) {
-      users = users.filter(
-        (u) => u.email.toLowerCase().includes(search) || u.full_name.toLowerCase().includes(search)
-      );
-    }
-
-    return NextResponse.json({ users });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (search) users = users.filter((u) => u.email.toLowerCase().includes(search) || u.full_name.toLowerCase().includes(search));
+    return json({ users });
+  } catch (e) {
+    return handleError(e);
   }
 }

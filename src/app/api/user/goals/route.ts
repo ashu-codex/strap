@@ -1,73 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-helpers';
-import { createClient as createServerClient } from '@/lib/supabase/server';
-import { strapStore } from '@/lib/store';
-import { UserGoal } from '@/types';
+import { NextRequest } from 'next/server';
+import { z } from 'zod';
+import { db } from '@/lib/db';
+import { handleError, json, parseBody, requireUser } from '@/lib/api';
+
+const schema = z.object({
+  primary_goal: z.enum(['fat_loss', 'muscle_gain', 'recomposition', 'strength', 'general_fitness', 'endurance', 'maintenance']),
+  target_weight_kg: z.preprocess((v) => (v === '' || v == null ? undefined : v), z.coerce.number().min(20).max(500).optional()),
+  weekly_workout_days: z.coerce.number().int().min(1).max(7).default(4),
+  target_date: z.preprocess((v) => (v === '' || v == null ? undefined : v), z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
+});
 
 export async function GET(req: NextRequest) {
   try {
-    const { user } = await getAuthUser(req);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const supabase = createServerClient();
-    if (supabase) {
-      const { data } = await supabase.from('user_goals').select('*').eq('user_id', user.id).single();
-      if (data) return NextResponse.json({ goal: data });
-    }
-
-    const fallbackGoal = strapStore.goals.get(user.id) || {
-      id: 'goal-' + user.id,
-      user_id: user.id,
-      primary_goal: 'muscle_gain',
-      target_weight_kg: 78,
-      weekly_workout_days: 4,
-      target_date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 60).toISOString().split('T')[0],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    return NextResponse.json({ goal: fallbackGoal });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const { user } = await requireUser(req);
+    return json({ goal: await db.selectOne('fitness_goals', { eq: { user_id: user.id } }) });
+  } catch (e) {
+    return handleError(e);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { user } = await getAuthUser(req);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const body = await req.json();
-    const { primary_goal, target_weight_kg, weekly_workout_days, target_date } = body;
-
-    const supabase = createServerClient();
-    if (supabase) {
-      const { data, error } = await supabase.from('user_goals').upsert({
-        user_id: user.id,
-        primary_goal,
-        target_weight_kg: target_weight_kg ? Number(target_weight_kg) : null,
-        weekly_workout_days: Number(weekly_workout_days) || 4,
-        target_date: target_date || null,
-        updated_at: new Date().toISOString(),
-      }).select().single();
-
-      if (!error && data) return NextResponse.json({ success: true, goal: data });
-    }
-
-    const updatedGoal: UserGoal = {
-      id: 'goal-' + user.id,
-      user_id: user.id,
-      primary_goal: primary_goal || 'muscle_gain',
-      target_weight_kg: target_weight_kg ? Number(target_weight_kg) : 75,
-      weekly_workout_days: Number(weekly_workout_days) || 4,
-      target_date: target_date || undefined,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    strapStore.goals.set(user.id, updatedGoal);
-
-    return NextResponse.json({ success: true, goal: updatedGoal });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const { user } = await requireUser(req);
+    const g = await parseBody(req, schema);
+    const saved = await db.upsert('fitness_goals', { user_id: user.id, ...g, target_weight_kg: g.target_weight_kg ?? null, target_date: g.target_date ?? null }, 'user_id');
+    await db.update('user_profiles', { id: user.id }, { fitness_goal: g.primary_goal });
+    return json({ success: true, goal: saved });
+  } catch (e) {
+    return handleError(e);
   }
 }

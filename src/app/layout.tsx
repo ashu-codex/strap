@@ -16,10 +16,14 @@ export const metadata: Metadata = {
 const themeInitScript = `
 (function() {
   try {
-    var t = localStorage.getItem('strap-theme') || 'dark';
-    document.documentElement.classList.toggle('dark', t === 'dark');
-    document.documentElement.classList.toggle('light', t === 'light');
-    document.documentElement.style.colorScheme = t;
+    var mode = localStorage.getItem('strap-theme') || 'dark';
+    var resolved = mode;
+    if (mode === 'system') {
+      resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.classList.remove('dark', 'light');
+    document.documentElement.classList.add(resolved);
+    document.documentElement.style.colorScheme = resolved;
   } catch (e) {
     document.documentElement.classList.add('dark');
   }
@@ -36,7 +40,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="min-h-screen bg-background text-foreground flex flex-col font-sans antialiased selection:bg-brand-DEFAULT selection:text-black">
+      <body className="min-h-screen bg-background text-foreground flex flex-col font-sans antialiased selection:bg-[#B7F34A] selection:text-[#111318]">
         <Providers>
           <Navbar />
           <main className="flex-1 w-full">{children}</main>

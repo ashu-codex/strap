@@ -1,45 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-helpers';
-import { strapStore } from '@/lib/store';
+import { NextRequest } from 'next/server';
+import { db } from '@/lib/db';
+import { handleError, json } from '@/lib/api';
+import { isActivePremium, requireOwnerAdmin } from '@/lib/auth-helpers';
 
 export async function GET(req: NextRequest) {
   try {
-    const { isAdmin, user } = await getAuthUser(req);
-
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Admin privileges required.' },
-        { status: 403 }
-      );
-    }
-
-    const allUsers = Array.from(strapStore.users.values());
-    const allSubs = Array.from(strapStore.subscriptions.values());
-    const allPayments = strapStore.payments;
-
-    const totalUsers = allUsers.length;
-    const premiumUsers = allSubs.filter((s) => s.plan === 'premium' && s.status === 'active').length;
-    const freeUsers = Math.max(0, totalUsers - premiumUsers);
-
-    const approvedPayments = allPayments.filter((p) => p.payment_status === 'approved');
-    const pendingPayments = allPayments.filter((p) => p.payment_status === 'pending');
-    const rejectedPayments = allPayments.filter((p) => p.payment_status === 'rejected');
-
-    const totalRevenueINR = approvedPayments.reduce((acc, curr) => acc + (Number(curr.amount_inr) || 0), 0);
-
-    return NextResponse.json({
+    const admin = await requireOwnerAdmin(req);
+    const [users, subs, payments] = await Promise.all([
+      db.count('user_profiles'),
+      db.select('subscriptions'),
+      db.select('payments'),
+    ]);
+    const premiumUsers = subs.filter((s) => isActivePremium(s as any)).length;
+    const approved = payments.filter((p) => p.payment_status === 'approved');
+    return json({
       stats: {
-        totalUsers,
-        freeUsers,
+        totalUsers: users,
         premiumUsers,
-        totalRevenueINR,
-        pendingPaymentsCount: pendingPayments.length,
-        approvedPaymentsCount: approvedPayments.length,
-        rejectedPaymentsCount: rejectedPayments.length,
+        freeUsers: Math.max(0, users - premiumUsers),
+        totalRevenueINR: approved.reduce((a, p) => a + Number(p.amount_inr || 0), 0),
+        pendingPaymentsCount: payments.filter((p) => p.payment_status === 'pending').length,
+        approvedPaymentsCount: approved.length,
+        rejectedPaymentsCount: payments.filter((p) => p.payment_status === 'rejected').length,
       },
-      currentAdmin: user?.email,
+      currentAdmin: admin.user.email,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (e) {
+    return handleError(e);
   }
 }

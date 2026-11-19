@@ -1,17 +1,17 @@
+import 'server-only';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseServiceKey, getSupabaseUrl } from '@/lib/config';
 
+/**
+ * SERVER-ONLY privileged client (bypasses RLS). The `server-only` import makes the
+ * build fail if this file is ever imported from client code.
+ * Callers MUST verify the acting user before using it.
+ */
 export function createAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey || supabaseUrl.includes('your-project-ref')) {
-    return null;
-  }
-
-  return createSupabaseClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
+  const url = getSupabaseUrl();
+  const key = getSupabaseServiceKey();
+  if (!url || !key) return null;
+  return createSupabaseClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
   });
 }

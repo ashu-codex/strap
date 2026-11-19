@@ -1,21 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-helpers';
-import { strapStore } from '@/lib/store';
+import { NextRequest } from 'next/server';
+import { db } from '@/lib/db';
+import { handleError, json, requireUser } from '@/lib/api';
+import { logWorkout } from '@/lib/workout-service';
 
 export async function GET(req: NextRequest) {
   try {
-    const { user, isPremium } = await getAuthUser(req);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const workouts = strapStore.workouts;
-    const prs = strapStore.progressRecords.filter((p) => p.user_id === user.id);
-
-    return NextResponse.json({
-      workouts,
-      prs,
-      isPremium,
-    });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const { user, isPremium } = await requireUser(req);
+    const [workouts, prs] = await Promise.all([
+      db.select('workout_logs', { eq: { user_id: user.id }, order: ['completed_at', 'desc'], limit: 100 }),
+      db.select('progress_records', { eq: { user_id: user.id } }),
+    ]);
+    return json({ workouts, prs, isPremium });
+  } catch (e) {
+    return handleError(e);
   }
+}
+
+export async function POST(req: NextRequest) {
+  return logWorkout(req);
 }

@@ -1,58 +1,44 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-helpers';
-import { createClient as createServerClient } from '@/lib/supabase/server';
-import { strapStore } from '@/lib/store';
+import { NextRequest } from 'next/server';
+import { z } from 'zod';
+import { db } from '@/lib/db';
+import { handleError, json, parseBody, requireUser } from '@/lib/api';
+
+const opt = (min: number, max: number) => z.preprocess((v) => (v === '' || v == null ? undefined : v), z.coerce.number().min(min).max(max).optional());
+const schema = z.object({
+  weight_kg: z.coerce.number().min(20).max(500),
+  body_fat_pct: opt(2, 70),
+  chest_cm: opt(30, 250),
+  waist_cm: opt(30, 250),
+  hips_cm: opt(30, 250),
+  arms_cm: opt(10, 100),
+  recorded_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  notes: z.string().max(500).optional(),
+});
 
 export async function GET(req: NextRequest) {
   try {
-    const { user } = await getAuthUser(req);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const supabase = createServerClient();
-    if (supabase) {
-      const { data } = await supabase
-        .from('body_measurements')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('recorded_date', { ascending: true });
-      if (data && data.length > 0) return NextResponse.json({ measurements: data });
-    }
-
-    const fallback = strapStore.measurements.filter((m) => m.user_id === user.id);
-    return NextResponse.json({ measurements: fallback });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const { user } = await requireUser(req);
+    const measurements = await db.select('body_measurements', { eq: { user_id: user.id }, order: ['recorded_date', 'asc'], limit: 365 });
+    return json({ measurements });
+  } catch (e) {
+    return handleError(e);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { user } = await getAuthUser(req);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const body = await req.json();
-    const entry = {
-      id: 'm-' + Date.now(),
+    const { user } = await requireUser(req);
+    const m = await parseBody(req, schema);
+    const entry = await db.insert('body_measurements', {
       user_id: user.id,
-      recorded_date: body.recorded_date || new Date().toISOString().split('T')[0],
-      weight_kg: Number(body.weight_kg),
-      body_fat_pct: body.body_fat_pct ? Number(body.body_fat_pct) : undefined,
-      chest_cm: body.chest_cm ? Number(body.chest_cm) : undefined,
-      waist_cm: body.waist_cm ? Number(body.waist_cm) : undefined,
-      hips_cm: body.hips_cm ? Number(body.hips_cm) : undefined,
-      arms_cm: body.arms_cm ? Number(body.arms_cm) : undefined,
-      notes: body.notes || '',
-    };
-
-    const supabase = createServerClient();
-    if (supabase) {
-      await supabase.from('body_measurements').insert(entry);
-    }
-
-    strapStore.measurements.push(entry);
-
-    return NextResponse.json({ success: true, measurement: entry });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+      recorded_date: m.recorded_date || new Date().toISOString().slice(0, 10),
+      weight_kg: m.weight_kg,
+      body_fat_pct: m.body_fat_pct ?? null, chest_cm: m.chest_cm ?? null, waist_cm: m.waist_cm ?? null,
+      hips_cm: m.hips_cm ?? null, arms_cm: m.arms_cm ?? null, notes: m.notes ?? null,
+    });
+    await db.update('user_profiles', { id: user.id }, { weight: m.weight_kg });
+    return json({ success: true, measurement: entry });
+  } catch (e) {
+    return handleError(e);
   }
 }

@@ -1,25 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-helpers';
-import { strapStore } from '@/lib/store';
+import { NextRequest } from 'next/server';
+import { db } from '@/lib/db';
+import { handleError, json } from '@/lib/api';
+import { requireOwnerAdmin, writeAuditLog } from '@/lib/auth-helpers';
 
 export async function GET(req: NextRequest) {
   try {
-    const { isAdmin } = await getAuthUser(req);
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Unauthorized: Admin privileges required.' }, { status: 403 });
-    }
-
-    const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status');
-
-    let payments = [...strapStore.payments];
-
-    if (status && status !== 'all') {
-      payments = payments.filter((p) => p.payment_status === status);
-    }
-
-    return NextResponse.json({ payments });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    await requireOwnerAdmin(req);
+    const payments = await db.select('payments', { order: ['created_at', 'desc'], limit: 500 });
+    return json({ payments });
+  } catch (e) {
+    return handleError(e);
   }
 }

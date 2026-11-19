@@ -1,47 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-helpers';
-import { persistStore, strapStore } from '@/lib/store';
+import { NextRequest } from 'next/server';
+import { z } from 'zod';
+import { db } from '@/lib/db';
+import { handleError, json, parseBody } from '@/lib/api';
+import { requireOwnerAdmin, writeAuditLog } from '@/lib/auth-helpers';
+import { getSettings } from '@/lib/settings';
 
 export async function GET(req: NextRequest) {
   try {
-    const { isAdmin } = await getAuthUser(req);
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Unauthorized: Admin privileges required.' }, { status: 403 });
-    }
-
-    return NextResponse.json({
-      settings: strapStore.adminSettings,
-      geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your-google-gemini-api-key'),
-    });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    await requireOwnerAdmin(req);
+    return json({ settings: await getSettings(), geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY?.trim()) });
+  } catch (e) {
+    return handleError(e);
   }
 }
 
+const schema = z.object({
+  price_inr: z.coerce.number().min(1).max(100000).optional(),
+  billing_period: z.enum(['monthly', 'yearly']).optional(),
+  upi_id: z.string().trim().regex(/^[\w.\-]{2,64}@[\w.\-]{2,64}$/, 'Enter a valid UPI ID.').optional(),
+  default_model: z.string().trim().regex(/^[\w.\-]{3,60}$/).optional(),
+});
+
 export async function POST(req: NextRequest) {
   try {
-    const { isAdmin } = await getAuthUser(req);
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Unauthorized: Admin privileges required.' }, { status: 403 });
-    }
-
-    const body = await req.json();
-    const { price_inr, billing_period, upi_id, default_model } = body;
-
-    strapStore.adminSettings = {
-      price_inr: price_inr ? Number(price_inr) : strapStore.adminSettings.price_inr,
-      billing_period: billing_period || strapStore.adminSettings.billing_period,
-      upi_id: upi_id || strapStore.adminSettings.upi_id,
-      default_model: default_model || strapStore.adminSettings.default_model,
-    };
-    persistStore();
-
-    return NextResponse.json({
-      success: true,
-      message: 'Admin settings updated successfully.',
-      settings: strapStore.adminSettings,
-    });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const admin = await requireOwnerAdmin(req);
+    const patch = await parseBody(req, schema);
+    const current = await getSettings();
+    const next = { ...current, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) };
+    await db.upsert('app_settings', { id: 1, ...next }, 'id');
+    await writeAuditLog(admin.user, 'settings.update', 'app_settings', '1', patch);
+    return json({ success: true, message: 'Admin settings updated successfully.', settings: next });
+  } catch (e) {
+    return handleError(e);
   }
 }

@@ -1,20 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
-import { SESSION_COOKIE, clearSessionCookieOptions } from '@/lib/session';
+import { isSupabaseConfigured } from '@/lib/config';
+import { getAuthUser } from '@/lib/auth-helpers';
+import { json } from '@/lib/api';
+import { DEV_SESSION_COOKIE } from '@/lib/dev-auth';
 
 export async function POST(req: NextRequest) {
+  let wasAdmin = false;
   try {
-    const supabase = createServerClient();
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
-
-    const response = NextResponse.json({ success: true, message: 'Logged out successfully' });
-    response.cookies.set(SESSION_COOKIE, '', clearSessionCookieOptions);
-    return response;
-  } catch (error: any) {
-    const response = NextResponse.json({ success: true });
-    response.cookies.set(SESSION_COOKIE, '', clearSessionCookieOptions);
-    return response;
+    wasAdmin = (await getAuthUser(req)).isAdmin;
+  } catch {
+    /* ignore: still log out */
   }
+  try {
+    if (isSupabaseConfigured()) {
+      const supabase = createServerClient();
+      // Admin: revoke ALL sessions on every device. Users: revoke this session.
+      await supabase?.auth.signOut({ scope: wasAdmin ? 'global' : 'local' });
+    }
+  } catch {
+    /* cookie clearing below still logs the browser out */
+  }
+  const res = json({ success: true, message: 'Logged out successfully' });
+  res.cookies.set(DEV_SESSION_COOKIE, '', { path: '/', httpOnly: true, maxAge: 0 });
+  return res;
 }

@@ -21,6 +21,7 @@ import {
 export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [currentAdmin, setCurrentAdmin] = useState<string>('');
   const [stats, setStats] = useState<any>(null);
   const [payments, setPayments] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -47,6 +48,7 @@ export default function AdminPage() {
         setAuthorized(false);
       } else {
         setAuthorized(true);
+        setCurrentAdmin(statsRes.currentAdmin || '');
         setStats(statsRes.stats);
         setPayments(paymentsRes.payments || []);
         setUsers(usersRes.users || []);
@@ -134,16 +136,16 @@ export default function AdminPage() {
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 mx-auto">
           <ShieldAlert className="h-8 w-8" />
         </div>
-        <h1 className="text-2xl font-bold text-white">Access Denied</h1>
+        <h1 className="text-2xl font-bold text-white">Access Denied (403)</h1>
         <p className="text-xs text-zinc-400 leading-relaxed">
-          The STRAP administrative management console is strictly restricted to authorized staff specified in environment variables (<code className="text-zinc-200">ashutosh@strapfitness.com</code>).
+          The STRAP administrative console is strictly restricted to the verified platform owner account.
         </p>
         <div className="pt-2">
           <a
-            href="/login"
+            href="/dashboard"
             className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-semibold text-white hover:bg-zinc-800"
           >
-            Switch to Admin Demo Account
+            Return to Dashboard
           </a>
         </div>
       </div>
@@ -166,7 +168,7 @@ export default function AdminPage() {
               <ShieldAlert className="h-3 w-3" />
               Administrative Root
             </span>
-            <span className="text-xs font-mono text-zinc-400">ashutosh@strapfitness.com</span>
+            <span className="text-xs font-mono text-zinc-400">{currentAdmin || 'Owner Admin'}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white">STRAP Operations Console</h1>
           <p className="text-xs text-zinc-400 mt-0.5">

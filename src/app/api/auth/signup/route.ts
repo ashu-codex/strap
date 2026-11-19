@@ -1,114 +1,97 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { createClient as createServerClient } from '@/lib/supabase/server';
-import { persistStore, strapStore } from '@/lib/store';
-import { ADMIN_EMAIL } from '@/lib/auth-helpers';
-import { SESSION_COOKIE, sessionCookieOptions } from '@/lib/session';
+import { ConfigError, getSiteUrl, isDevFallbackAllowed, isSupabaseConfigured } from '@/lib/config';
+import { burstLimit, clientIp, emailSchema, handleError, json, parseBody, passwordSchema } from '@/lib/api';
+import { ensureProfile } from '@/lib/auth-flow';
+import { DEV_SESSION_COOKIE, devCreateUser, signSession } from '@/lib/dev-auth';
+import { db } from '@/lib/db';
+
+const schema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
+  full_name: z.string().trim().max(80).optional(),
+  next: z.string().optional(),
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { email, password, full_name } = body;
-
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+    if (!burstLimit(`signup:${clientIp(req)}`, 10, 10 * 60_000)) {
+      return json({ error: 'Too many attempts. Please wait a few minutes and try again.' }, 429);
     }
+    const { email, password, full_name } = await parseBody(req, schema);
+    const name = full_name || email.split('@')[0];
 
-    if (password.length < 6) {
-      return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
-    }
+    // ---------------------------------------------------------------- Supabase
+    if (isSupabaseConfigured()) {
+      const supabase = createServerClient();
+      if (!supabase) throw new ConfigError();
 
-    // Try Supabase Auth
-    const supabase = createServerClient();
-    if (supabase) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: {
-            full_name: full_name || email.split('@')[0],
-          },
+          data: { full_name: name },
+          emailRedirectTo: `${getSiteUrl(new URL(req.url).origin)}/auth/callback?next=/onboarding`,
         },
       });
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
+        const code = (error as any).code as string | undefined;
+        if (code === 'user_already_exists' || /already registered/i.test(error.message)) {
+          return json({ error: 'An account with this email may already exist. Try signing in or reset your password.', code: 'DUPLICATE' }, 409);
+        }
+        if (code === 'weak_password') return json({ error: 'That password is too weak. Use at least 8 characters with letters and numbers.', code: 'WEAK_PASSWORD' }, 400);
+        if (code === 'over_email_send_rate_limit' || (error as any).status === 429) {
+          return json({ error: 'Too many emails requested. Please wait a few minutes and try again.', code: 'RATE_LIMITED' }, 429);
+        }
+        if (code === 'email_address_invalid') return json({ error: 'Please enter a valid email address.', code: 'INVALID_EMAIL' }, 400);
+        if (code === 'signup_disabled') return json({ error: 'Sign-ups are currently disabled.', code: 'SIGNUP_DISABLED' }, 403);
+        if (error.name === 'AuthRetryableFetchError' || (error as any).status === 0 || ((error as any).status ?? 0) >= 500) {
+          return json({ error: 'Cannot reach the authentication service. Please try again shortly.', code: 'AUTH_UNAVAILABLE' }, 503);
+        }
+        console.error('[signup] supabase error:', code, error.message);
+        return json({ error: 'Could not create your account. Please try again.', code: 'SIGNUP_FAILED' }, 400);
+      }
+
+      // Supabase returns an obfuscated user with empty identities when the email is already registered
+      // (to avoid account enumeration). No profile must be created for it.
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        return json({ error: 'An account with this email may already exist. Try signing in or reset your password.', code: 'DUPLICATE' }, 409);
       }
 
       if (data.user) {
-        // Create initial profile in profiles table
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          email: data.user.email,
-          full_name: full_name || email.split('@')[0],
-          role: data.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'admin' : 'user',
-        });
-
-        // Create default free subscription
-        await supabase.from('subscriptions').upsert({
-          user_id: data.user.id,
-          plan: 'free',
-          status: 'active',
-          price_inr: 0,
-        });
-
-        const response = NextResponse.json({
-          success: true,
-          user: data.user,
-          requiresEmailVerification: !data.session,
-          redirectTo: '/onboarding',
-        });
-
-        response.cookies.set(SESSION_COOKIE, data.user.id, sessionCookieOptions);
-
-        return response;
+        try {
+          await ensureProfile(data.user.id, email, { full_name: name });
+        } catch {
+          // Non-fatal: the DB trigger or the next login's loadProfile() will recover the profile.
+          console.error('[signup] profile creation deferred');
+        }
       }
+
+      const needsVerification = !data.session;
+      return json({
+        success: true,
+        requiresEmailVerification: needsVerification,
+        message: needsVerification
+          ? `We sent a verification link to ${email}. Open it (on any device) to activate your account, then sign in.`
+          : 'Account created.',
+        redirectTo: needsVerification ? null : '/onboarding',
+      });
     }
 
-    // Fallback store signup
-    const newId = 'user-' + Date.now();
-    const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-
-    const newUser = {
-      id: newId,
-      email,
-      full_name: full_name || email.split('@')[0],
-      role: isAdmin ? ('admin' as const) : ('user' as const),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    const existing = Array.from(strapStore.users.values()).find(
-      (u) => u.email.toLowerCase() === email.toLowerCase()
-    );
-    if (existing) {
-      return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
+    // ---------------------------------------------------------------- Dev fallback
+    if (isDevFallbackAllowed()) {
+      const id = await devCreateUser(email, password, name);
+      if (!id) return json({ error: 'An account with this email may already exist. Try signing in.', code: 'DUPLICATE' }, 409);
+      await db.selectOne('user_profiles', { eq: { id } });
+      const res = json({ success: true, requiresEmailVerification: false, redirectTo: '/onboarding', devMode: true });
+      res.cookies.set(DEV_SESSION_COOKIE, signSession(id), { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 7 });
+      return res;
     }
 
-    strapStore.users.set(newId, newUser);
-    strapStore.subscriptions.set(newId, {
-      id: 'sub-' + newId,
-      user_id: newId,
-      plan: isAdmin ? 'premium' : 'free',
-      status: 'active',
-      price_inr: 0,
-      current_period_start: new Date().toISOString(),
-      current_period_end: isAdmin ? new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString() : null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    persistStore();
-
-    const response = NextResponse.json({
-      success: true,
-      user: newUser,
-      requiresEmailVerification: false,
-      redirectTo: '/onboarding',
-    });
-
-    response.cookies.set(SESSION_COOKIE, newId, sessionCookieOptions);
-
-    return response;
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Registration failed' }, { status: 500 });
+    throw new ConfigError();
+  } catch (e) {
+    return handleError(e);
   }
 }

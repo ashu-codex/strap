@@ -1,94 +1,63 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-helpers';
-import { activatePremiumForUser, persistStore, strapStore } from '@/lib/store';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { NextRequest } from 'next/server';
+import { z } from 'zod';
+import { db } from '@/lib/db';
+import { handleError, json, parseBody } from '@/lib/api';
+import { activatePremium, requireOwnerAdmin, writeAuditLog } from '@/lib/auth-helpers';
+import { getSettings } from '@/lib/settings';
+
+const schema = z.object({
+  payment_id: z.string().min(1).max(64),
+  action: z.enum(['approve', 'reject']),
+  admin_notes: z.string().max(500).optional(),
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const { isAdmin, user } = await getAuthUser(req);
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Unauthorized: Admin privileges required.' }, { status: 403 });
-    }
+    const admin = await requireOwnerAdmin(req); // 401/403 for anyone but the verified owner
+    const { payment_id, action, admin_notes } = await parseBody(req, schema);
 
-    const body = await req.json();
-    const { payment_id, action, admin_notes } = body;
-
-    if (!payment_id || !['approve', 'reject'].includes(action)) {
-      return NextResponse.json({ error: 'Payment ID and valid action (approve/reject) are required' }, { status: 400 });
-    }
-
-    const payment = strapStore.payments.find((p) => p.id === payment_id);
-    if (!payment) {
-      return NextResponse.json({ error: 'Payment record not found' }, { status: 404 });
-    }
+    const payment = await db.selectOne('payments', { eq: { id: payment_id } });
+    if (!payment) return json({ error: 'Payment not found.' }, 404);
 
     if (payment.payment_status !== 'pending') {
-      return NextResponse.json(
-        { error: `Payment is already ${payment.payment_status} and cannot be reviewed again.` },
-        { status: 409 }
-      );
+      return json({ error: `This payment is already ${payment.payment_status}.`, payment }, 409);
     }
 
-    if (action === 'approve') {
-      payment.payment_status = 'approved';
-      payment.admin_notes = admin_notes || 'Verified against bank/UPI ledger.';
-      payment.verified_by = user?.email || 'admin@strapfitness.com';
-      payment.verified_at = new Date().toISOString();
-      payment.updated_at = new Date().toISOString();
-
-      if (!strapStore.users.get(payment.user_id) && payment.user_email) {
-        strapStore.users.set(payment.user_id, {
-          id: payment.user_id,
-          email: payment.user_email,
-          full_name: payment.user_name || payment.user_email.split('@')[0],
-          role: 'user',
-          created_at: payment.created_at,
-          updated_at: new Date().toISOString(),
-        });
-      }
-
-      const updatedSub = activatePremiumForUser(payment.user_id, payment.amount_inr, 30);
-      persistStore();
-
-      const supabaseAdmin = createAdminClient();
-      if (supabaseAdmin) {
-        try {
-          await supabaseAdmin.from('subscriptions').upsert({
-            id: updatedSub.id,
-            user_id: updatedSub.user_id,
-            plan: updatedSub.plan,
-            status: updatedSub.status,
-            price_inr: updatedSub.price_inr,
-            current_period_start: updatedSub.current_period_start,
-            current_period_end: updatedSub.current_period_end,
-            updated_at: updatedSub.updated_at,
-          });
-        } catch {
-          // Optional remote sync; local activation is source of truth for UPI.
-        }
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: `Payment ${payment.utr_reference} successfully approved. User ${payment.user_email || payment.user_id} now has active STRAP Premium until ${new Date(updatedSub.current_period_end || '').toLocaleDateString()}.`,
-        payment,
-        subscription: updatedSub,
+    if (action === 'reject') {
+      const [updated] = await db.update('payments', { id: payment_id }, {
+        payment_status: 'rejected',
+        admin_notes: admin_notes || 'Rejected by administrator.',
+        verified_by: admin.user.email,
+        verified_at: new Date().toISOString(),
       });
+      await writeAuditLog(admin.user, 'payment.reject', 'payment', payment_id, { user_id: payment.user_id, utr: payment.utr_reference });
+      return json({ success: true, message: 'Payment rejected.', payment: updated });
     }
 
-    payment.payment_status = 'rejected';
-    payment.admin_notes = admin_notes || 'Transaction reference not found in bank records.';
-    payment.verified_by = user?.email || 'admin@strapfitness.com';
-    payment.verified_at = new Date().toISOString();
-    payment.updated_at = new Date().toISOString();
-    persistStore();
+    // Approve: amount must cover the configured price.
+    const settings = await getSettings();
+    if (Number(payment.amount_inr) < Number(settings.price_inr)) {
+      return json({ error: `Amount ₹${payment.amount_inr} is below the plan price ₹${settings.price_inr}.` }, 400);
+    }
 
-    return NextResponse.json({
-      success: true,
-      message: `Payment ${payment.utr_reference} marked as rejected.`,
-      payment,
+    const [updated] = await db.update('payments', { id: payment_id }, {
+      payment_status: 'approved',
+      admin_notes: admin_notes || 'Verified against bank credit ledger.',
+      verified_by: admin.user.email,
+      verified_at: new Date().toISOString(),
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // Premium is activated for THE PAYMENT'S OWNER (payment.user_id), never the admin or caller.
+    const subscription = await activatePremium(payment.user_id, Number(payment.amount_inr));
+    await writeAuditLog(admin.user, 'payment.approve', 'payment', payment_id, {
+      user_id: payment.user_id, utr: payment.utr_reference, amount: payment.amount_inr, expires: subscription.current_period_end,
+    });
+    return json({
+      success: true,
+      message: `Payment approved. Premium activated until ${new Date(subscription.current_period_end).toLocaleDateString()}.`,
+      payment: updated,
+      subscription,
+    });
+  } catch (e) {
+    return handleError(e);
   }
 }

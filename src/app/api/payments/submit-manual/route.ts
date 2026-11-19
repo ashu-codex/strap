@@ -1,66 +1,58 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-helpers';
-import { persistStore, strapStore } from '@/lib/store';
-import { PaymentRecord } from '@/types';
+import { NextRequest } from 'next/server';
+import { z } from 'zod';
+import { db, DbError } from '@/lib/db';
+import { burstLimit, handleError, json, parseBody, requireUser } from '@/lib/api';
+import { getSettings } from '@/lib/settings';
+
+const schema = z.object({
+  utr_reference: z
+    .string({ required_error: 'UTR is required.' })
+    .trim()
+    .min(6, 'UTR must be 6-22 letters/numbers.')
+    .max(22, 'UTR must be 6-22 letters/numbers.')
+    .regex(/^[A-Za-z0-9]+$/, 'UTR can only contain letters and numbers.')
+    .transform((s) => s.toUpperCase()),
+  receipt_url: z.string().url().max(500).optional(),
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const { user } = await getAuthUser(req);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { user } = await requireUser(req);
+    if (!burstLimit(`utr:${user.id}`, 10, 60 * 60_000)) return json({ error: 'Too many submissions. Try again later.' }, 429);
 
-    const body = await req.json();
-    const { utr_reference, receipt_url } = body;
+    const { utr_reference, receipt_url } = await parseBody(req, schema);
 
-    if (!utr_reference || typeof utr_reference !== 'string' || utr_reference.trim().length < 6) {
-      return NextResponse.json(
-        { error: 'A valid 6-16 character UTR or UPI Transaction Reference ID is required.' },
-        { status: 400 }
-      );
+    const pending = await db.count('payments', { eq: { user_id: user.id, payment_status: 'pending' } });
+    if (pending >= 3) return json({ error: 'You already have pending payments awaiting verification.' }, 429);
+
+    const settings = await getSettings();
+    try {
+      // Strictly PENDING. Premium is never granted here.
+      const payment = await db.insert('payments', {
+        user_id: user.id,
+        user_email: user.email,
+        user_name: user.full_name,
+        amount_inr: settings.price_inr,
+        currency: 'INR',
+        payment_method: 'upi_manual',
+        payment_status: 'pending',
+        upi_id: settings.upi_id,
+        utr_reference,
+        receipt_url: receipt_url ?? null,
+      });
+      return json({
+        success: true,
+        activated: false,
+        message: 'Payment reference submitted. It is PENDING verification by the administrator. Premium is activated only after approval.',
+        payment,
+      });
+    } catch (e) {
+      if (e instanceof DbError && e.code === 'duplicate') {
+        return json({ error: 'This UTR / transaction reference has already been submitted.', code: 'DUPLICATE_UTR' }, 409);
+      }
+      throw e;
     }
-
-    const trimmedUTR = utr_reference.trim().toUpperCase();
-
-    // Check for duplicate UTR
-    const existing = strapStore.payments.find(
-      (p) => p.utr_reference?.toUpperCase() === trimmedUTR && p.payment_status !== 'rejected'
-    );
-    if (existing) {
-      return NextResponse.json(
-        { error: 'This UTR / Transaction Reference has already been submitted and is in process.' },
-        { status: 400 }
-      );
-    }
-
-    const price = strapStore.adminSettings.price_inr || 100;
-    const upiId = strapStore.adminSettings.upi_id || 'ashutosh-k82@ptyes';
-
-    // Strictly save as PENDING. Never activate premium here!
-    const newPayment: PaymentRecord = {
-      id: 'pay-' + Date.now(),
-      user_id: user.id,
-      user_email: user.email,
-      user_name: user.full_name,
-      amount_inr: price,
-      currency: 'INR',
-      payment_method: 'upi_manual',
-      payment_status: 'pending', // Awaiting admin bank verification
-      upi_id: upiId,
-      utr_reference: trimmedUTR,
-      receipt_url: receipt_url || undefined,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    strapStore.payments.unshift(newPayment);
-    persistStore();
-
-    return NextResponse.json({
-      success: true,
-      message: 'Payment reference submitted successfully. Your payment is currently PENDING verification by the administrator. Premium access is not granted until an admin approves this UTR.',
-      payment: newPayment,
-      activated: false,
-    });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (e) {
+    return handleError(e);
   }
 }

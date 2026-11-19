@@ -1,41 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-helpers';
-import { strapStore } from '@/lib/store';
+import { NextRequest } from 'next/server';
+import { db } from '@/lib/db';
+import { handleError, json } from '@/lib/api';
+import { aiGuard, latestAiPlan, saveAiPlan } from '@/lib/ai-service';
 import { generateWeeklyAdaptationAI } from '@/lib/gemini';
 
 export async function POST(req: NextRequest) {
   try {
-    const { user, isPremium } = await getAuthUser(req);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { user } = await aiGuard(req, 'adaptation');
+    const plan: any = await latestAiPlan(user.id, 'workout');
+    const logs = await db.select('workout_logs', { eq: { user_id: user.id }, order: ['completed_at', 'desc'], limit: 30 });
 
-    if (!isPremium) {
-      return NextResponse.json(
-        {
-          error: 'AI Weekly Adaptation is exclusively available to STRAP Premium members.',
-          isPremium: false,
-          upgradeRequired: true,
-        },
-        { status: 403 }
-      );
-    }
-
-    const userPlans = strapStore.aiPlans.get(user.id);
-    const currentPlan = userPlans?.workoutPlan || {
-      split_name: '4-Day Upper / Lower',
-      split_type: 'Upper / Lower' as const,
-    };
-
-    const completedWorkouts = strapStore.workouts;
+    const rpes: number[] = [];
+    for (const l of logs) for (const ex of l.exercises || []) for (const s of ex.sets || []) if (s.is_completed && s.rpe) rpes.push(Number(s.rpe));
+    const averageRpe = rpes.length ? Math.round((rpes.reduce((a, b) => a + b, 0) / rpes.length) * 10) / 10 : 8;
 
     const { adaptation, isAiGenerated } = await generateWeeklyAdaptationAI({
-      completedWorkoutsCount: completedWorkouts.length,
-      averageRpe: 8.2,
+      completedWorkoutsCount: logs.length,
+      averageRpe,
       missedWorkouts: 0,
-      currentSplit: currentPlan.split_name,
+      currentSplit: plan?.split_name || 'Current Split',
     });
-
-    return NextResponse.json({ success: true, adaptation, isAiGenerated });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    await saveAiPlan(user.id, 'adaptation', adaptation);
+    return json({ success: true, adaptation, isAiGenerated });
+  } catch (e) {
+    return handleError(e);
   }
 }

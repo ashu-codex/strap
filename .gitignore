@@ -1,9 +1,21 @@
-
+# Dependencies
 node_modules/
+
+# Build outputs
 .next/
-.env
-.env.local
-.env.*.local
 dist/
+build/
 out/
 .vercel/
+*.tsbuildinfo
+
+# Environment variables (never commit real secrets)
+.env
+.env.local
+.env.*
+!.env.example
+
+# Local dev data & logs
+data/
+supabase/.temp/
+*.log

@@ -2,9 +2,10 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-type Theme = 'dark' | 'light';
+export type ThemeMode = 'dark' | 'light' | 'system';
+export type ResolvedTheme = 'dark' | 'light';
 
-interface AuthStatus {
+export interface AuthStatus {
   user: {
     id: string;
     email: string;
@@ -12,6 +13,7 @@ interface AuthStatus {
     role: string;
   } | null;
   subscription: {
+    id?: string;
     plan: string;
     status: string;
     current_period_end?: string | null;
@@ -20,9 +22,10 @@ interface AuthStatus {
   isAdmin: boolean;
 }
 
-interface AppContextValue {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
+export interface AppContextValue {
+  theme: ThemeMode;
+  resolvedTheme: ResolvedTheme;
+  setTheme: (theme: ThemeMode) => void;
   toggleTheme: () => void;
   auth: AuthStatus | null;
   authLoading: boolean;
@@ -31,11 +34,17 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
-function applyThemeClass(theme: Theme) {
+function resolveSystemTheme(): ResolvedTheme {
+  if (typeof window === 'undefined') return 'dark';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyThemeClasses(resolved: ResolvedTheme) {
+  if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  root.classList.toggle('dark', theme === 'dark');
-  root.classList.toggle('light', theme === 'light');
-  root.style.colorScheme = theme;
+  root.classList.remove('dark', 'light');
+  root.classList.add(resolved);
+  root.style.colorScheme = resolved;
 }
 
 export function useApp() {
@@ -52,23 +61,37 @@ export function useAuth() {
 }
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('dark');
+  const [theme, setThemeState] = useState<ThemeMode>('dark');
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('dark');
   const [auth, setAuth] = useState<AuthStatus | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  const setTheme = useCallback((next: Theme) => {
-    setThemeState(next);
+  const applyTheme = useCallback((mode: ThemeMode) => {
+    const resolved = mode === 'system' ? resolveSystemTheme() : mode;
+    setResolvedTheme(resolved);
+    applyThemeClasses(resolved);
+
     try {
-      localStorage.setItem('strap-theme', next);
+      localStorage.setItem('strap-theme', mode);
+      document.cookie = `strap_theme=${mode}; path=/; max-age=31536000; SameSite=Lax`;
     } catch {
       // ignore storage errors
     }
-    applyThemeClass(next);
   }, []);
 
+  const setTheme = useCallback(
+    (next: ThemeMode) => {
+      setThemeState(next);
+      applyTheme(next);
+    },
+    [applyTheme]
+  );
+
   const toggleTheme = useCallback(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  }, [setTheme, theme]);
+    // If dark, switch to light; if light, switch to dark
+    const next: ThemeMode = resolvedTheme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+  }, [resolvedTheme, setTheme]);
 
   const refreshAuth = useCallback(async () => {
     try {
@@ -90,45 +113,62 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    let initial: Theme = 'dark';
+    let initialMode: ThemeMode = 'dark';
     try {
-      const stored = localStorage.getItem('strap-theme');
-      if (stored === 'light' || stored === 'dark') {
-        initial = stored;
+      const stored = localStorage.getItem('strap-theme') as ThemeMode | null;
+      if (stored === 'light' || stored === 'dark' || stored === 'system') {
+        initialMode = stored;
       }
     } catch {
       // ignore
     }
-    setThemeState(initial);
-    applyThemeClass(initial);
+
+    setThemeState(initialMode);
+    applyTheme(initialMode);
     refreshAuth();
 
-    const onFocus = () => {
-      refreshAuth();
+    // Listen to system theme changes if mode is 'system'
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = () => {
+      const current = (localStorage.getItem('strap-theme') as ThemeMode) || 'dark';
+      if (current === 'system') {
+        applyTheme('system');
+      }
     };
+    mediaQuery.addEventListener('change', handleSystemChange);
+
+    // Cross-tab and window listeners
+    const onFocus = () => refreshAuth();
     const onVisible = () => {
       if (document.visibilityState === 'visible') refreshAuth();
     };
-    const onCustom = () => {
-      refreshAuth();
-    };
+    const onCustom = () => refreshAuth();
 
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('strap-auth-refresh', onCustom);
-    const interval = window.setInterval(refreshAuth, 12000);
+    const interval = window.setInterval(refreshAuth, 10000);
 
     return () => {
+      mediaQuery.removeEventListener('change', handleSystemChange);
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('strap-auth-refresh', onCustom);
       window.clearInterval(interval);
     };
-  }, [refreshAuth]);
+  }, [applyTheme, refreshAuth]);
 
   const value = useMemo(
-    () => ({ theme, setTheme, toggleTheme, auth, authLoading, refreshAuth }),
-    [theme, setTheme, toggleTheme, auth, authLoading, refreshAuth]
+    () => ({
+      theme,
+      resolvedTheme,
+      setTheme,
+      toggleTheme,
+      auth,
+      authLoading,
+      refreshAuth,
+    }),
+    [theme, resolvedTheme, setTheme, toggleTheme, auth, authLoading, refreshAuth]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

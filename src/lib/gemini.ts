@@ -1,3 +1,4 @@
+import "server-only";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
   GeneratedWorkoutPlan,
@@ -47,6 +48,7 @@ export async function generateWorkoutPlanAI(params: {
         model: modelName,
         generationConfig: {
           temperature: 0.3,
+          maxOutputTokens: 4096,
           responseMimeType: "application/json",
         },
       });
@@ -144,6 +146,7 @@ export async function generateNutritionPlanAI(params: {
         model: modelName,
         generationConfig: {
           temperature: 0.2,
+          maxOutputTokens: 4096,
           responseMimeType: "application/json",
         },
       });
@@ -280,6 +283,7 @@ export async function generateRecoveryAnalysisAI(params: {
         model: modelName,
         generationConfig: {
           temperature: 0.3,
+          maxOutputTokens: 4096,
           responseMimeType: "application/json",
         },
       });
@@ -358,6 +362,7 @@ export async function generateWeeklyAdaptationAI(params: {
         model: modelName,
         generationConfig: {
           temperature: 0.3,
+          maxOutputTokens: 4096,
           responseMimeType: "application/json",
         },
       });
@@ -441,6 +446,7 @@ export async function chatWithAIAssistant(
     try {
       const model = genAI.getGenerativeModel({
         model: modelName,
+        generationConfig: { maxOutputTokens: 1024, temperature: 0.6 },
         systemInstruction: `You are the STRAP AI Fitness Coach.
 Your philosophy: Science-based, encouraging, precise, and practical.
 Brand: STRAP (Start, Train, Recover, Adapt, Progress).

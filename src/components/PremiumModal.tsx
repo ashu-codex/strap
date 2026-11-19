@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Sparkles, Check, Lock, ArrowRight, X } from 'lucide-react';
+import { Check, Lock, ArrowRight, X } from 'lucide-react';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/Buttons';
 
 interface PremiumModalProps {
   isOpen: boolean;
@@ -31,70 +32,73 @@ export default function PremiumModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-2xl border border-brand-DEFAULT/30 bg-card p-6 shadow-glow-lg text-white">
+      <div className="relative w-full max-w-lg rounded-[14px] border border-[#B7F34A]/40 bg-[#1B1D22] dark:bg-[#1B1D22] light:bg-[#FFFFFF] p-6 shadow-glow-lg text-[#F5F5F5] dark:text-[#F5F5F5] light:text-[#111318]">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+          aria-label="Close modal"
+          className="absolute right-4 top-4 rounded-[10px] p-1.5 text-[#9496A1] hover:text-white dark:hover:text-white light:hover:text-black hover:bg-[#252830] light:hover:bg-[#F0F2F5] transition-colors"
         >
           <X className="h-5 w-5" />
         </button>
 
         {/* Header Icon */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-DEFAULT/20 border border-brand-DEFAULT/40 text-brand-DEFAULT shadow-glow">
+          <div className="flex h-12 w-12 items-center justify-center rounded-[10px] bg-[#B7F34A]/20 border border-[#B7F34A]/50 text-[#B7F34A] light:text-[#6BA814] shadow-glow">
             <Lock className="h-6 w-6" />
           </div>
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-brand-DEFAULT bg-brand-DEFAULT/10 px-2 py-0.5 rounded-full border border-brand-DEFAULT/20">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#6BA814] dark:text-[#B7F34A] bg-[#B7F34A]/15 px-2.5 py-0.5 rounded-[6px] border border-[#B7F34A]/30">
               STRAP Premium Required
             </span>
-            <h3 className="text-xl font-bold text-white mt-0.5">{featureTitle}</h3>
+            <h3 className="text-xl font-black mt-1 text-[#F5F5F5] dark:text-[#FFFFFF] light:text-[#111318]">
+              {featureTitle}
+            </h3>
           </div>
         </div>
 
-        <p className="text-xs text-zinc-300 mb-5 leading-relaxed">
-          {featureDescription} Upgrade today for only <strong>₹100/month</strong> and unlock the full power of the AI Fitness Engine.
+        <p className="text-xs text-[#9496A1] light:text-[#52525B] mb-5 leading-relaxed">
+          {featureDescription} Upgrade today for only <strong className="text-[#F5F5F5] light:text-[#111318]">₹100/month</strong> and unlock the full power of the AI Fitness Engine.
         </p>
 
         {/* Perks list */}
         <div className="space-y-2 mb-6 max-h-56 overflow-y-auto pr-1">
           {premiumPerks.map((perk, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
-              <Check className="h-4 w-4 text-brand-DEFAULT shrink-0 mt-0.5" />
+            <div key={i} className="flex items-start gap-2 text-xs text-[#F5F5F5] dark:text-[#E4E4E7] light:text-[#3F3F46]">
+              <Check className="h-4 w-4 text-[#B7F34A] light:text-[#6BA814] shrink-0 mt-0.5" />
               <span>{perk}</span>
             </div>
           ))}
         </div>
 
         {/* Pricing & CTA */}
-        <div className="rounded-xl bg-zinc-900/90 border border-zinc-800 p-4 flex items-center justify-between mb-4">
+        <div className="rounded-[10px] bg-[#141519] dark:bg-[#141519] light:bg-[#F5F6F8] border border-[#30333A] light:border-[#E1E4E8] p-4 flex items-center justify-between mb-5">
           <div>
-            <div className="text-[11px] text-zinc-400 uppercase font-semibold">Standard Plan</div>
-            <div className="text-2xl font-black text-white flex items-baseline gap-1">
-              ₹100 <span className="text-xs font-normal text-zinc-400">/ month</span>
+            <div className="text-[11px] text-[#9496A1] uppercase font-bold">Standard Membership</div>
+            <div className="text-2xl font-black text-[#F5F5F5] dark:text-white light:text-[#111318] flex items-baseline gap-1">
+              ₹100 <span className="text-xs font-normal text-[#9496A1]">/ month</span>
             </div>
           </div>
           <div className="text-right">
-            <span className="text-[10px] text-brand-DEFAULT font-mono block">UPI & Card Supported</span>
-            <span className="text-[10px] text-zinc-400">Cancel anytime</span>
+            <span className="text-[10px] text-[#6BA814] dark:text-[#B7F34A] font-mono font-bold block">Direct UPI & Gateway</span>
+            <span className="text-[10px] text-[#9496A1]">30-Day Cycle</span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-xl bg-zinc-800 py-2.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-700 transition-colors"
-          >
+          <SecondaryButton fullWidth onClick={onClose}>
             Maybe Later
-          </button>
-          <a
-            href="/checkout"
-            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-brand-DEFAULT py-2.5 text-xs font-bold text-black hover:bg-brand-400 transition-all shadow-glow strap-primary"
+          </SecondaryButton>
+          <PrimaryButton
+            fullWidth
+            onClick={() => {
+              onClose();
+              window.location.href = '/checkout';
+            }}
+            icon={<ArrowRight className="h-4 w-4" />}
           >
-            <span>Upgrade to Premium</span>
-            <ArrowRight className="h-4 w-4" />
-          </a>
+            Upgrade to Premium
+          </PrimaryButton>
         </div>
       </div>
     </div>
