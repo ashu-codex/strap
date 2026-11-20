@@ -227,6 +227,7 @@ export default function ProfilePage() {
                 type="email"
                 disabled
                 value={profile.email || ''}
+                placeholder="Connected via Social Login (no email shared)"
                 className="w-full rounded-xl border border-zinc-900 bg-zinc-900/60 p-2.5 text-xs text-zinc-500 cursor-not-allowed"
               />
             </div>

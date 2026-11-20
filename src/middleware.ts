@@ -47,7 +47,8 @@ export async function middleware(request: NextRequest) {
   const user = data.user;
   const path = request.nextUrl.pathname;
   const owner = (process.env.STRAP_ADMIN_EMAIL || process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-  const isOwner = Boolean(user && user.email_confirmed_at && owner && user.email?.trim().toLowerCase() === owner);
+  const userEmail = (user?.email || user?.user_metadata?.email || '').trim().toLowerCase();
+  const isOwner = Boolean(user && user.email_confirmed_at && owner && userEmail === owner);
 
   const isAdminApi = path.startsWith('/api/admin');
   const isAdminPage = path === '/admin' || path.startsWith('/admin/');

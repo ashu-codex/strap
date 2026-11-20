@@ -10,6 +10,7 @@ export interface AuthStatus {
     id: string;
     email: string;
     full_name: string;
+    avatar_url?: string | null;
     role: string;
   } | null;
   subscription: {
@@ -113,6 +114,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Strip Facebook's OAuth redirect fragment cleanly without reloading
+    if (typeof window !== 'undefined' && window.location.hash === '#_=_') {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+
     let initialMode: ThemeMode = 'dark';
     try {
       const stored = localStorage.getItem('strap-theme') as ThemeMode | null;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Dumbbell,
@@ -30,7 +30,12 @@ export default function Navbar() {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const { auth, theme, resolvedTheme, setTheme, toggleTheme } = useApp();
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [auth?.user?.avatar_url]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -181,9 +186,19 @@ export default function Navbar() {
                 href="/profile"
                 className="flex items-center gap-2 rounded-[10px] border border-[#30333A] bg-[#1B1D22] dark:border-[#30333A] dark:bg-[#1B1D22] light:border-[#E1E4E8] light:bg-white px-3 py-1.5 text-xs text-[#F5F5F5] dark:text-[#F5F5F5] light:text-[#111318] hover:border-[#B7F34A]/50 transition-colors"
               >
-                <div className="h-5 w-5 rounded-full bg-[#B7F34A] text-[#111318] flex items-center justify-center font-bold text-[10px]">
-                  {auth.user.full_name?.charAt(0).toUpperCase() || 'A'}
-                </div>
+                {auth.user.avatar_url && !avatarError ? (
+                  <img
+                    src={auth.user.avatar_url}
+                    alt={auth.user.full_name || 'Athlete'}
+                    referrerPolicy="no-referrer"
+                    onError={() => setAvatarError(true)}
+                    className="h-5 w-5 rounded-full object-cover border border-[#B7F34A]/50"
+                  />
+                ) : (
+                  <div className="h-5 w-5 rounded-full bg-[#B7F34A] text-[#111318] flex items-center justify-center font-bold text-[10px]">
+                    {auth.user.full_name?.charAt(0).toUpperCase() || 'A'}
+                  </div>
+                )}
                 <span className="hidden md:inline font-semibold">
                   {auth.user.full_name?.split(' ')[0]}
                 </span>
@@ -234,7 +249,7 @@ export default function Navbar() {
                 <p className="text-xs font-bold text-[#F5F5F5] dark:text-[#F5F5F5] light:text-[#111318]">
                   {auth.user.full_name}
                 </p>
-                <p className="text-[11px] text-[#9496A1]">{auth.user.email}</p>
+                <p className="text-[11px] text-[#9496A1]">{auth.user.email || 'Connected via Social Login'}</p>
               </div>
               <div>
                 {auth.isPremium ? (

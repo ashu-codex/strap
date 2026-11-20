@@ -127,9 +127,31 @@ export function extractOAuthProfileMeta(
   return { fullName, avatarUrl };
 }
 
+/** Build a non-destructive patch filling only blank/placeholder profile fields from OAuth metadata. */
+export function buildMissingProfilePatch(
+  existing: Record<string, any>,
+  email: string,
+  meta?: Record<string, any>
+): Record<string, any> {
+  const normalizedEmail = normalizeEmail(email);
+  const { fullName, avatarUrl } = extractOAuthProfileMeta(normalizedEmail, meta);
+  const patch: Record<string, any> = {};
+
+  if (!existing.email && normalizedEmail) {
+    patch.email = normalizedEmail;
+  }
+  if ((!existing.full_name || existing.full_name === 'Athlete') && fullName && fullName !== 'Athlete') {
+    patch.full_name = fullName;
+  }
+  if (!existing.avatar_url && avatarUrl) {
+    patch.avatar_url = avatarUrl;
+  }
+  return patch;
+}
+
 async function loadProfile(id: string, email: string, meta?: Record<string, any>): Promise<UserProfile> {
   const { fullName, avatarUrl } = extractOAuthProfileMeta(email, meta);
-  const normalized = (email || '').trim().toLowerCase();
+  const normalized = normalizeEmail(email);
   let p = await db.selectOne('user_profiles', { eq: { id } });
   if (!p) {
     // Missing-profile recovery: trigger may have failed. Insert safely without ever overwriting existing rows.
@@ -160,6 +182,12 @@ async function loadProfile(id: string, email: string, meta?: Record<string, any>
         updated_at: new Date().toISOString(),
       };
     }
+  } else {
+    const patch = buildMissingProfilePatch(p, normalized, meta);
+    if (Object.keys(patch).length > 0) {
+      await db.update('user_profiles', { id }, patch).catch(() => null);
+      p = { ...p, ...patch };
+    }
   }
   return {
     id,
@@ -186,7 +214,7 @@ export async function getAuthUser(req?: NextRequest): Promise<AuthContext> {
     } catch {
       return EMPTY;
     }
-    const email = normalizeEmail(sbUser.email);
+    const email = normalizeEmail(sbUser.email || sbUser.user_metadata?.email);
     const verified = Boolean(sbUser.email_confirmed_at);
     const profile = await loadProfile(sbUser.id, email, sbUser.user_metadata);
     const isAdmin = verified && isOwnerEmail(email);

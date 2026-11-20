@@ -47,6 +47,7 @@ export default function DashboardPage() {
           fetch('/api/workouts').then((r) => r.json()),
         ]);
 
+        if (authRes.user) setProfile(authRes.user);
         setSubscription(authRes.subscription);
         setIsPremium(authRes.isPremium);
         setMetrics(metricsRes.metrics);
@@ -112,7 +113,7 @@ export default function DashboardPage() {
             )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white">
-            Welcome back, Athlete
+            Welcome back, {profile?.full_name || 'Athlete'}
           </h1>
           <p className="text-xs text-zinc-400 mt-1 max-w-xl">
             Primary Goal:{' '}

@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { extractOAuthProfileMeta, isOwnerEmail } from '@/lib/auth-helpers';
+import { buildMissingProfilePatch, extractOAuthProfileMeta, isOwnerEmail } from '@/lib/auth-helpers';
 import { safeNext } from '@/lib/api';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isDevFallbackAllowed, isServiceRoleConfigured } from '@/lib/config';
@@ -79,6 +79,11 @@ export async function ensureProfile(userId: string, email: string, meta?: Record
       },
       'id'
     );
+  } else {
+    const patch = buildMissingProfilePatch(existing, normalizedEmail, meta);
+    if (Object.keys(patch).length > 0) {
+      await db.update('user_profiles', { id: userId }, patch).catch(() => null);
+    }
   }
   const sub = await db.selectOne('subscriptions', { eq: { user_id: userId } });
   if (!sub) {

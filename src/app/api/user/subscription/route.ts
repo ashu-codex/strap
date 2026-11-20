@@ -4,9 +4,10 @@ import { getSettings } from '@/lib/settings';
 
 export async function GET(req: NextRequest) {
   try {
-    const { subscription, isPremium, isAdmin } = await requireUser(req);
+    const { user, subscription, isPremium, isAdmin } = await requireUser(req);
     const s = await getSettings();
     return json({
+      user,
       subscription,
       isPremium,
       isAdmin,
