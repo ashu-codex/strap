@@ -48,17 +48,14 @@ export async function POST(req: NextRequest) {
             );
           }
           if (!lookup.providers.includes('email')) {
-            const hasGoogle = lookup.providers.includes('google');
-            const hasFacebook = lookup.providers.includes('facebook');
-            let msg = 'This account uses social login. Use the provider button above to sign in.';
-            if (hasGoogle && hasFacebook) {
-              msg = 'This account uses Google or Facebook sign-in. Click "Continue with Google" or "Continue with Facebook" above.';
-            } else if (hasFacebook) {
-              msg = 'This account was created with Facebook. Click "Continue with Facebook" to sign in.';
-            } else if (hasGoogle) {
-              msg = 'This account was created with Google. Click "Continue with Google" to sign in.';
-            }
-            return json({ error: msg, code: 'OAUTH_ONLY', providers: lookup.providers }, 400);
+            return json(
+              {
+                error: 'This account was created with Google. Click "Continue with Google" to sign in.',
+                code: 'OAUTH_ONLY',
+                providers: lookup.providers,
+              },
+              400
+            );
           }
           return json(
             { error: 'Incorrect password. Please try again or use Forgot Password.', code: 'INVALID_CREDENTIALS' },

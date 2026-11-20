@@ -8,12 +8,8 @@ import BrandLogo from '@/components/ui/BrandLogo';
 import { PrimaryButton } from '@/components/ui/Buttons';
 
 const CALLBACK_ERRORS: Record<string, string> = {
-  oauth_cancelled: 'Social sign-in was cancelled. You can try again anytime.',
-  oauth_failed: 'Social sign-in could not be completed. Please try again.',
-  facebook_no_email:
-    'Facebook did not provide an email address. Please grant email permission or sign in with Google/Email.',
-  provider_disabled:
-    'Facebook Login is not enabled yet in Supabase Authentication. Configure your Facebook App ID and Secret in Supabase to activate it.',
+  oauth_cancelled: 'Google sign-in was cancelled. You can try again anytime.',
+  oauth_failed: 'Google sign-in could not be completed. Please try again.',
   link_expired: 'That verification or recovery link has expired. Please request a new one.',
   auth_unavailable: 'Authentication service is not configured yet. Please contact the administrator.',
 };
@@ -43,7 +39,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
   } | null>(null);
 
   const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<'google' | 'facebook' | null>(null);
+  const [oauthLoading, setOauthLoading] = useState<'google' | null>(null);
   const [resending, setResending] = useState(false);
   const [needsVerification, setNeedsVerification] = useState(false);
   const [suggestSwitch, setSuggestSwitch] = useState<'login' | 'signup' | null>(null);
@@ -77,8 +73,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
       const providers: string[] = Array.isArray(data.providers) ? data.providers : [];
       const hasEmail = providers.includes('email');
       const hasGoogle = providers.includes('google');
-      const hasFacebook = providers.includes('facebook');
-      const oauthOnly = Boolean(data.exists && !hasEmail && (hasGoogle || hasFacebook));
+      const oauthOnly = Boolean(data.exists && !hasEmail && hasGoogle);
 
       setEmailStatus({ checkedEmail: normalized, exists: Boolean(data.exists), oauthOnly });
       setError(null);
@@ -86,19 +81,9 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
       if (data.exists) {
         setMode('login');
         if (oauthOnly) {
-          if (hasGoogle && hasFacebook) {
-            setInfoMessage(
-              'This email is registered with Google or Facebook. Click a social button above to sign in.'
-            );
-          } else if (hasFacebook) {
-            setInfoMessage(
-              'This email is registered with Facebook. Click "Continue with Facebook" above to sign in.'
-            );
-          } else {
-            setInfoMessage(
-              'This email is registered with Google. Click "Continue with Google" above to sign in.'
-            );
-          }
+          setInfoMessage(
+            'This email is registered with Google. Click "Continue with Google" above to sign in.'
+          );
         } else {
           setInfoMessage(
             'This email is already registered. Sign in below to access your existing STRAP account.'
@@ -260,32 +245,6 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
     }
   };
 
-  const handleFacebookAuth = async () => {
-    setError(null);
-    setInfoMessage(null);
-    const supabase = createBrowserClient();
-    if (!supabase) {
-      setError('Facebook sign-in is not available until Supabase is configured.');
-      return;
-    }
-    setOauthLoading('facebook');
-    const { error: oauthErr } = await supabase.auth.signInWithOAuth({
-      provider: 'facebook',
-      options: {
-        redirectTo: buildOAuthCallbackUrl(),
-        scopes: 'public_profile,email',
-      },
-    });
-    if (oauthErr) {
-      setOauthLoading(null);
-      if (/not enabled|unsupported/i.test(oauthErr.message)) {
-        setError(CALLBACK_ERRORS.provider_disabled);
-      } else {
-        setError('Could not start Facebook sign-in. Please try again.');
-      }
-    }
-  };
-
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
       <div className="w-full max-w-md rounded-[14px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-8 shadow-glow transition-colors">
@@ -411,7 +370,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
 
             {/* Social Authentication Options */}
             <div className="space-y-2.5 mb-4">
-              {/* 1. Continue with Google */}
+              {/* Continue with Google */}
               <button
                 onClick={handleGoogleAuth}
                 type="button"
@@ -429,23 +388,6 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                   </svg>
                 )}
                 <span>{oauthLoading === 'google' ? 'Connecting to Google...' : 'Continue with Google'}</span>
-              </button>
-
-              {/* 2. Continue with Facebook */}
-              <button
-                onClick={handleFacebookAuth}
-                type="button"
-                disabled={oauthLoading !== null || loading}
-                className="btn-facebook w-full flex items-center justify-center gap-2.5 py-2.5 px-4 text-xs font-bold"
-              >
-                {oauthLoading === 'facebook' ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.791-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.514c-1.491 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
-                  </svg>
-                )}
-                <span>{oauthLoading === 'facebook' ? 'Connecting to Facebook...' : 'Continue with Facebook'}</span>
               </button>
             </div>
 

@@ -26,18 +26,9 @@ export async function POST(req: NextRequest) {
     const existingAccount = await lookupAuthAccount(email);
     if (existingAccount.exists) {
       const hasEmail = existingAccount.providers.includes('email');
-      const hasGoogle = existingAccount.providers.includes('google');
-      const hasFacebook = existingAccount.providers.includes('facebook');
-      let msg = 'This email is already registered. Please sign in to your existing account.';
-      if (!hasEmail) {
-        if (hasGoogle && hasFacebook) {
-          msg = 'This email is already registered with Google / Facebook. Please sign in using your social account.';
-        } else if (hasFacebook) {
-          msg = 'This email is already registered with Facebook. Please click "Continue with Facebook" to sign in.';
-        } else if (hasGoogle) {
-          msg = 'This email is already registered with Google. Please click "Continue with Google" to sign in.';
-        }
-      }
+      const msg = hasEmail
+        ? 'This email is already registered. Please sign in to your existing account.'
+        : 'This email is already registered with Google. Please click "Continue with Google" to sign in.';
       return json(
         {
           error: msg,
