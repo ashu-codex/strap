@@ -288,14 +288,14 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
 
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md rounded-[14px] border border-[#30333A] light:border-[#E1E4E8] bg-[#1B1D22] dark:bg-[#1B1D22] light:bg-[#FFFFFF] p-8 shadow-glow transition-colors">
+      <div className="w-full max-w-md rounded-[14px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-8 shadow-glow transition-colors">
         {/* Brand Header */}
         <div className="text-center mb-6 flex flex-col items-center">
           <BrandLogo size="lg" showTagline={false} showAiBadge={true} className="mb-3" />
           <h1 className="text-2xl font-black text-[#111318] dark:text-white">
             {mode === 'login' ? 'Welcome Back' : 'Create Your Account'}
           </h1>
-          <p className="text-xs text-[#9496A1] light:text-[#52525B] mt-1">
+          <p className="text-xs text-[#52525B] dark:text-[#9496A1] mt-1">
             {mode === 'login'
               ? 'Sign in to access your STRAP profile, workouts & recovery data'
               : 'Start your personalized STRAP AI fitness journey'}
@@ -304,7 +304,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
 
         {/* Mode Switcher Tabs */}
         {!verificationNotice && (
-          <div className="grid grid-cols-2 gap-1.5 p-1 rounded-[10px] bg-[#141519] dark:bg-[#141519] light:bg-[#F0F2F5] border border-[#30333A] light:border-[#E1E4E8] mb-5">
+          <div className="grid grid-cols-2 gap-1.5 p-1 rounded-[10px] bg-[#F0F2F5] dark:bg-[#141519] border border-[#E1E4E8] dark:border-[#30333A] mb-5">
             <button
               type="button"
               onClick={() => switchMode('login')}
@@ -332,13 +332,13 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
 
         {verificationNotice ? (
           <div className="text-center py-4 space-y-4">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[10px] bg-[#B7F34A]/20 text-[#B7F34A] light:text-[#6BA814] shadow-glow">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[10px] bg-[#B7F34A]/20 text-[#6BA814] dark:text-[#B7F34A] shadow-glow">
               <CheckCircle2 className="h-7 w-7" />
             </div>
             <h2 className="text-base font-bold text-[#111318] dark:text-white">Verify Your Email</h2>
-            <p className="text-xs text-[#9496A1] light:text-[#52525B] leading-relaxed">{verificationNotice}</p>
+            <p className="text-xs text-[#52525B] dark:text-[#9496A1] leading-relaxed">{verificationNotice}</p>
             {error && (
-              <div className="rounded-[10px] border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-400">
+              <div className="rounded-[10px] border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-600 dark:text-red-400">
                 {error}
               </div>
             )}
@@ -366,14 +366,14 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
         ) : (
           <>
             {error && (
-              <div className="mb-4 rounded-[10px] border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-400 leading-relaxed space-y-2">
+              <div className="mb-4 rounded-[10px] border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-600 dark:text-red-400 leading-relaxed space-y-2">
                 <p>{error}</p>
                 {needsVerification && (
                   <button
                     type="button"
                     disabled={resending}
                     onClick={handleResendVerification}
-                    className="inline-flex items-center gap-1.5 font-bold text-[#B7F34A] hover:underline disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 font-bold text-[#6BA814] dark:text-[#B7F34A] hover:underline disabled:opacity-50"
                   >
                     <RefreshCw className={`h-3.5 w-3.5 ${resending ? 'animate-spin' : ''}`} />
                     <span>{resending ? 'Sending...' : 'Resend verification email'}</span>
@@ -383,7 +383,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
-                    className="inline-flex items-center gap-1.5 font-bold text-[#B7F34A] hover:underline"
+                    className="inline-flex items-center gap-1.5 font-bold text-[#6BA814] dark:text-[#B7F34A] hover:underline"
                   >
                     <span>Switch to Sign In with this email</span>
                     <ArrowRight className="h-3.5 w-3.5" />
@@ -393,7 +393,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                   <button
                     type="button"
                     onClick={() => switchMode('signup')}
-                    className="inline-flex items-center gap-1.5 font-bold text-[#B7F34A] hover:underline"
+                    className="inline-flex items-center gap-1.5 font-bold text-[#6BA814] dark:text-[#B7F34A] hover:underline"
                   >
                     <span>Create a new account with this email</span>
                     <ArrowRight className="h-3.5 w-3.5" />
@@ -403,7 +403,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
             )}
 
             {infoMessage && (
-              <div className="mb-4 rounded-[10px] border border-[#B7F34A]/40 bg-[#B7F34A]/10 p-3 text-xs text-[#6BA814] dark:text-[#B7F34A] leading-relaxed flex items-start gap-2">
+              <div className="mb-4 rounded-[10px] border border-[#B7F34A]/40 bg-[#B7F34A]/10 p-3 text-xs text-[#4d7c0f] dark:text-[#B7F34A] leading-relaxed flex items-start gap-2">
                 <Info className="h-4 w-4 shrink-0 mt-0.5" />
                 <span>{infoMessage}</span>
               </div>
@@ -416,7 +416,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                 onClick={handleGoogleAuth}
                 type="button"
                 disabled={oauthLoading !== null || loading}
-                className="w-full flex items-center justify-center gap-2.5 rounded-[10px] border border-[#30333A] light:border-[#E1E4E8] bg-[#232630] dark:bg-[#232630] light:bg-[#F5F6F8] py-2.5 px-4 text-xs font-bold text-[#111318] dark:text-white hover:border-[#B7F34A]/60 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2.5 rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#232630] py-2.5 px-4 text-xs font-bold text-[#111318] dark:text-white hover:border-[#B7F34A]/60 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {oauthLoading === 'google' ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -451,11 +451,11 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
 
             {/* 3. OR continue with Email */}
             <div className="flex items-center gap-3 my-5">
-              <div className="h-px flex-1 bg-[#30333A] light:bg-[#E1E4E8]" />
-              <span className="text-[10px] uppercase font-bold text-[#9496A1] whitespace-nowrap">
+              <div className="h-px flex-1 bg-[#E1E4E8] dark:bg-[#30333A]" />
+              <span className="text-[10px] uppercase font-bold text-[#71717A] dark:text-[#9496A1] whitespace-nowrap">
                 Or continue with email
               </span>
-              <div className="h-px flex-1 bg-[#30333A] light:bg-[#E1E4E8]" />
+              <div className="h-px flex-1 bg-[#E1E4E8] dark:bg-[#30333A]" />
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -466,7 +466,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                     Email Address
                   </label>
                   {checkingEmail && (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-[#9496A1]">
+                    <span className="inline-flex items-center gap-1 text-[10px] text-[#71717A] dark:text-[#9496A1]">
                       <Loader2 className="h-3 w-3 animate-spin" /> Checking...
                     </span>
                   )}
@@ -477,7 +477,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                   )}
                 </div>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9496A1]" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A] dark:text-[#9496A1]" />
                   <input
                     type="email"
                     required
@@ -491,7 +491,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                     }}
                     onBlur={(e) => checkEmailRegistration(e.target.value)}
                     placeholder="athlete@example.com"
-                    className="w-full rounded-[10px] border border-[#30333A] light:border-[#E1E4E8] bg-[#141519] dark:bg-[#141519] light:bg-white py-2.5 pl-9 pr-3 text-xs text-[#111318] dark:text-white placeholder-[#9496A1] focus:border-[#B7F34A] focus:outline-none focus:ring-1 focus:ring-[#B7F34A]"
+                    className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] py-2.5 pl-9 pr-3 text-xs text-[#111318] dark:text-white placeholder-[#71717A] dark:placeholder-[#9496A1] focus:border-[#B7F34A] focus:outline-none focus:ring-1 focus:ring-[#B7F34A]"
                   />
                 </div>
               </div>
@@ -502,7 +502,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                     Full Name
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9496A1]" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A] dark:text-[#9496A1]" />
                     <input
                       type="text"
                       required
@@ -510,7 +510,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Your name"
-                      className="w-full rounded-[10px] border border-[#30333A] light:border-[#E1E4E8] bg-[#141519] dark:bg-[#141519] light:bg-white py-2.5 pl-9 pr-3 text-xs text-[#111318] dark:text-white placeholder-[#9496A1] focus:border-[#B7F34A] focus:outline-none focus:ring-1 focus:ring-[#B7F34A]"
+                      className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] py-2.5 pl-9 pr-3 text-xs text-[#111318] dark:text-white placeholder-[#71717A] dark:placeholder-[#9496A1] focus:border-[#B7F34A] focus:outline-none focus:ring-1 focus:ring-[#B7F34A]"
                     />
                   </div>
                 </div>
@@ -531,7 +531,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                   )}
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9496A1]" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A] dark:text-[#9496A1]" />
                   <input
                     type="password"
                     required
@@ -540,7 +540,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={mode === 'signup' ? 'Min 8 chars, letters & numbers' : '••••••••'}
-                    className="w-full rounded-[10px] border border-[#30333A] light:border-[#E1E4E8] bg-[#141519] dark:bg-[#141519] light:bg-white py-2.5 pl-9 pr-3 text-xs text-[#111318] dark:text-white placeholder-[#9496A1] focus:border-[#B7F34A] focus:outline-none focus:ring-1 focus:ring-[#B7F34A]"
+                    className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] py-2.5 pl-9 pr-3 text-xs text-[#111318] dark:text-white placeholder-[#71717A] dark:placeholder-[#9496A1] focus:border-[#B7F34A] focus:outline-none focus:ring-1 focus:ring-[#B7F34A]"
                   />
                 </div>
               </div>
@@ -550,7 +550,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
               </PrimaryButton>
             </form>
 
-            <p className="text-center text-xs text-[#9496A1] mt-6">
+            <p className="text-center text-xs text-[#71717A] dark:text-[#9496A1] mt-6">
               {mode === 'login' ? (
                 <>
                   New to STRAP?{' '}
