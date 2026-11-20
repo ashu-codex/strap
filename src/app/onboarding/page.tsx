@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Sparkles,
@@ -15,12 +15,15 @@ import {
   Target,
   Activity,
 } from 'lucide-react';
+import HeightInput from '@/components/ui/HeightInput';
+import { HeightUnit } from '@/lib/height';
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [heightValid, setHeightValid] = useState(true);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -28,6 +31,7 @@ export default function OnboardingPage() {
     age: 26,
     gender: 'male',
     height_cm: 175,
+    height_unit: 'cm' as HeightUnit,
     current_weight_kg: 72,
     target_weight_kg: 78,
     body_fat_pct: 16,
@@ -58,6 +62,57 @@ export default function OnboardingPage() {
     rest_days_preferred: 3,
   });
 
+  useEffect(() => {
+    async function loadExisting() {
+      try {
+        const [metRes, goalRes] = await Promise.all([
+          fetch('/api/user/metrics').then((r) => (r.ok ? r.json() : null)),
+          fetch('/api/user/goals').then((r) => (r.ok ? r.json() : null)),
+        ]);
+        if (metRes?.metrics) {
+          const m = metRes.metrics;
+          setFormData((prev) => ({
+            ...prev,
+            age: m.age ?? prev.age,
+            gender: m.gender ?? prev.gender,
+            height_cm: m.height_cm ?? prev.height_cm,
+            height_unit: (m.height_unit || metRes.height_unit || prev.height_unit) as HeightUnit,
+            current_weight_kg: m.current_weight_kg ?? prev.current_weight_kg,
+            body_fat_pct: m.body_fat_pct ?? prev.body_fat_pct,
+            chest_cm: m.chest_cm ?? prev.chest_cm,
+            waist_cm: m.waist_cm ?? prev.waist_cm,
+            hips_cm: m.hips_cm ?? prev.hips_cm,
+            arms_cm: m.arms_cm ?? prev.arms_cm,
+            experience_level: m.experience_level ?? prev.experience_level,
+            workout_location: m.workout_location ?? prev.workout_location,
+            workout_duration_mins: m.workout_duration_mins ?? prev.workout_duration_mins,
+            equipment: Array.isArray(m.equipment) && m.equipment.length ? m.equipment : prev.equipment,
+            limitations: m.limitations ?? prev.limitations,
+            diet_preference: m.diet_preference ?? prev.diet_preference,
+            sleep_hours_avg: m.sleep_hours_avg ?? prev.sleep_hours_avg,
+            daily_activity_level: m.daily_activity_level ?? prev.daily_activity_level,
+            daily_steps_avg: m.daily_steps_avg ?? prev.daily_steps_avg,
+            rest_days_preferred: m.rest_days_preferred ?? prev.rest_days_preferred,
+          }));
+        } else if (metRes?.height_unit) {
+          setFormData((prev) => ({ ...prev, height_unit: metRes.height_unit as HeightUnit }));
+        }
+        if (goalRes?.goal) {
+          const g = goalRes.goal;
+          setFormData((prev) => ({
+            ...prev,
+            primary_goal: g.primary_goal ?? prev.primary_goal,
+            target_weight_kg: g.target_weight_kg ?? prev.target_weight_kg,
+            weekly_workout_days: g.weekly_workout_days ?? prev.weekly_workout_days,
+          }));
+        }
+      } catch {
+        // Ignore non-blocking preload error
+      }
+    }
+    loadExisting();
+  }, []);
+
   const handleEquipmentToggle = (item: string) => {
     setFormData((prev) => {
       const exists = prev.equipment.includes(item);
@@ -71,18 +126,25 @@ export default function OnboardingPage() {
   };
 
   const handleFinish = async () => {
+    if (!heightValid) {
+      setError('Please enter a valid height before completing onboarding.');
+      setStep(1);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      // 1. Save Metrics
-      await fetch('/api/user/metrics', {
+      // 1. Save Metrics (height standardized in cm + preferred height_unit)
+      const metRes = await fetch('/api/user/metrics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           age: formData.age,
           gender: formData.gender,
           height_cm: formData.height_cm,
+          height_unit: formData.height_unit,
           current_weight_kg: formData.current_weight_kg,
           body_fat_pct: formData.body_fat_pct,
           chest_cm: formData.chest_cm,
@@ -106,9 +168,13 @@ export default function OnboardingPage() {
           rest_days_preferred: formData.rest_days_preferred,
         }),
       });
+      if (!metRes.ok) {
+        const d = await metRes.json().catch(() => null);
+        throw new Error(d?.error || 'Failed to save biometric metrics.');
+      }
 
       // 2. Save Goals
-      await fetch('/api/user/goals', {
+      const goalRes = await fetch('/api/user/goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -117,6 +183,10 @@ export default function OnboardingPage() {
           weekly_workout_days: formData.weekly_workout_days,
         }),
       });
+      if (!goalRes.ok) {
+        const d = await goalRes.json().catch(() => null);
+        throw new Error(d?.error || 'Failed to save fitness goals.');
+      }
 
       router.push('/dashboard');
       window.location.href = '/dashboard';
@@ -191,15 +261,19 @@ export default function OnboardingPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Height (cm)</label>
-                <input
-                  type="number"
-                  value={formData.height_cm}
-                  onChange={(e) => setFormData({ ...formData, height_cm: Number(e.target.value) })}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
-                />
-              </div>
+              <HeightInput
+                heightCm={formData.height_cm}
+                unit={formData.height_unit}
+                onChange={(nextHeightCm, nextUnit, isValid) => {
+                  setHeightValid(isValid);
+                  if (isValid) setError(null);
+                  setFormData((prev) => ({
+                    ...prev,
+                    height_cm: nextHeightCm,
+                    height_unit: nextUnit,
+                  }));
+                }}
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -586,7 +660,14 @@ export default function OnboardingPage() {
           {step < 4 ? (
             <button
               type="button"
-              onClick={() => setStep(step + 1)}
+              onClick={() => {
+                if (step === 1 && !heightValid) {
+                  setError('Please enter a valid height before continuing.');
+                  return;
+                }
+                setError(null);
+                setStep(step + 1);
+              }}
               className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-all shadow-glow"
             >
               <span>Continue</span>

@@ -5,11 +5,14 @@
 
 export type UserRole = 'user' | 'admin';
 
+export type HeightUnit = 'cm' | 'ft_in';
+
 export interface UserProfile {
   id: string;
   email: string;
   full_name: string;
   avatar_url?: string;
+  height_unit?: HeightUnit;
   role: UserRole;
   created_at: string;
   updated_at: string;
@@ -55,6 +58,7 @@ export interface FitnessMetrics {
   age: number;
   gender: 'male' | 'female' | 'other' | 'prefer_not_to_say';
   height_cm: number;
+  height_unit?: HeightUnit;
   current_weight_kg: number;
   body_fat_pct?: number;
   chest_cm?: number;

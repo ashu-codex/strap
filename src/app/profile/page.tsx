@@ -2,11 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, Scale, Sparkles, Check, AlertCircle, Save, ShieldAlert } from 'lucide-react';
+import HeightInput from '@/components/ui/HeightInput';
+import { HeightUnit } from '@/lib/height';
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [heightValid, setHeightValid] = useState(true);
 
   const [profile, setProfile] = useState<any>({
     full_name: '',
@@ -18,6 +22,7 @@ export default function ProfilePage() {
     age: 26,
     gender: 'male',
     height_cm: 175,
+    height_unit: 'cm' as HeightUnit,
     current_weight_kg: 72,
     body_fat_pct: 16,
     chest_cm: 98,
@@ -41,7 +46,27 @@ export default function ProfilePage() {
         ]);
 
         if (profRes.profile) setProfile(profRes.profile);
-        if (metRes.metrics) setMetrics(metRes.metrics);
+        if (metRes.metrics) {
+          setMetrics((prev: any) => ({
+            ...prev,
+            ...metRes.metrics,
+            height_unit:
+              metRes.metrics.height_unit ||
+              metRes.height_unit ||
+              profRes.profile?.height_unit ||
+              'cm',
+          }));
+        } else if (profRes.profile) {
+          setMetrics((prev: any) => ({
+            ...prev,
+            height_cm: profRes.profile.height ?? prev.height_cm,
+            current_weight_kg: profRes.profile.weight ?? prev.current_weight_kg,
+            age: profRes.profile.age ?? prev.age,
+            gender: profRes.profile.gender ?? prev.gender,
+            height_unit:
+              metRes.height_unit || profRes.profile.height_unit || 'cm',
+          }));
+        }
         setSubscription(subRes.subscription);
         setIsPremium(subRes.isPremium);
         setLoading(false);
@@ -54,26 +79,48 @@ export default function ProfilePage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!heightValid) {
+      setMessage(null);
+      setErrorMsg('Please enter a valid height before saving.');
+      return;
+    }
+
     setSaving(true);
     setMessage(null);
+    setErrorMsg(null);
 
     try {
-      await Promise.all([
+      const [pRes, mRes] = await Promise.all([
         fetch('/api/user/profile', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ full_name: profile.full_name }),
+          body: JSON.stringify({
+            full_name: profile.full_name,
+            height_unit: metrics.height_unit || 'cm',
+          }),
         }),
         fetch('/api/user/metrics', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(metrics),
+          body: JSON.stringify({
+            ...metrics,
+            height_unit: metrics.height_unit || 'cm',
+          }),
         }),
       ]);
 
+      if (!pRes.ok || !mRes.ok) {
+        const errBody = await (!mRes.ok ? mRes : pRes).json().catch(() => null);
+        throw new Error(errBody?.error || 'Failed to update profile.');
+      }
+
+      const savedMet = await mRes.json();
+      if (savedMet?.metrics) {
+        setMetrics((prev: any) => ({ ...prev, ...savedMet.metrics }));
+      }
       setMessage('Profile and biometric parameters successfully updated.');
-    } catch (err) {
-      setMessage('Failed to update profile.');
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Failed to update profile.');
     } finally {
       setSaving(false);
     }
@@ -100,6 +147,13 @@ export default function ProfilePage() {
         <div className="rounded-xl border border-brand/30 bg-brand/10 p-3.5 text-xs text-brand flex items-center gap-2">
           <Check className="h-4 w-4" />
           <span>{message}</span>
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-400 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" />
+          <span>{errorMsg}</span>
         </div>
       )}
 
@@ -186,7 +240,7 @@ export default function ProfilePage() {
             Biometric Measurements
           </h2>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
             <div>
               <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Current Weight (kg)</label>
               <input
@@ -198,15 +252,19 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div>
-              <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Height (cm)</label>
-              <input
-                type="number"
-                value={metrics.height_cm || ''}
-                onChange={(e) => setMetrics({ ...metrics, height_cm: Number(e.target.value) })}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
-              />
-            </div>
+            <HeightInput
+              heightCm={metrics.height_cm ?? 175}
+              unit={(metrics.height_unit as HeightUnit) || 'cm'}
+              onChange={(nextHeightCm, nextUnit, isValid) => {
+                setHeightValid(isValid);
+                if (isValid) setErrorMsg(null);
+                setMetrics((prev: any) => ({
+                  ...prev,
+                  height_cm: nextHeightCm,
+                  height_unit: nextUnit,
+                }));
+              }}
+            />
 
             <div>
               <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Age</label>
