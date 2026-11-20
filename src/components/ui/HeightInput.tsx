@@ -311,11 +311,11 @@ export default function HeightInput({
         </p>
       ) : unit === 'cm' && previewFtIn ? (
         <p className="text-[11px] text-zinc-400 mt-1">
-          &approx; {previewFtIn.feet} ft {previewFtIn.inches} in
+          ≈ {previewFtIn.feet} ft {previewFtIn.inches} in
         </p>
       ) : unit === 'ft_in' && previewCmFromFtIn !== null ? (
         <p className="text-[11px] text-zinc-400 mt-1">
-          {parsedFeet} ft {parsedInches} in &approx; {previewCmFromFtIn} cm
+          {parsedFeet} ft {parsedInches} in ≈ {previewCmFromFtIn} cm
         </p>
       ) : null}
     </div>
