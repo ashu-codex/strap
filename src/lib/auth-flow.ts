@@ -1,8 +1,10 @@
 import { db } from '@/lib/db';
-import { isOwnerEmail } from '@/lib/auth-helpers';
+import { extractOAuthProfileMeta, isOwnerEmail } from '@/lib/auth-helpers';
 import { safeNext } from '@/lib/api';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isDevFallbackAllowed, isServiceRoleConfigured } from '@/lib/config';
+
+export { extractOAuthProfileMeta };
 
 export interface AuthLookupResult {
   exists: boolean;
@@ -58,17 +60,21 @@ export async function lookupAuthAccount(normalizedEmail: string): Promise<AuthLo
 /**
  * Ensure a profile + free subscription exist for an authenticated user UUID.
  * Strictly idempotent: NEVER overwrites an existing user's profile or subscription data.
+ * Supports OAuth accounts (e.g. Facebook) where email may be empty.
  */
 export async function ensureProfile(userId: string, email: string, meta?: Record<string, any>) {
+  const normalizedEmail = (email || '').trim().toLowerCase();
+  const { fullName, avatarUrl } = extractOAuthProfileMeta(normalizedEmail, meta);
+
   const existing = await db.selectOne('user_profiles', { eq: { id: userId } });
   if (!existing) {
     await db.insertIfMissing(
       'user_profiles',
       {
         id: userId,
-        email: email.trim().toLowerCase(),
-        full_name: meta?.full_name || meta?.name || email.split('@')[0],
-        avatar_url: meta?.avatar_url ?? null,
+        email: normalizedEmail,
+        full_name: fullName,
+        avatar_url: avatarUrl,
         role: 'user', // never derived from client input
       },
       'id'
@@ -88,8 +94,14 @@ export async function ensureProfile(userId: string, email: string, meta?: Record
 export async function postAuthDestination(userId: string, email: string, next?: string | null): Promise<string> {
   const owner = isOwnerEmail(email);
   const requested = safeNext(next, '');
-  if (requested && !(requested.startsWith('/admin') && !owner)) return requested;
-  if (owner) return '/admin';
   const onboarded = await db.selectOne('fitness_metrics', { eq: { user_id: userId } });
+
+  if (requested && !(requested.startsWith('/admin') && !owner)) {
+    if (requested === '/onboarding' && onboarded) {
+      return owner ? '/admin' : '/dashboard';
+    }
+    return requested;
+  }
+  if (owner) return '/admin';
   return onboarded ? '/dashboard' : '/onboarding';
 }

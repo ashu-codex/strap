@@ -118,6 +118,35 @@ body {
   color: #ffffff !important;
 }
 
+/* Facebook Official OAuth Button (Light & Dark Contrast Locked) */
+.btn-facebook {
+  background-color: #1877F2 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #1877F2 !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  transition: all 150ms ease !important;
+}
+.btn-facebook:hover:not(:disabled) {
+  background-color: #166FE5 !important;
+  border-color: #166FE5 !important;
+  color: #FFFFFF !important;
+}
+.btn-facebook:active:not(:disabled) {
+  transform: scale(0.99);
+}
+.btn-facebook:focus-visible {
+  outline: 2px solid #1877F2 !important;
+  outline-offset: 2px;
+}
+.btn-facebook:disabled {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
+}
+.btn-facebook svg {
+  color: #FFFFFF !important;
+}
+
 /* Brand Wordmark & Mark */
 .strap-brand-word {
   color: var(--text-color) !important;

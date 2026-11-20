@@ -103,27 +103,62 @@ function safeCookie(name: string): string | undefined {
   }
 }
 
+/** Normalize OAuth name and avatar URL across Google, Facebook (nested picture.data.url), and Email. */
+export function extractOAuthProfileMeta(
+  email: string,
+  meta?: Record<string, any>
+): { fullName: string; avatarUrl: string | null } {
+  const rawName = meta?.full_name || meta?.name;
+  const trimmedEmail = (email || '').trim().toLowerCase();
+  const fullName =
+    (typeof rawName === 'string' && rawName.trim()) ||
+    (trimmedEmail.includes('@') ? trimmedEmail.split('@')[0] : '') ||
+    'Athlete';
+
+  let avatarUrl: string | null = null;
+  if (typeof meta?.avatar_url === 'string' && meta.avatar_url.trim()) {
+    avatarUrl = meta.avatar_url.trim();
+  } else if (typeof meta?.picture?.data?.url === 'string' && meta.picture.data.url.trim()) {
+    avatarUrl = meta.picture.data.url.trim();
+  } else if (typeof meta?.picture === 'string' && meta.picture.trim()) {
+    avatarUrl = meta.picture.trim();
+  }
+
+  return { fullName, avatarUrl };
+}
+
 async function loadProfile(id: string, email: string, meta?: Record<string, any>): Promise<UserProfile> {
+  const { fullName, avatarUrl } = extractOAuthProfileMeta(email, meta);
+  const normalized = (email || '').trim().toLowerCase();
   let p = await db.selectOne('user_profiles', { eq: { id } });
   if (!p) {
     // Missing-profile recovery: trigger may have failed. Insert safely without ever overwriting existing rows.
     try {
       await db.insertIfMissing(
         'user_profiles',
-        { id, email, full_name: meta?.full_name || meta?.name || email.split('@')[0], avatar_url: meta?.avatar_url ?? null, role: 'user' },
+        { id, email: normalized, full_name: fullName, avatar_url: avatarUrl, role: 'user' },
         'id'
       );
       await db.insertIfMissing('subscriptions', { user_id: id, plan: 'free', status: 'active', price_inr: 0 }, 'user_id').catch(() => null);
       p = (await db.selectOne('user_profiles', { eq: { id } })) || {
         id,
-        email,
-        full_name: meta?.full_name || meta?.name || email.split('@')[0],
+        email: normalized,
+        full_name: fullName,
+        avatar_url: avatarUrl,
         role: 'user',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
     } catch {
-      p = { id, email, full_name: email.split('@')[0], role: 'user', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+      p = {
+        id,
+        email: normalized,
+        full_name: fullName,
+        avatar_url: avatarUrl,
+        role: 'user',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
     }
   }
   return {
