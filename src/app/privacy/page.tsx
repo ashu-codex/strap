@@ -38,7 +38,11 @@ export default function PrivacyPolicyPage() {
       <section className="space-y-3">
         <h2 className="text-base font-bold text-white uppercase tracking-wider">4. User Autonomy & Deletion</h2>
         <p>
-          You retain full control over your telemetry. You may request complete erasure of your account, workout logs, and historical measurements at any time by contacting support.
+          You retain full control over your telemetry. You may request complete erasure of your account, workout logs, and historical measurements at any time by contacting support at{' '}
+          <a href="mailto:straptrainorg@gmail.com" className="text-brand hover:underline">
+            straptrainorg@gmail.com
+          </a>
+          .
         </p>
       </section>
     </div>

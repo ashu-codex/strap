@@ -26,7 +26,7 @@ export default function AiAssistantPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'model',
-      parts: `**Greetings, Athlete!** I am your STRAP AI Coach powered by Google Gemini.\n\nI continuously monitor your training performance, progressive overload requirements, and autonomic recovery. What would you like to calibrate today?`,
+      parts: `**Greetings, Athlete!** I am your STRAP Coach powered by Google Gemini.\n\nI continuously monitor your training performance, progressive overload requirements, and autonomic recovery. What would you like to calibrate today?`,
     },
   ]);
   const [input, setInput] = useState('');
@@ -138,7 +138,7 @@ export default function AiAssistantPage() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-white flex items-center gap-1.5">
-              STRAP AI Fitness Coach
+              STRAP Fitness Coach
               <span className="text-[10px] font-bold text-brand bg-brand/10 px-2 py-0.5 rounded-full border border-brand/30">
                 Gemini 1.5
               </span>

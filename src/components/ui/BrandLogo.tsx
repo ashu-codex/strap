@@ -5,14 +5,12 @@ import React from 'react';
 interface BrandLogoProps {
   size?: 'sm' | 'md' | 'lg';
   showTagline?: boolean;
-  showAiBadge?: boolean;
   className?: string;
 }
 
 export function BrandLogo({
   size = 'md',
   showTagline = true,
-  showAiBadge = true,
   className = '',
 }: BrandLogoProps) {
   const markSize = {
@@ -37,7 +35,7 @@ export function BrandLogo({
         S
       </div>
 
-      {/* Brand Text & AI Badge */}
+      {/* Brand Text */}
       <div className="flex flex-col justify-center leading-none">
         <div className="flex items-center gap-1.5">
           <span
@@ -46,15 +44,6 @@ export function BrandLogo({
           >
             STRAP
           </span>
-
-          {showAiBadge && (
-            <span
-              className="text-[10px] uppercase font-extrabold tracking-widest px-1.5 py-0.5 rounded-[6px] bg-[#B7F34A]/15 text-[#6BA814] dark:text-[#B7F34A] border border-[#B7F34A]/40 leading-tight"
-              style={{ opacity: 1, filter: 'none' }}
-            >
-              AI
-            </span>
-          )}
         </div>
 
         {showTagline && (

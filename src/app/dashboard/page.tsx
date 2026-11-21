@@ -300,7 +300,7 @@ export default function DashboardPage() {
           <div className="relative rounded-2xl border border-brand/30 bg-card p-6 shadow-glow">
             <div className="flex items-center gap-2 text-xs font-bold text-brand mb-3">
               <Bot className="h-4 w-4" />
-              <span>STRAP AI Coach Feedback</span>
+              <span>STRAP Coach Feedback</span>
             </div>
 
             {isPremium ? (

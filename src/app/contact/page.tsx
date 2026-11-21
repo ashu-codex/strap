@@ -35,7 +35,12 @@ export default function ContactPage() {
               <Mail className="h-4 w-4 text-brand" />
               <span>Direct Support</span>
             </h3>
-            <p className="text-xs text-zinc-400">straptrainorg@gmail.com</p>
+            <a
+              href="mailto:straptrainorg@gmail.com"
+              className="inline-block text-xs font-medium text-zinc-300 hover:text-brand underline underline-offset-2 transition-colors"
+            >
+              straptrainorg@gmail.com
+            </a>
           </div>
 
           <div className="rounded-2xl border border-card-border bg-card p-5 space-y-3">

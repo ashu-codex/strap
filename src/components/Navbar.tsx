@@ -59,7 +59,7 @@ export default function Navbar() {
         {/* Brand Logo */}
         <div className="flex items-center gap-6">
           <a href="/" className="group focus:outline-none">
-            <BrandLogo size="md" showTagline showAiBadge />
+            <BrandLogo size="md" showTagline />
           </a>
 
           {/* Desktop Nav Links (Visible when logged in) */}

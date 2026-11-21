@@ -99,7 +99,7 @@ export default function LandingPage() {
     },
     {
       q: 'What is the price of STRAP Premium?',
-      a: 'STRAP Premium is only ₹100 per month. It gives you unlimited personalized AI workout plans, complete exercise library access, nutrition calculations, recovery readiness analytics, and 24/7 access to the STRAP AI coach.',
+      a: 'STRAP Premium is only ₹100 per month. It gives you unlimited personalized AI workout plans, complete exercise library access, nutrition calculations, recovery readiness analytics, and 24/7 access to the STRAP coach.',
     },
     {
       q: 'Which payment methods are accepted for STRAP Premium?',

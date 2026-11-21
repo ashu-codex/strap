@@ -250,14 +250,14 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
       <div className="w-full max-w-md rounded-[14px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-8 shadow-glow transition-colors">
         {/* Brand Header */}
         <div className="text-center mb-6 flex flex-col items-center">
-          <BrandLogo size="lg" showTagline={false} showAiBadge={true} className="mb-3" />
+          <BrandLogo size="lg" showTagline={false} className="mb-3" />
           <h1 className="text-2xl font-black text-[#111318] dark:text-white">
             {mode === 'login' ? 'Welcome Back' : 'Create Your Account'}
           </h1>
           <p className="text-xs text-[#52525B] dark:text-[#9496A1] mt-1">
             {mode === 'login'
               ? 'Sign in to access your STRAP profile, workouts & recovery data'
-              : 'Start your personalized STRAP AI fitness journey'}
+              : 'Start your personalized STRAP fitness journey'}
           </p>
         </div>
 

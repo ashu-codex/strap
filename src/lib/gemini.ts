@@ -449,7 +449,7 @@ export async function chatWithAIAssistant(
       const model = genAI.getGenerativeModel({
         model: modelName,
         generationConfig: { maxOutputTokens: 1024, temperature: 0.6 },
-        systemInstruction: `You are the STRAP AI Fitness Coach.
+        systemInstruction: `You are the STRAP Fitness Coach.
 Your philosophy: Science-based, encouraging, precise, and practical.
 Brand: STRAP (Start, Train, Recover, Adapt, Progress).
 Tagline: Train Smart. Recover Better. Progress Faster.
@@ -481,7 +481,7 @@ Guidelines:
   }
 
   // Graceful conversational response when API key is pending
-  return `**STRAP AI Assistant** (Local Coach Mode)\n\nThank you for reaching out regarding: "${userMessage}".\n\n- **Training Insight**: Always prioritize movement quality over raw weight. Progressive overload can be achieved via load, reps, tempo, or reduced rest intervals.\n- **Recovery & Nutrition**: Ensure adequate daily protein (1.6 - 2.2g/kg) and target 7-8 hours of continuous sleep to maximize muscle protein synthesis.\n- **Adaptive Next Step**: Check your active workout plan in the **Workout Planner** and log your sets in the **Workout Tracker** to enable continuous AI adaptation.\n\n*(Note: To unlock live conversational Gemini reasoning, configure \`GEMINI_API_KEY\` in your \`.env.local\` file!)*`;
+  return `**STRAP Assistant** (Local Coach Mode)\n\nThank you for reaching out regarding: "${userMessage}".\n\n- **Training Insight**: Always prioritize movement quality over raw weight. Progressive overload can be achieved via load, reps, tempo, or reduced rest intervals.\n- **Recovery & Nutrition**: Ensure adequate daily protein (1.6 - 2.2g/kg) and target 7-8 hours of continuous sleep to maximize muscle protein synthesis.\n- **Adaptive Next Step**: Check your active workout plan in the **Workout Planner** and log your sets in the **Workout Tracker** to enable continuous AI adaptation.\n\n*(Note: To unlock live conversational Gemini reasoning, configure \`GEMINI_API_KEY\` in your \`.env.local\` file!)*`;
 }
 
 /**

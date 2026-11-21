@@ -24,10 +24,10 @@ export default function CheckoutPage() {
   const [utrReference, setUtrReference] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submittedPayment, setSubmittedPayment] = useState<any | null>(null);
+  const [upiId, setUpiId] = useState('ashutosh-k82@ptyes');
+  const [amount, setAmount] = useState(100);
 
-  const upiId = 'ashutosh-k82@ptyes';
   const upiName = 'STRAP Fitness';
-  const amount = 100;
   const note = 'STRAP Premium Subscription';
 
   const upiDeepLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
@@ -40,6 +40,12 @@ export default function CheckoutPage() {
       const data = await res.json();
       const isPrem = Boolean(data.isPremium);
       setIsAlreadyPremium(isPrem);
+      if (data?.planConfig?.upi_id) {
+        setUpiId(data.planConfig.upi_id);
+      }
+      if (data?.planConfig?.price_inr) {
+        setAmount(Number(data.planConfig.price_inr) || 100);
+      }
 
       if (isPrem) {
         window.dispatchEvent(new Event('strap-auth-refresh'));
@@ -131,15 +137,47 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8 space-y-8">
-      {/* Header */}
-      <div className="text-center max-w-2xl mx-auto">
-        <span className="text-xs font-bold uppercase tracking-widest text-[#6BA814] dark:text-[#B7F34A] bg-[#B7F34A]/15 px-3 py-1 rounded-[6px] border border-[#B7F34A]/30">
-          Direct UPI Verification Engine
-        </span>
-        <h1 className="text-3xl font-black text-[#111318] dark:text-white mt-3">Activate STRAP Premium</h1>
-        <p className="text-xs text-[#9496A1] light:text-[#52525B] mt-1">
-          Complete your monthly subscription of <strong>₹100</strong> via any UPI application and submit your transaction reference.
-        </p>
+      {/* Header & Payment Instructions with Configured UPI ID */}
+      <div className="text-center max-w-2xl mx-auto space-y-4">
+        <div>
+          <span className="text-xs font-bold uppercase tracking-widest text-[#6BA814] dark:text-[#B7F34A] bg-[#B7F34A]/15 px-3 py-1 rounded-[6px] border border-[#B7F34A]/30">
+            Direct UPI Verification Engine
+          </span>
+          <h1 className="text-3xl font-black text-[#111318] dark:text-white mt-3">Activate STRAP Premium</h1>
+          <p className="text-xs text-[#52525B] dark:text-[#9496A1] mt-1">
+            Complete your monthly subscription of <strong>₹{amount}</strong> via any UPI application using the official UPI ID below, then submit your 12-digit UTR reference.
+          </p>
+        </div>
+
+        {/* Official UPI ID Banner & Copy Button (Visible on Mobile & Desktop) */}
+        <div className="mx-auto max-w-lg rounded-[12px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-3.5 shadow-glow flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex flex-col sm:items-start items-center text-center sm:text-left">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6BA814] dark:text-[#B7F34A]">
+              Official Payment UPI ID
+            </span>
+            <span className="font-mono text-sm font-bold text-[#111318] dark:text-white select-all mt-0.5">
+              {upiId}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleCopyUpi}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-[8px] bg-[#B7F34A] text-[#111318] hover:bg-[#A7E438] text-xs font-extrabold transition-all shadow-glow strap-primary"
+            title="Copy UPI ID"
+          >
+            {copied ? (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                <span>Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" />
+                <span>Copy UPI ID</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* STATE A: PREMIUM IS ACTIVE */}
@@ -228,14 +266,14 @@ export default function CheckoutPage() {
         /* STATE C: PAYMENT FORM & DYNAMIC QR CODE */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {/* Left: Dynamic QR Code & Direct Link */}
-          <div className="rounded-[14px] border border-[#30333A] light:border-[#E1E4E8] bg-[#1B1D22] dark:bg-[#1B1D22] light:bg-[#FFFFFF] p-6 flex flex-col items-center justify-between text-center shadow-glow">
-            <div>
+          <div className="rounded-[14px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-6 flex flex-col items-center justify-between text-center shadow-glow">
+            <div className="w-full">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#6BA814] dark:text-[#B7F34A]">
                 Step 1: Scan & Transfer
               </span>
               <h3 className="text-lg font-black text-[#111318] dark:text-white mt-1">Official UPI Destination</h3>
-              <p className="text-xs text-[#9496A1] light:text-[#52525B] mt-0.5 mb-4">
-                Scan with Google Pay, PhonePe, Paytm, or BHIM
+              <p className="text-xs text-[#52525B] dark:text-[#9496A1] mt-0.5 mb-4">
+                Scan with Google Pay, PhonePe, Paytm, or BHIM, or pay directly to the UPI ID below
               </p>
 
               {/* Dynamic QR Code Render */}
@@ -250,26 +288,36 @@ export default function CheckoutPage() {
               </div>
 
               {/* Copy UPI ID */}
-              <div className="mt-4 flex items-center justify-center gap-2">
-                <span className="font-mono text-xs font-bold text-[#111318] dark:text-zinc-200 bg-[#141519] dark:bg-[#141519] light:bg-[#F5F6F8] px-3 py-1.5 rounded-[8px] border border-[#30333A] light:border-[#E1E4E8]">
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <span className="font-mono text-xs font-bold text-[#111318] dark:text-zinc-200 bg-[#F5F6F8] dark:bg-[#141519] px-3 py-2 rounded-[8px] border border-[#E1E4E8] dark:border-[#30333A] select-all">
                   {upiId}
                 </span>
                 <button
                   type="button"
                   onClick={handleCopyUpi}
-                  className="p-2 rounded-[8px] bg-[#141519] dark:bg-[#141519] light:bg-[#F5F6F8] text-[#9496A1] hover:text-[#111318] dark:hover:text-white transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] bg-[#F5F6F8] dark:bg-[#141519] border border-[#E1E4E8] dark:border-[#30333A] text-xs font-bold text-[#111318] dark:text-white hover:border-[#B7F34A] transition-colors"
                   title="Copy UPI ID"
                 >
-                  {copied ? <Check className="h-4 w-4 text-[#B7F34A]" /> : <Copy className="h-4 w-4" />}
+                  {copied ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-[#6BA814] dark:text-[#B7F34A]" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>Copy UPI ID</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
 
             {/* Direct Pay Link for Mobile Users */}
-            <div className="w-full pt-4 border-t border-[#30333A] light:border-[#E1E4E8] mt-4">
+            <div className="w-full pt-4 border-t border-[#E1E4E8] dark:border-[#30333A] mt-4">
               <a
                 href={upiDeepLink}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-[10px] border border-[#30333A] light:border-[#E1E4E8] bg-[#141519] dark:bg-[#141519] light:bg-[#F5F6F8] text-xs font-bold text-[#111318] dark:text-[#B7F34A] hover:border-[#B7F34A] transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] text-xs font-bold text-[#111318] dark:text-[#B7F34A] hover:border-[#B7F34A] transition-colors"
               >
                 <span>Tap to Pay on Mobile UPI App</span>
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -278,32 +326,36 @@ export default function CheckoutPage() {
           </div>
 
           {/* Right: Order Summary & UTR Submission Form */}
-          <div className="rounded-[14px] border border-[#30333A] light:border-[#E1E4E8] bg-[#1B1D22] dark:bg-[#1B1D22] light:bg-[#FFFFFF] p-6 flex flex-col justify-between space-y-6">
+          <div className="rounded-[14px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-6 flex flex-col justify-between space-y-6">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#6BA814] dark:text-[#B7F34A]">
                 Step 2: Enter Transaction Details
               </span>
               <h3 className="text-lg font-black text-[#111318] dark:text-white mt-1">Submit Payment Reference</h3>
-              <p className="text-xs text-[#9496A1] light:text-[#52525B] mt-0.5">
-                After completing the ₹100 payment, enter the 12-digit UTR/Reference number from your banking app.
+              <p className="text-xs text-[#52525B] dark:text-[#9496A1] mt-0.5">
+                After transferring ₹{amount} to <strong className="font-mono text-[#111318] dark:text-white">{upiId}</strong>, enter the 12-digit UTR/Reference number from your UPI app.
               </p>
 
               {/* Order breakdown */}
-              <div className="mt-4 p-4 rounded-[10px] bg-[#141519] dark:bg-[#141519] light:bg-[#F5F6F8] border border-[#30333A] light:border-[#E1E4E8] space-y-2 text-xs">
+              <div className="mt-4 p-4 rounded-[10px] bg-[#F5F6F8] dark:bg-[#141519] border border-[#E1E4E8] dark:border-[#30333A] space-y-2 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-[#9496A1]">Plan:</span>
+                  <span className="text-[#52525B] dark:text-[#9496A1]">Plan:</span>
                   <span className="font-bold text-[#111318] dark:text-white">STRAP Premium Membership</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#9496A1]">Price:</span>
-                  <span className="font-black text-[#6BA814] dark:text-[#B7F34A] text-sm">₹100 INR</span>
+                  <span className="text-[#52525B] dark:text-[#9496A1]">Price:</span>
+                  <span className="font-black text-[#6BA814] dark:text-[#B7F34A] text-sm">₹{amount} INR</span>
+                </div>
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-[#52525B] dark:text-[#9496A1]">UPI ID:</span>
+                  <span className="font-mono font-bold text-[#111318] dark:text-white select-all">{upiId}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#9496A1]">Billing Cycle:</span>
+                  <span className="text-[#52525B] dark:text-[#9496A1]">Billing Cycle:</span>
                   <span className="text-[#111318] dark:text-zinc-300">30 Days</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#9496A1]">Activation Rule:</span>
+                  <span className="text-[#52525B] dark:text-[#9496A1]">Activation Rule:</span>
                   <span className="text-[#111318] dark:text-zinc-300">Admin Bank Verification</span>
                 </div>
               </div>

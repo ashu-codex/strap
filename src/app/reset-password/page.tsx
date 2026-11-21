@@ -46,7 +46,7 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
       <div className="w-full max-w-md rounded-[14px] border border-[#30333A] light:border-[#E1E4E8] bg-[#1B1D22] dark:bg-[#1B1D22] light:bg-[#FFFFFF] p-8 shadow-glow transition-colors">
         <div className="text-center mb-8 flex flex-col items-center">
-          <BrandLogo size="lg" showTagline={false} showAiBadge={true} className="mb-3" />
+          <BrandLogo size="lg" showTagline={false} className="mb-3" />
           <h1 className="text-2xl font-black text-[#111318] dark:text-white">Set New Password</h1>
           <p className="text-xs text-[#9496A1] light:text-[#52525B] mt-1">
             Choose a strong new password for your STRAP account

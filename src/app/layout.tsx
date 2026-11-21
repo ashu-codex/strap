@@ -7,7 +7,7 @@ import Providers from '@/components/Providers';
 export const metadata: Metadata = {
   title: 'STRAP — Train Smart. Recover Better. Progress Faster.',
   description:
-    'STRAP is an intelligent AI fitness SaaS application that builds and adapts your personalized workout splits, progressive overload, nutrition calculations, and recovery insights.',
+    'STRAP is an intelligent fitness SaaS application that builds and adapts your personalized workout splits, progressive overload, nutrition calculations, and recovery insights.',
   icons: {
     icon: '/favicon.ico',
   },
