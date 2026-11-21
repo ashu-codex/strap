@@ -96,10 +96,10 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
       {/* 1. TOP WELCOME & STATUS BANNER */}
-      <div className="rounded-2xl border border-card-border bg-gradient-to-r from-card to-zinc-950 p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-glow">
+      <div className="rounded-2xl border border-[#E1E4E8] dark:border-card-border bg-white dark:bg-gradient-to-r dark:from-card dark:to-zinc-950 p-5 sm:p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-glow">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 px-2.5 py-0.5 rounded-full">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#4d7c0f] dark:text-brand bg-[#B7F34A]/20 dark:bg-brand/10 border border-[#B7F34A]/40 dark:border-brand/20 px-2.5 py-0.5 rounded-full">
               Athlete Central
             </span>
             {isPremium ? (
@@ -108,17 +108,17 @@ export default function DashboardPage() {
                 PREMIUM ACTIVE
               </span>
             ) : (
-              <span className="text-xs font-semibold text-zinc-400 bg-zinc-800 px-2.5 py-0.5 rounded-full">
+              <span className="text-xs font-semibold text-[#52525B] dark:text-zinc-400 bg-[#F0F2F5] dark:bg-zinc-800 px-2.5 py-0.5 rounded-full">
                 FREE PLAN
               </span>
             )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white">
+          <h1 className="text-2xl sm:text-3xl font-black text-[#111318] dark:text-white">
             Welcome back, {profile?.full_name || 'Athlete'}
           </h1>
-          <p className="text-xs text-zinc-400 mt-1 max-w-xl">
+          <p className="text-xs text-[#52525B] dark:text-zinc-400 mt-1 max-w-xl">
             Primary Goal:{' '}
-            <strong className="text-zinc-200 capitalize">
+            <strong className="text-[#111318] dark:text-zinc-200 capitalize">
               {goal?.primary_goal?.replace('_', ' ') || 'Muscle Gain'}
             </strong>{' '}
             • Baseline Schedule: {goal?.weekly_workout_days || 4} days/week
@@ -138,7 +138,7 @@ export default function DashboardPage() {
           {!isPremium && (
             <Link
               href="/checkout"
-              className="flex items-center gap-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-3 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition-colors"
+              className="flex items-center gap-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 px-4 py-3 text-xs font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
             >
               <Sparkles className="h-3.5 w-3.5" />
               <span>Upgrade (₹100)</span>
