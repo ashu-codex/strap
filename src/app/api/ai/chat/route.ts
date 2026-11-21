@@ -26,10 +26,13 @@ export async function POST(req: NextRequest) {
     const { message } = await parseBody(req, schema);
     const { user, subscription } = await aiGuard(req, 'chat');
 
-    // Conversation history comes from the database, not from client-supplied data.
-    const past = await db
-      .select('ai_chat_messages', { eq: { user_id: user.id }, order: ['created_at', 'desc'], limit: 8 })
-      .catch(() => []);
+    // Load conversation history and full athlete context in parallel
+    const [past, ctx] = await Promise.all([
+      db
+        .select('ai_chat_messages', { eq: { user_id: user.id }, order: ['created_at', 'desc'], limit: 8 })
+        .catch(() => []),
+      loadFitnessContext(user.id),
+    ]);
     const history = past
       .reverse()
       .map((m) => ({
@@ -37,7 +40,6 @@ export async function POST(req: NextRequest) {
         parts: sanitizeStoredMessage(String(m.content)).slice(0, 1500),
       }));
 
-    const ctx = await loadFitnessContext(user.id);
     const reply = await chatWithAIAssistant(message, history, {
       name: user.full_name || ctx.profile?.full_name || 'Athlete',
       age: ctx.metrics?.age ?? ctx.profile?.age,
@@ -58,10 +60,12 @@ export async function POST(req: NextRequest) {
       plan: subscription?.plan,
     });
 
-    await db.insert('ai_chat_messages', { user_id: user.id, role: 'user', content: message }).catch(() => null);
-    await db
-      .insert('ai_chat_messages', { user_id: user.id, role: 'model', content: reply.slice(0, 8000) })
-      .catch(() => null);
+    await Promise.all([
+      db.insert('ai_chat_messages', { user_id: user.id, role: 'user', content: message }).catch(() => null),
+      db
+        .insert('ai_chat_messages', { user_id: user.id, role: 'model', content: reply.slice(0, 8000) })
+        .catch(() => null),
+    ]);
     return json({ reply });
   } catch (e) {
     return handleError(e);
@@ -71,10 +75,12 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const { user } = await requireUser(req);
-    const rows = await db
-      .select('ai_chat_messages', { eq: { user_id: user.id }, order: ['created_at', 'desc'], limit: 30 })
-      .catch(() => []);
-    const ctx = await loadFitnessContext(user.id);
+    const [rows, ctx] = await Promise.all([
+      db
+        .select('ai_chat_messages', { eq: { user_id: user.id }, order: ['created_at', 'desc'], limit: 30 })
+        .catch(() => []),
+      loadFitnessContext(user.id),
+    ]);
     return json({
       messages: rows.reverse().map((m) => ({
         role: m.role,

@@ -22,9 +22,26 @@ function configured() {
 }
 
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+
+  // Non-admin API routes validate auth directly in their route handlers (avoids double auth.getUser() roundtrip).
+  if (path.startsWith('/api/') && !path.startsWith('/api/admin')) {
+    return NextResponse.next({ request });
+  }
+
   const cfg = configured();
   // Dev fallback mode (no Supabase): route handlers enforce auth; nothing to refresh here.
   if (!cfg) return NextResponse.next({ request });
+
+  const isAdminApi = path.startsWith('/api/admin');
+  const isAdminPage = path === '/admin' || path.startsWith('/admin/');
+  const isProtectedPage = PROTECTED_PAGES.some((p) => path === p || path.startsWith(p + '/'));
+
+  // Fast path for public pages when no Supabase auth cookie is present
+  const hasSbCookie = request.cookies.getAll().some((c) => c.name.startsWith('sb-'));
+  if (!hasSbCookie && !isAdminApi && !isAdminPage && !isProtectedPage) {
+    return NextResponse.next({ request });
+  }
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(cfg.url, cfg.key, {
@@ -45,13 +62,9 @@ export async function middleware(request: NextRequest) {
 
   const { data } = await supabase.auth.getUser();
   const user = data.user;
-  const path = request.nextUrl.pathname;
   const owner = (process.env.STRAP_ADMIN_EMAIL || process.env.ADMIN_EMAIL || '').trim().toLowerCase();
   const userEmail = (user?.email || user?.user_metadata?.email || '').trim().toLowerCase();
   const isOwner = Boolean(user && user.email_confirmed_at && owner && userEmail === owner);
-
-  const isAdminApi = path.startsWith('/api/admin');
-  const isAdminPage = path === '/admin' || path.startsWith('/admin/');
 
   if (isAdminApi && !isOwner) {
     return NextResponse.json(

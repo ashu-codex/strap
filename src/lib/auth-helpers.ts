@@ -75,8 +75,19 @@ export async function getUserSubscription(userId: string): Promise<Subscription>
   return sub || freeSub(userId);
 }
 
+const authDataCache = new Map<
+  string,
+  { profile: UserProfile; sub: Subscription; expiresAt: number }
+>();
+
+export function invalidateAuthCache(userId?: string) {
+  if (userId) authDataCache.delete(userId);
+  else authDataCache.clear();
+}
+
 /** Activate/extend premium. Called ONLY after admin approval or verified gateway signature. */
 export async function activatePremium(userId: string, priceInr: number, extraDays = 30, from?: Date) {
+  invalidateAuthCache(userId);
   const existing = (await db.selectOne('subscriptions', { eq: { user_id: userId } })) as Subscription | null;
   const base = existing && isActivePremium(existing) && existing.current_period_end ? new Date(existing.current_period_end) : from || new Date();
   const days = extraDays === 0 ? 30 : extraDays;
@@ -216,10 +227,27 @@ export async function getAuthUser(req?: NextRequest): Promise<AuthContext> {
     }
     const email = normalizeEmail(sbUser.email || sbUser.user_metadata?.email);
     const verified = Boolean(sbUser.email_confirmed_at);
-    const profile = await loadProfile(sbUser.id, email, sbUser.user_metadata);
     const isAdmin = verified && isOwnerEmail(email);
+
+    const now = Date.now();
+    const cached = authDataCache.get(sbUser.id);
+    if (cached && cached.expiresAt > now) {
+      const profile = { ...cached.profile, role: (isAdmin ? 'admin' : 'user') as 'admin' | 'user' };
+      return {
+        user: profile,
+        subscription: cached.sub,
+        isPremium: isAdmin || isActivePremium(cached.sub),
+        isAdmin,
+        emailVerified: verified,
+      };
+    }
+
+    const [profile, sub] = await Promise.all([
+      loadProfile(sbUser.id, email, sbUser.user_metadata),
+      getUserSubscription(sbUser.id),
+    ]);
     profile.role = isAdmin ? 'admin' : 'user';
-    const sub = await getUserSubscription(sbUser.id);
+    authDataCache.set(sbUser.id, { profile, sub, expiresAt: now + 12_000 });
     return { user: profile, subscription: sub, isPremium: isAdmin || isActivePremium(sub), isAdmin, emailVerified: verified };
   }
 
