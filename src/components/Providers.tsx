@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 export type ThemeMode = 'dark' | 'light' | 'system';
 export type ResolvedTheme = 'dark' | 'light';
@@ -30,7 +30,7 @@ export interface AppContextValue {
   toggleTheme: () => void;
   auth: AuthStatus | null;
   authLoading: boolean;
-  refreshAuth: () => Promise<AuthStatus | null>;
+  refreshAuth: (forceFresh?: boolean) => Promise<AuthStatus | null>;
   clearAuth: () => void;
 }
 
@@ -96,6 +96,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('dark');
   const [auth, setAuth] = useState<AuthStatus | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const authRef = useRef<AuthStatus | null>(null);
+  const inFlightRef = useRef<Promise<AuthStatus | null> | null>(null);
+  const lastFetchedAtRef = useRef<number>(0);
+
+  useEffect(() => {
+    authRef.current = auth;
+  }, [auth]);
 
   const applyTheme = useCallback((mode: ThemeMode) => {
     const resolved = mode === 'system' ? resolveSystemTheme() : mode;
@@ -125,28 +132,59 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   const clearAuth = useCallback(() => {
     writeCachedAuth(null);
-    setAuth({ user: null, subscription: null, isPremium: false, isAdmin: false });
+    const empty: AuthStatus = { user: null, subscription: null, isPremium: false, isAdmin: false };
+    authRef.current = empty;
+    lastFetchedAtRef.current = Date.now();
+    setAuth(empty);
     setAuthLoading(false);
   }, []);
 
-  const refreshAuth = useCallback(async () => {
-    try {
-      const res = await fetch('/api/auth/me', { cache: 'no-store' });
-      const data = await res.json();
-      const next: AuthStatus = {
-        user: data.user || null,
-        subscription: data.subscription || null,
-        isPremium: Boolean(data.isPremium),
-        isAdmin: Boolean(data.isAdmin),
-      };
-      setAuth(next);
-      writeCachedAuth(next);
-      setAuthLoading(false);
-      return next;
-    } catch {
-      setAuthLoading(false);
-      return null;
+  const refreshAuth = useCallback(async (forceFresh = false): Promise<AuthStatus | null> => {
+    const now = Date.now();
+    // Deduplicate rapid automatic triggers (e.g. simultaneous focus + visibilitychange)
+    if (!forceFresh) {
+      if (inFlightRef.current) return inFlightRef.current;
+      if (lastFetchedAtRef.current > 0 && now - lastFetchedAtRef.current < 5_000) {
+        return authRef.current;
+      }
     }
+
+    let reqPromise: Promise<AuthStatus | null> | null = null;
+    reqPromise = (async (): Promise<AuthStatus | null> => {
+      try {
+        const url = forceFresh ? '/api/auth/me?fresh=1' : '/api/auth/me';
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) {
+          // Do not clear existing session on transient HTTP errors
+          setAuthLoading(false);
+          return authRef.current;
+        }
+        const data = await res.json();
+        const next: AuthStatus = {
+          user: data.user || null,
+          subscription: data.subscription || null,
+          isPremium: Boolean(data.isPremium),
+          isAdmin: Boolean(data.isAdmin),
+        };
+        authRef.current = next;
+        lastFetchedAtRef.current = Date.now();
+        setAuth(next);
+        writeCachedAuth(next);
+        setAuthLoading(false);
+        return next;
+      } catch {
+        // Preserve existing session state on transient network failure
+        setAuthLoading(false);
+        return authRef.current;
+      } finally {
+        if (inFlightRef.current === reqPromise) {
+          inFlightRef.current = null;
+        }
+      }
+    })();
+
+    inFlightRef.current = reqPromise;
+    return reqPromise;
   }, []);
 
   useEffect(() => {
@@ -158,6 +196,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     // Hydrate cached auth synchronously so Navbar & pages never flash "Sign In" during navigation
     const cached = readCachedAuth();
     if (cached && cached.user) {
+      authRef.current = cached;
       setAuth(cached);
       setAuthLoading(false);
     }
@@ -174,7 +213,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
     setThemeState(initialMode);
     applyTheme(initialMode);
-    refreshAuth();
+    refreshAuth(false);
 
     // Listen to system theme changes if mode is 'system'
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -186,17 +225,32 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     };
     mediaQuery.addEventListener('change', handleSystemChange);
 
-    // Cross-tab and window listeners
-    const onFocus = () => refreshAuth();
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') refreshAuth();
+    // Cross-tab and window listeners (deduplicated by cooldown + in-flight lock)
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') {
+        refreshAuth(false);
+      }
     };
-    const onCustom = () => refreshAuth();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refreshAuth(false);
+      }
+    };
+    // Explicit app events (login, signup, payment approval, profile update) always fetch fresh state
+    const onCustom = () => {
+      refreshAuth(true);
+    };
 
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('strap-auth-refresh', onCustom);
-    const interval = window.setInterval(refreshAuth, 60000);
+
+    // Gentle 5-minute keepalive ONLY while the tab is visible and a user is signed in
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && authRef.current?.user) {
+        refreshAuth(false);
+      }
+    }, 300_000);
 
     return () => {
       mediaQuery.removeEventListener('change', handleSystemChange);

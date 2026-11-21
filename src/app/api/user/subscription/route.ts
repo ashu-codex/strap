@@ -4,7 +4,8 @@ import { getSettings } from '@/lib/settings';
 
 export async function GET(req: NextRequest) {
   try {
-    const { user, subscription, isPremium, isAdmin } = await requireUser(req);
+    // Always bypass in-memory auth cache here so admin payment approvals reflect immediately across instances
+    const { user, subscription, isPremium, isAdmin } = await requireUser(req, { bypassCache: true });
     const s = await getSettings();
     return json({
       user,

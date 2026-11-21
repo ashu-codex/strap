@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import QRCode from 'qrcode';
 import {
   CreditCard,
@@ -12,12 +12,16 @@ import {
   ArrowRight,
   CheckCircle2,
   Lock,
+  RefreshCw,
+  XCircle,
 } from 'lucide-react';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/Buttons';
 
 export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
   const [isAlreadyPremium, setIsAlreadyPremium] = useState(false);
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState('');
@@ -26,6 +30,8 @@ export default function CheckoutPage() {
   const [submittedPayment, setSubmittedPayment] = useState<any | null>(null);
   const [upiId, setUpiId] = useState('ashutosh-k82@ptyes');
   const [amount, setAmount] = useState(100);
+  const pollStartedAtRef = useRef<number | null>(null);
+  const statusCheckInFlightRef = useRef(false);
 
   const upiName = 'STRAP Fitness';
   const note = 'STRAP Premium Subscription';
@@ -34,9 +40,10 @@ export default function CheckoutPage() {
     upiName
   )}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
 
-  const refreshSubscription = async () => {
+  const refreshSubscription = useCallback(async (notifyOnPremium = true) => {
     try {
       const res = await fetch('/api/user/subscription', { cache: 'no-store' });
+      if (!res.ok) return null;
       const data = await res.json();
       const isPrem = Boolean(data.isPremium);
       setIsAlreadyPremium(isPrem);
@@ -47,18 +54,98 @@ export default function CheckoutPage() {
         setAmount(Number(data.planConfig.price_inr) || 100);
       }
 
-      if (isPrem) {
+      if (isPrem && notifyOnPremium) {
         window.dispatchEvent(new Event('strap-auth-refresh'));
       }
       return data;
     } catch {
       return null;
     }
-  };
+  }, []);
 
+  const checkPendingPaymentStatus = useCallback(
+    async (manual = false) => {
+      if (statusCheckInFlightRef.current && !manual) return;
+      statusCheckInFlightRef.current = true;
+      if (manual) setCheckingStatus(true);
+
+      try {
+        const [subData, histRes] = await Promise.all([
+          refreshSubscription(false),
+          fetch('/api/payments/history', { cache: 'no-store' })
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null),
+        ]);
+        setLastCheckedAt(
+          new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        );
+
+        const payments: any[] = Array.isArray(histRes?.payments) ? histRes.payments : [];
+        const matched = submittedPayment
+          ? payments.find(
+              (p) =>
+                (submittedPayment.id && p.id === submittedPayment.id) ||
+                (submittedPayment.utr_reference && p.utr_reference === submittedPayment.utr_reference)
+            )
+          : payments.find((p) => p.payment_status === 'pending');
+
+        if (subData?.isPremium || matched?.payment_status === 'approved') {
+          setIsAlreadyPremium(true);
+          if (matched || submittedPayment) {
+            setSubmittedPayment({
+              ...(matched || submittedPayment),
+              payment_status: 'approved',
+            });
+          }
+          window.dispatchEvent(new Event('strap-auth-refresh'));
+          return;
+        }
+
+        if (matched && matched.payment_status === 'rejected') {
+          setSubmittedPayment(matched);
+          return;
+        }
+
+        if (matched && matched.payment_status === 'pending') {
+          setSubmittedPayment(matched);
+        }
+      } finally {
+        statusCheckInFlightRef.current = false;
+        if (manual) setCheckingStatus(false);
+      }
+    },
+    [refreshSubscription, submittedPayment]
+  );
+
+  // Initial load: fetch subscription config once and restore any genuinely pending payment
   useEffect(() => {
-    refreshSubscription().finally(() => setLoading(false));
+    let active = true;
+    (async () => {
+      const subData = await refreshSubscription(false);
+      if (!active) return;
+      if (!subData?.isPremium) {
+        try {
+          const histRes = await fetch('/api/payments/history', { cache: 'no-store' });
+          if (histRes.ok) {
+            const hist = await histRes.json();
+            const pending = (hist.payments || []).find((p: any) => p.payment_status === 'pending');
+            if (active && pending) {
+              setSubmittedPayment(pending);
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+      if (active) setLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [refreshSubscription]);
 
+  // Generate QR code whenever UPI details change (does not re-fetch subscription)
+  useEffect(() => {
     QRCode.toDataURL(upiDeepLink, {
       width: 250,
       margin: 2,
@@ -71,22 +158,51 @@ export default function CheckoutPage() {
       .catch((err) => console.error('Failed to generate QR code:', err));
   }, [upiDeepLink]);
 
-  // Polling for instant activation when payment is submitted and pending
+  // Gentle adaptive polling ONLY while a payment is genuinely pending and the tab is visible.
+  // Never stops while pending (10s for first 5 minutes, then 25s) and always paired with manual Check Status.
+  const isPendingVerification =
+    Boolean(submittedPayment && submittedPayment.payment_status === 'pending') && !isAlreadyPremium;
+
   useEffect(() => {
-    if (!submittedPayment || isAlreadyPremium) return;
+    if (!isPendingVerification) {
+      pollStartedAtRef.current = null;
+      return;
+    }
 
-    const id = window.setInterval(async () => {
-      const data = await refreshSubscription();
-      if (data?.isPremium) {
-        setIsAlreadyPremium(true);
-        if (submittedPayment) {
-          setSubmittedPayment({ ...submittedPayment, payment_status: 'approved' });
+    if (!pollStartedAtRef.current) {
+      pollStartedAtRef.current = Date.now();
+    }
+
+    let timerId: number | null = null;
+    let cancelled = false;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      const elapsed = Date.now() - (pollStartedAtRef.current || Date.now());
+      const delay = elapsed < 5 * 60_000 ? 10_000 : 25_000;
+      timerId = window.setTimeout(async () => {
+        if (cancelled) return;
+        if (document.visibilityState === 'visible') {
+          await checkPendingPaymentStatus(false);
         }
-      }
-    }, 3000);
+        scheduleNext();
+      }, delay);
+    };
 
-    return () => window.clearInterval(id);
-  }, [submittedPayment, isAlreadyPremium]);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        checkPendingPaymentStatus(false);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    scheduleNext();
+
+    return () => {
+      cancelled = true;
+      if (timerId !== null) window.clearTimeout(timerId);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [isPendingVerification, checkPendingPaymentStatus]);
 
   const handleCopyUpi = () => {
     navigator.clipboard.writeText(upiId);
@@ -250,16 +366,57 @@ export default function CheckoutPage() {
           </div>
 
           <p className="text-[11px] text-[#9496A1] leading-relaxed italic">
-            This screen auto-refreshes every 3 seconds. Once approved by the administrator, Premium will activate automatically.
+            Status checks automatically while this tab is open. Once approved by the administrator, Premium will activate immediately.
+            {lastCheckedAt ? ` (Last checked: ${lastCheckedAt})` : ''}
           </p>
 
-          <div className="flex items-center justify-center gap-3 pt-2">
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <SecondaryButton
+              onClick={() => checkPendingPaymentStatus(true)}
+              loading={checkingStatus}
+              icon={<RefreshCw className="h-3.5 w-3.5" />}
+            >
+              Check Status
+            </SecondaryButton>
             <SecondaryButton onClick={() => (window.location.href = '/payment-history')}>
               View History
             </SecondaryButton>
             <PrimaryButton onClick={() => (window.location.href = '/dashboard')}>
               Return to Dashboard
             </PrimaryButton>
+          </div>
+        </div>
+      ) : submittedPayment && submittedPayment.payment_status === 'rejected' ? (
+        /* STATE B2: PAYMENT REJECTED SCREEN */
+        <div className="rounded-[14px] border border-red-500/40 bg-[#1B1D22] dark:bg-[#1B1D22] light:bg-[#FFFFFF] p-8 text-center max-w-xl mx-auto shadow-glow space-y-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-[10px] bg-red-500/20 text-red-400 mx-auto">
+            <XCircle className="h-7 w-7" />
+          </div>
+
+          <span className="text-xs font-bold uppercase tracking-wider text-red-400 bg-red-500/10 px-3 py-1 rounded-[6px] border border-red-500/30">
+            Payment Status: REJECTED
+          </span>
+
+          <h2 className="text-xl font-black text-[#111318] dark:text-white">Payment Verification Declined</h2>
+
+          <p className="text-xs text-[#9496A1] light:text-[#52525B] leading-relaxed max-w-md mx-auto">
+            UTR <strong className="text-[#111318] dark:text-white font-mono">{submittedPayment.utr_reference}</strong> could not be verified.
+            {submittedPayment.admin_notes ? ` Note: ${submittedPayment.admin_notes}` : ''}
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <PrimaryButton
+              onClick={() => {
+                setSubmittedPayment(null);
+                setUtrReference('');
+                setError(null);
+              }}
+            >
+              Submit New Payment Reference
+            </PrimaryButton>
+            <SecondaryButton onClick={() => (window.location.href = '/payment-history')}>
+              View History
+            </SecondaryButton>
           </div>
         </div>
       ) : (

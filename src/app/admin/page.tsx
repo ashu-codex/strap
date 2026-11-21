@@ -137,21 +137,27 @@ export default function AdminDashboardPage() {
 
   const handlePaymentDecision = async (paymentId: string, decision: 'approved' | 'rejected') => {
     try {
-      const res = await fetch('/api/admin/payments', {
+      const res = await fetch('/api/admin/payments/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          paymentId,
-          status: decision,
-          notes:
+          payment_id: paymentId,
+          action: decision === 'approved' ? 'approve' : 'reject',
+          admin_notes:
             decision === 'approved'
               ? 'Verified via STRAP Admin Console'
               : 'UTR verification declined by Admin',
         }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        notify(`Payment ${decision === 'approved' ? 'Approved & Premium Activated' : 'Rejected'}`);
+        notify(
+          data.message ||
+            `Payment ${decision === 'approved' ? 'Approved & Premium Activated' : 'Rejected'}`
+        );
         loadAllAdminData();
+      } else {
+        notify(data.error || 'Failed to update payment');
       }
     } catch {
       notify('Failed to update payment');

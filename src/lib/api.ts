@@ -12,14 +12,21 @@ export class HttpError extends Error {
 
 type AuthedContext = AuthContext & { user: NonNullable<AuthContext['user']> };
 
-export async function requireUser(req: NextRequest): Promise<AuthedContext> {
-  const ctx = await getAuthUser(req);
+export async function requireUser(
+  req: NextRequest,
+  options?: { bypassCache?: boolean }
+): Promise<AuthedContext> {
+  const ctx = await getAuthUser(req, options);
   if (!ctx.user) throw new HttpError(401, 'Please sign in to continue.', 'UNAUTHENTICATED');
   return ctx as AuthedContext;
 }
 
 export async function requirePremium(req: NextRequest): Promise<AuthedContext> {
-  const ctx = await requireUser(req);
+  let ctx = await requireUser(req);
+  if (!ctx.isPremium) {
+    // Re-verify bypassing in-memory cache so newly approved subscriptions activate immediately
+    ctx = await requireUser(req, { bypassCache: true });
+  }
   if (!ctx.isPremium) throw new HttpError(403, 'This is a STRAP Premium feature. Upgrade to unlock it.', 'PREMIUM_REQUIRED');
   return ctx;
 }

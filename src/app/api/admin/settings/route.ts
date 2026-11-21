@@ -3,12 +3,15 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { handleError, json, parseBody } from '@/lib/api';
 import { requireOwnerAdmin, writeAuditLog } from '@/lib/auth-helpers';
-import { getSettings } from '@/lib/settings';
+import { getSettings, invalidateSettingsCache } from '@/lib/settings';
 
 export async function GET(req: NextRequest) {
   try {
     await requireOwnerAdmin(req);
-    return json({ settings: await getSettings(), geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY?.trim()) });
+    return json({
+      settings: await getSettings({ bypassCache: true }),
+      geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY?.trim()),
+    });
   } catch (e) {
     return handleError(e);
   }
@@ -25,9 +28,10 @@ export async function POST(req: NextRequest) {
   try {
     const admin = await requireOwnerAdmin(req);
     const patch = await parseBody(req, schema);
-    const current = await getSettings();
+    const current = await getSettings({ bypassCache: true });
     const next = { ...current, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) };
     await db.upsert('app_settings', { id: 1, ...next }, 'id');
+    invalidateSettingsCache();
     await writeAuditLog(admin.user, 'settings.update', 'app_settings', '1', patch);
     return json({ success: true, message: 'Admin settings updated successfully.', settings: next });
   } catch (e) {

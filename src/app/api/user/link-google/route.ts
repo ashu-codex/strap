@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
+import { isDevFallbackAllowed } from '@/lib/config';
 import { handleError, json, parseBody, requireUser } from '@/lib/api';
 import { lookupAuthAccount } from '@/lib/auth-flow';
 
@@ -58,9 +59,13 @@ export async function POST(req: NextRequest) {
       'user_id'
     );
 
-    const devUser = await db.selectOne('dev_auth_users', { eq: { id: user.id } }).catch(() => null);
-    if (devUser) {
-      await db.update('dev_auth_users', { id: user.id }, { google_linked: Boolean(nextPrefs.google_linked) }).catch(() => null);
+    if (isDevFallbackAllowed()) {
+      const devUser = await db.selectOne('dev_auth_users', { eq: { id: user.id } }).catch(() => null);
+      if (devUser) {
+        await db
+          .update('dev_auth_users', { id: user.id }, { google_linked: Boolean(nextPrefs.google_linked) })
+          .catch(() => null);
+      }
     }
 
     return json({

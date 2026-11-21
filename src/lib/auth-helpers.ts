@@ -212,7 +212,12 @@ async function loadProfile(id: string, email: string, meta?: Record<string, any>
   };
 }
 
-export async function getAuthUser(req?: NextRequest): Promise<AuthContext> {
+const AUTH_CACHE_TTL_MS = 30_000;
+
+export async function getAuthUser(
+  req?: NextRequest,
+  options?: { bypassCache?: boolean }
+): Promise<AuthContext> {
   // 1) Supabase Auth (production path)
   if (isSupabaseConfigured()) {
     const supabase = createServerClient();
@@ -230,7 +235,7 @@ export async function getAuthUser(req?: NextRequest): Promise<AuthContext> {
     const isAdmin = verified && isOwnerEmail(email);
 
     const now = Date.now();
-    const cached = authDataCache.get(sbUser.id);
+    const cached = !options?.bypassCache ? authDataCache.get(sbUser.id) : undefined;
     if (cached && cached.expiresAt > now) {
       const profile = { ...cached.profile, role: (isAdmin ? 'admin' : 'user') as 'admin' | 'user' };
       return {
@@ -247,7 +252,7 @@ export async function getAuthUser(req?: NextRequest): Promise<AuthContext> {
       getUserSubscription(sbUser.id),
     ]);
     profile.role = isAdmin ? 'admin' : 'user';
-    authDataCache.set(sbUser.id, { profile, sub, expiresAt: now + 12_000 });
+    authDataCache.set(sbUser.id, { profile, sub, expiresAt: now + AUTH_CACHE_TTL_MS });
     return { user: profile, subscription: sub, isPremium: isAdmin || isActivePremium(sub), isAdmin, emailVerified: verified };
   }
 

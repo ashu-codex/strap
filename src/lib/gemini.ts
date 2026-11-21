@@ -54,7 +54,8 @@ function extractJsonFromText<T>(text: string): T {
       .trim();
     return JSON.parse(cleaned) as T;
   } catch (err) {
-    console.error("Failed to parse Gemini response as JSON:", text);
+    const preview = String(text || '').replace(/\s+/g, ' ').slice(0, 200);
+    console.error('Failed to parse Gemini response as JSON (preview):', preview);
     throw new Error("Invalid structured JSON received from AI engine");
   }
 }

@@ -188,50 +188,152 @@ export default function NutritionTrackerPage() {
       .catch(() => {});
   }, []);
 
-  // Search foods when modal is open or filters change
-  const performFoodSearch = useCallback(async () => {
-    setSearchingFoods(true);
-    try {
-      const params = new URLSearchParams();
-      const trimmed = searchQuery.trim();
-      if (/^\d{8,14}$/.test(trimmed)) {
-        params.set('barcode', trimmed);
-      } else if (trimmed) {
-        params.set('search', trimmed);
-      }
+  // Search foods when modal is open or filters change:
+  // Filter already-loaded local catalog instantaneously, and only hit /api/nutrition/foods
+  // for barcode lookups, explicit global search, or sparse (<3) local matches with >=3 chars.
+  const searchAbortRef = React.useRef<AbortController | null>(null);
+
+  const filterLocalCatalog = useCallback(
+    (trimmed: string, tab: string): FoodItem[] => {
+      let results = [...allCatalogFoods];
       if (
-        selectedTab !== 'All' &&
-        selectedTab !== 'Favourites' &&
-        selectedTab !== 'Recent' &&
-        selectedTab !== 'Frequent' &&
-        selectedTab !== 'Saved Meals'
+        tab !== 'All' &&
+        tab !== 'Favourites' &&
+        tab !== 'Recent' &&
+        tab !== 'Frequent' &&
+        tab !== 'Saved Meals'
       ) {
-        params.set('category', selectedTab);
-      }
-      if (includeExternal && searchQuery.trim().length >= 3) {
-        params.set('external', '1');
+        if (tab === 'Supplements') {
+          results = results.filter((f) => f.category === 'Supplements' || f.is_supplement);
+        } else {
+          results = results.filter((f) => f.category.toLowerCase() === tab.toLowerCase());
+        }
       }
 
-      const res = await fetch(`/api/nutrition/foods?${params.toString()}`);
-      const data = await res.json();
-      if (res.ok && Array.isArray(data.foods)) {
-        setSearchResults(data.foods);
+      if (/^\d{8,14}$/.test(trimmed)) {
+        results = results.filter((f) => f.barcode === trimmed);
+      } else if (trimmed) {
+        const q = trimmed.toLowerCase();
+        results = results.filter(
+          (f) =>
+            f.name.toLowerCase().includes(q) ||
+            f.brand.toLowerCase().includes(q) ||
+            f.category.toLowerCase().includes(q) ||
+            (f.subcategory && f.subcategory.toLowerCase().includes(q))
+        );
       }
-    } catch (e) {
-      console.error('Food search error', e);
-    } finally {
-      setSearchingFoods(false);
-    }
-  }, [searchQuery, selectedTab, includeExternal]);
+      return results;
+    },
+    [allCatalogFoods]
+  );
+
+  const performFoodSearch = useCallback(
+    async (forceRemote = false) => {
+      const trimmed = searchQuery.trim();
+      const isBarcode = /^\d{8,14}$/.test(trimmed);
+      const localResults = filterLocalCatalog(trimmed, selectedTab);
+
+      const needsRemote =
+        forceRemote ||
+        allCatalogFoods.length === 0 ||
+        isBarcode ||
+        (includeExternal && trimmed.length >= 3) ||
+        (trimmed.length >= 3 && localResults.length < 3);
+
+      // Show instant local catalog matches immediately without waiting for network
+      if (allCatalogFoods.length > 0) {
+        setSearchResults(localResults);
+      }
+
+      if (!needsRemote) {
+        searchAbortRef.current?.abort();
+        setSearchingFoods(false);
+        return;
+      }
+
+      searchAbortRef.current?.abort();
+      const controller = new AbortController();
+      searchAbortRef.current = controller;
+
+      setSearchingFoods(true);
+      try {
+        const params = new URLSearchParams();
+        if (isBarcode) {
+          params.set('barcode', trimmed);
+        } else if (trimmed) {
+          params.set('search', trimmed);
+        }
+        if (
+          selectedTab !== 'All' &&
+          selectedTab !== 'Favourites' &&
+          selectedTab !== 'Recent' &&
+          selectedTab !== 'Frequent' &&
+          selectedTab !== 'Saved Meals'
+        ) {
+          params.set('category', selectedTab);
+        }
+        if (includeExternal && trimmed.length >= 3) {
+          params.set('external', '1');
+        }
+
+        const res = await fetch(`/api/nutrition/foods?${params.toString()}`, {
+          signal: controller.signal,
+        });
+        const data = await res.json();
+        if (res.ok && Array.isArray(data.foods)) {
+          setSearchResults(data.foods);
+        }
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') {
+          console.error('Food search error', e);
+        }
+      } finally {
+        if (searchAbortRef.current === controller) {
+          setSearchingFoods(false);
+        }
+      }
+    },
+    [searchQuery, selectedTab, includeExternal, allCatalogFoods.length, filterLocalCatalog]
+  );
 
   useEffect(() => {
-    if (searchModalOpen) {
-      const timer = setTimeout(() => {
-        performFoodSearch();
-      }, 150);
-      return () => clearTimeout(timer);
+    if (!searchModalOpen) return;
+
+    const trimmed = searchQuery.trim();
+    const isBarcode = /^\d{8,14}$/.test(trimmed);
+    const localResults = filterLocalCatalog(trimmed, selectedTab);
+    const needsRemote =
+      allCatalogFoods.length === 0 ||
+      isBarcode ||
+      (includeExternal && trimmed.length >= 3) ||
+      (trimmed.length >= 3 && localResults.length < 3);
+
+    if (!needsRemote) {
+      setSearchResults(localResults);
+      setSearchingFoods(false);
+      return;
     }
-  }, [searchModalOpen, performFoodSearch]);
+
+    // Show local matches immediately while debouncing remote global/barcode lookup
+    if (allCatalogFoods.length > 0) {
+      setSearchResults(localResults);
+    }
+    const timer = setTimeout(() => {
+      performFoodSearch(false);
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+      searchAbortRef.current?.abort();
+    };
+  }, [
+    searchModalOpen,
+    searchQuery,
+    selectedTab,
+    includeExternal,
+    allCatalogFoods.length,
+    filterLocalCatalog,
+    performFoodSearch,
+  ]);
 
   const handleSelectFood = (food: FoodItem) => {
     setSelectedFood(food);

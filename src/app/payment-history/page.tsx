@@ -1,30 +1,94 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { CreditCard, Clock, CheckCircle2, XCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { CreditCard, Clock, CheckCircle2, XCircle, ArrowRight, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/components/Providers';
 
 export default function PaymentHistoryPage() {
+  const { auth } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
   const [payments, setPayments] = useState<any[]>([]);
 
-  const loadHistory = () =>
-    fetch('/api/payments/history', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((data) => {
-        setPayments(data.payments || []);
-        setLoading(false);
-        if ((data.payments || []).some((p: { payment_status: string }) => p.payment_status === 'approved')) {
-          window.dispatchEvent(new Event('strap-auth-refresh'));
-        }
-      });
+  const pendingIdsRef = useRef<Set<string>>(new Set());
+  const initializedRef = useRef(false);
+  const inFlightRef = useRef(false);
+  const authIsPremiumRef = useRef(false);
 
   useEffect(() => {
-    loadHistory().catch(() => setLoading(false));
-    const id = window.setInterval(() => {
-      loadHistory().catch(() => undefined);
-    }, 8000);
-    return () => window.clearInterval(id);
+    authIsPremiumRef.current = Boolean(auth?.isPremium);
+  }, [auth?.isPremium]);
+
+  const loadHistory = useCallback(async (manual = false) => {
+    if (inFlightRef.current && !manual) return;
+    inFlightRef.current = true;
+    if (manual) setCheckingStatus(true);
+
+    try {
+      const res = await fetch('/api/payments/history', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const list: any[] = Array.isArray(data.payments) ? data.payments : [];
+      setPayments(list);
+      setLastCheckedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+
+      const prevPending = pendingIdsRef.current;
+      const newlyApproved = list.some(
+        (p) => p.payment_status === 'approved' && prevPending.has(String(p.id))
+      );
+      const hasApprovedWhileNotPremium =
+        !initializedRef.current &&
+        !authIsPremiumRef.current &&
+        list.some((p) => p.payment_status === 'approved');
+
+      pendingIdsRef.current = new Set(
+        list.filter((p) => p.payment_status === 'pending').map((p) => String(p.id))
+      );
+      initializedRef.current = true;
+
+      // Dispatch auth refresh ONLY when a pending payment becomes approved (or once on mount if client state lags)
+      if (newlyApproved || hasApprovedWhileNotPremium) {
+        window.dispatchEvent(new Event('strap-auth-refresh'));
+      }
+    } catch {
+      // keep existing payments visible on transient network error
+    } finally {
+      inFlightRef.current = false;
+      setLoading(false);
+      if (manual) setCheckingStatus(false);
+    }
   }, []);
+
+  const hasPendingPayments = payments.some((p) => p.payment_status === 'pending');
+
+  // Initial load once on mount
+  useEffect(() => {
+    loadHistory(false);
+  }, [loadHistory]);
+
+  // Poll ONLY while at least one payment is genuinely pending and the tab is visible
+  useEffect(() => {
+    if (!hasPendingPayments) return;
+
+    const id = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadHistory(false);
+      }
+    }, 15_000);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        loadHistory(false);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [hasPendingPayments, loadHistory]);
 
   if (loading) {
     return (
@@ -44,17 +108,41 @@ export default function PaymentHistoryPage() {
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-1">Payment History</h1>
           <p className="text-xs text-zinc-400 mt-0.5">
             View transaction verification status, UTR numbers, and approval timestamps.
+            {lastCheckedAt ? ` Last checked: ${lastCheckedAt}` : ''}
           </p>
         </div>
 
-        <a
-          href="/checkout"
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow shrink-0 strap-primary"
-        >
-          <span>Submit New Payment</span>
-          <ArrowRight className="h-4 w-4" />
-        </a>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => loadHistory(true)}
+            disabled={checkingStatus}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-zinc-700 bg-zinc-900/80 text-xs font-bold text-zinc-200 hover:border-brand hover:text-white transition-colors disabled:opacity-60"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${checkingStatus ? 'animate-spin' : ''}`} />
+            <span>{checkingStatus ? 'Checking...' : 'Check Status'}</span>
+          </button>
+
+          <a
+            href="/checkout"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow shrink-0 strap-primary"
+          >
+            <span>Submit New Payment</span>
+            <ArrowRight className="h-4 w-4" />
+          </a>
+        </div>
       </div>
+
+      {hasPendingPayments && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-amber-300">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 shrink-0" />
+            <span>
+              Pending payment detected. Status refreshes automatically every 15 seconds while this tab is open, or use <strong>Check Status</strong> anytime.
+            </span>
+          </div>
+        </div>
+      )}
 
       {payments.length === 0 ? (
         <div className="rounded-2xl border border-card-border bg-card p-12 text-center text-zinc-400 space-y-3">
