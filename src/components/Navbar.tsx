@@ -50,7 +50,7 @@ export default function Navbar() {
     { name: 'Nutrition', href: '/nutrition', icon: Sparkles },
     { name: 'Recovery', href: '/recovery', icon: HeartPulse },
     { name: 'Analytics', href: '/analytics', icon: LineChart },
-    { name: 'AI Coach', href: '/ai-assistant', icon: Bot, badge: 'Gemini' },
+    { name: 'AI Coach', href: '/ai-assistant', icon: Bot },
   ];
 
   return (

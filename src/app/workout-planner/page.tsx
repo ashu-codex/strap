@@ -71,7 +71,7 @@ export default function WorkoutPlannerPage() {
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent shadow-glow" />
-          <span className="text-xs text-zinc-400 font-mono tracking-wider">Synthesizing Gemini Workout Architecture...</span>
+          <span className="text-xs text-zinc-400 font-mono tracking-wider">Synthesizing STRAP Workout Architecture...</span>
         </div>
       </div>
     );
@@ -95,7 +95,7 @@ export default function WorkoutPlannerPage() {
           </h1>
 
           <p className="text-xs sm:text-sm text-zinc-400 max-w-md mx-auto leading-relaxed mb-6">
-            Get intelligent, periodized workout splits (Push Pull Legs, Upper / Lower, Full Body) generated specifically for your available equipment and recovery capacity by Google Gemini AI.
+            Get intelligent, periodized workout splits (Push Pull Legs, Upper / Lower, Full Body) generated specifically for your available equipment and recovery capacity by the STRAP Intelligence Engine.
           </p>
 
           {/* Sample blurred preview */}
@@ -130,7 +130,7 @@ export default function WorkoutPlannerPage() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/10 border border-brand/20 px-2.5 py-0.5 rounded-full">
-              Gemini AI Workout Architecture
+              STRAP Workout Architecture
             </span>
             <span className="text-xs font-semibold text-zinc-400 font-mono">
               Split: {plan?.split_type || 'Upper / Lower'}
@@ -150,7 +150,7 @@ export default function WorkoutPlannerPage() {
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-bold text-white hover:border-brand/60 hover:bg-zinc-800 transition-colors shadow-glow shrink-0 disabled:opacity-50"
         >
           <RefreshCw className={`h-4 w-4 text-brand ${generating ? 'animate-spin' : ''}`} />
-          <span>{generating ? 'Regenerating...' : 'Regenerate with Gemini'}</span>
+          <span>{generating ? 'Regenerating...' : 'Regenerate Split'}</span>
         </button>
       </div>
 

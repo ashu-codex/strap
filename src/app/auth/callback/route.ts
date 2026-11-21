@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
-import { getSiteUrl, isSupabaseConfigured } from '@/lib/config';
+import { getSiteUrl, isDevFallbackAllowed, isSupabaseConfigured } from '@/lib/config';
 import { safeNext } from '@/lib/api';
-import { ensureProfile, postAuthDestination } from '@/lib/auth-flow';
+import { ensureProfile, lookupAuthAccount, postAuthDestination } from '@/lib/auth-flow';
+import { db } from '@/lib/db';
 import type { EmailOtpType } from '@supabase/supabase-js';
 
 /**
- * Handles every Supabase redirect: Google OAuth, Facebook OAuth, email confirmation,
- * and password recovery links. Always redirects to the configured site URL and identifies
- * users strictly by Supabase Auth UUID (even when Facebook does not supply an email).
+ * Handles every Supabase redirect: Google OAuth, email confirmation,
+ * and password recovery links. Enforces strict separation between
+ * Email+Password accounts and Google Sign-In unless explicitly linked.
  */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const site = getSiteUrl(url.origin);
-  const fail = (code: string) => NextResponse.redirect(`${site}/login?error=${code}`);
+  const fail = (code: string, extra = '') =>
+    NextResponse.redirect(`${site}/login?error=${code}${extra}`);
 
   const providerError = url.searchParams.get('error');
   const providerErrorCode = url.searchParams.get('error_code') || '';
@@ -33,6 +35,15 @@ export async function GET(req: NextRequest) {
     return fail('oauth_failed');
   }
 
+  // Dev fallback guard: verify Google vs Email+Password separation without live OAuth tokens
+  const testGoogleEmail = url.searchParams.get('google_email')?.trim().toLowerCase();
+  if (testGoogleEmail && isDevFallbackAllowed() && !isSupabaseConfigured()) {
+    const lookup = await lookupAuthAccount(testGoogleEmail);
+    if (lookup.exists && lookup.hasEmailPassword && !lookup.googleLinked) {
+      return fail('email_password_account', `&email=${encodeURIComponent(testGoogleEmail)}`);
+    }
+  }
+
   if (!isSupabaseConfigured()) return fail('auth_unavailable');
 
   const supabase = createServerClient();
@@ -42,6 +53,7 @@ export async function GET(req: NextRequest) {
   const tokenHash = url.searchParams.get('token_hash');
   const type = url.searchParams.get('type') as EmailOtpType | null;
   const next = safeNext(url.searchParams.get('next'), '');
+  const linkMode = url.searchParams.get('link') === 'google';
 
   try {
     let userId: string | undefined;
@@ -59,6 +71,45 @@ export async function GET(req: NextRequest) {
       userId = data.user.id;
       email = (data.user.email || data.user.user_metadata?.email || '').trim().toLowerCase();
       meta = data.user.user_metadata;
+
+      const existingPref = await db.selectOne('user_preferences', { eq: { user_id: userId } }).catch(() => null);
+      const prefs = existingPref?.preferences || {};
+
+      // Explicit Google account linking initiated by an authenticated Email+Password user
+      if (linkMode || prefs.google_link_pending) {
+        await db
+          .upsert(
+            'user_preferences',
+            {
+              user_id: userId,
+              theme: existingPref?.theme || 'system',
+              preferences: { ...prefs, google_linked: true, google_link_pending: false },
+            },
+            'user_id'
+          )
+          .catch(() => null);
+        return NextResponse.redirect(`${site}/profile?linked=google`);
+      }
+
+      // Enforce Email+Password vs Google separation when not explicitly linked
+      const identities = Array.isArray(data.user.identities) ? data.user.identities : [];
+      const hasEmailIdentity =
+        identities.some((i: any) => i.provider === 'email') ||
+        (Array.isArray(data.user.app_metadata?.providers) && data.user.app_metadata.providers.includes('email')) ||
+        prefs.auth_origin === 'email' ||
+        meta?.auth_origin === 'email';
+      const hasGoogleIdentity =
+        identities.some((i: any) => i.provider === 'google') ||
+        data.user.app_metadata?.provider === 'google' ||
+        (Array.isArray(data.user.app_metadata?.providers) && data.user.app_metadata.providers.includes('google'));
+      const isGoogleLinked = Boolean(prefs.google_linked || meta?.google_linked);
+
+      // If this account was created with Email+Password and Google was NOT explicitly linked,
+      // reject automatic Google Sign-In merge and require password authentication.
+      if (hasEmailIdentity && hasGoogleIdentity && !isGoogleLinked && next !== '/reset-password') {
+        await supabase.auth.signOut().catch(() => null);
+        return fail('email_password_account', email ? `&email=${encodeURIComponent(email)}` : '');
+      }
     } else if (tokenHash && type) {
       const { data, error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
       if (error || !data.user) return fail('link_expired');

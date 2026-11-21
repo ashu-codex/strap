@@ -97,6 +97,15 @@ function localUpdate(table: string, match: Row, patch: Row): Row[] {
   return out;
 }
 
+function localDelete(table: string, match: Row): number {
+  const db = loadDev();
+  const prev = db[table] || [];
+  const next = prev.filter((r) => !matches(r, { eq: match }));
+  db[table] = next;
+  saveDev(db);
+  return prev.length - next.length;
+}
+
 // ---------------------------------------------------------------- public API
 function backend() {
   if (isServiceRoleConfigured()) return { kind: 'supabase' as const, client: createAdminClient()! };
@@ -187,6 +196,16 @@ export const db = {
     const { data, error } = await query.select();
     if (error) wrap(error);
     return data || [];
+  },
+
+  async delete(table: string, match: Row): Promise<number> {
+    const b = backend();
+    if (b.kind === 'local') return localDelete(table, match);
+    let query = b.client.from(table).delete();
+    for (const [k, v] of Object.entries(match)) query = query.eq(k, v);
+    const { data, error } = await query.select();
+    if (error) wrap(error);
+    return (data || []).length;
   },
 };
 

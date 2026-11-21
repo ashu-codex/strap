@@ -38,8 +38,8 @@ export default function Footer() {
           <div>
             <h4 className="text-[#111318] dark:text-[#F5F5F5] font-bold text-xs uppercase tracking-wider mb-3">Intelligence</h4>
             <ul className="space-y-2">
-              <li><a href="/ai-assistant" className="hover:text-[#6BA814] dark:hover:text-[#B7F34A] transition-colors">Gemini AI Coach</a></li>
-              <li><a href="/pricing" className="hover:text-[#6BA814] dark:hover:text-[#B7F34A] transition-colors">STRAP Premium (₹100)</a></li>
+              <li><a href="/ai-assistant" className="hover:text-[#6BA814] dark:hover:text-[#B7F34A] transition-colors">STRAP Coach</a></li>
+              <li><a href="/pricing" className="hover:text-[#6BA814] dark:hover:text-[#B7F34A] transition-colors">Premium Membership</a></li>
               <li><a href="/checkout" className="hover:text-[#6BA814] dark:hover:text-[#B7F34A] transition-colors">UPI Direct Payment</a></li>
               <li><a href="/payment-history" className="hover:text-[#6BA814] dark:hover:text-[#B7F34A] transition-colors">Payment Verification</a></li>
               <li><a href="/analytics" className="hover:text-[#6BA814] dark:hover:text-[#B7F34A] transition-colors">Strength Progression</a></li>

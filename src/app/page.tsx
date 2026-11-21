@@ -46,8 +46,8 @@ export default function LandingPage() {
     {
       letter: 'A',
       title: 'Adapt',
-      subtitle: 'Continuous Weekly AI Adaptation',
-      desc: 'Gemini AI evaluates your completed volume and fatigue to adjust future workout intensity and progression automatically.',
+      subtitle: 'Continuous Weekly Adaptation',
+      desc: 'STRAP evaluates your completed volume and fatigue to adjust future workout intensity and progression automatically.',
       color: 'from-teal-400 to-cyan-500',
     },
     {
@@ -62,7 +62,7 @@ export default function LandingPage() {
   const features = [
     {
       icon: BrainCircuit,
-      title: 'Gemini AI Fitness Engine',
+      title: 'STRAP Intelligence Engine',
       description: 'Dynamic split generation customized for gym, home, dumbbell-only, or full barbell setups.',
     },
     {
@@ -95,11 +95,11 @@ export default function LandingPage() {
   const faqs = [
     {
       q: 'How does STRAP differ from traditional generic fitness apps?',
-      a: 'Traditional apps give everyone the same cookie-cutter 4-week routine. STRAP utilizes Google Gemini AI to analyze your personal biometrics, schedule, available equipment, and actual workout performance, continuously adapting your split and volume on a weekly basis.',
+      a: 'Traditional apps give everyone the same cookie-cutter 4-week routine. STRAP analyzes your personal biometrics, schedule, available equipment, and actual workout performance, continuously adapting your split and volume on a weekly basis.',
     },
     {
       q: 'What is the price of STRAP Premium?',
-      a: 'STRAP Premium is only ₹100 per month. It gives you unlimited personalized AI workout plans, complete exercise library access, nutrition calculations, recovery readiness analytics, and 24/7 access to the STRAP coach.',
+      a: 'STRAP Premium is only ₹100 per month. It gives you unlimited personalized workout plans, complete exercise library access, nutrition calculations, recovery readiness analytics, and 24/7 access to the STRAP Coach.',
     },
     {
       q: 'Which payment methods are accepted for STRAP Premium?',
@@ -107,7 +107,7 @@ export default function LandingPage() {
     },
     {
       q: 'Can I use STRAP if I only workout at home with dumbbells?',
-      a: 'Yes! During onboarding, select "Home" or "Hybrid" and specify your available equipment (e.g. Dumbbells, Bodyweight, Resistance Bands). The Gemini AI engine will generate an optimal split designed specifically for your gear.',
+      a: 'Yes! During onboarding, select "Home" or "Hybrid" and specify your available equipment (e.g. Dumbbells, Bodyweight, Resistance Bands). The STRAP engine will generate an optimal split designed specifically for your gear.',
     },
     {
       q: 'How does the progressive overload system work?',
@@ -163,7 +163,7 @@ export default function LandingPage() {
           <div className="mt-14 pt-8 border-t border-zinc-900 grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
             <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800/80">
               <div className="text-[11px] text-zinc-400 uppercase font-semibold">Adaptive Engine</div>
-              <div className="text-sm font-bold text-white">Google Gemini Gen AI</div>
+              <div className="text-sm font-bold text-white">STRAP Intelligence</div>
             </div>
             <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800/80">
               <div className="text-[11px] text-zinc-400 uppercase font-semibold">Subscription</div>
@@ -336,7 +336,7 @@ export default function LandingPage() {
                   'Autonomic recovery & sleep readiness score',
                   'Live gym workout tracker & rest timer',
                   'Empirical PR & volume analytics',
-                  'Continuous 24/7 Gemini AI fitness coach',
+                  'Continuous 24/7 STRAP Coach',
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-2.5 text-xs text-zinc-200">
                     <CheckCircle2 className="h-4 w-4 text-brand shrink-0" />

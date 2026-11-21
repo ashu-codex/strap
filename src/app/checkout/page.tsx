@@ -195,7 +195,7 @@ export default function CheckoutPage() {
               You Have Active STRAP Premium!
             </h2>
             <p className="text-xs text-[#9496A1] light:text-[#52525B] max-w-md mx-auto mt-1 leading-relaxed">
-              Your subscription is fully active. All AI workout splits, nutrition blueprints, recovery analytics, and 24/7 Gemini coach features are unlocked.
+              Your subscription is fully active. All workout splits, nutrition blueprints, recovery analytics, and 24/7 STRAP Coach features are unlocked.
             </p>
           </div>
 

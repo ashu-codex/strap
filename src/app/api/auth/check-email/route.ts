@@ -23,6 +23,8 @@ export async function POST(req: NextRequest) {
       exists: result.exists,
       emailVerified: result.emailVerified,
       providers: result.providers,
+      hasEmailPassword: Boolean(result.hasEmailPassword),
+      googleLinked: Boolean(result.googleLinked),
     });
   } catch (e) {
     return handleError(e);

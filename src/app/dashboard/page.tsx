@@ -296,7 +296,7 @@ export default function DashboardPage() {
 
         {/* Right Column (1 Col): AI Engine & Locked Cards for Free Users */}
         <div className="space-y-6">
-          {/* Gemini AI Coach Card */}
+          {/* STRAP Coach Card */}
           <div className="relative rounded-2xl border border-brand/30 bg-card p-6 shadow-glow">
             <div className="flex items-center gap-2 text-xs font-bold text-brand mb-3">
               <Bot className="h-4 w-4" />
@@ -313,7 +313,7 @@ export default function DashboardPage() {
                     href="/ai-assistant"
                     className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-bold text-white hover:border-brand transition-colors"
                   >
-                    <span>Ask AI Coach</span>
+                    <span>Ask STRAP Coach</span>
                     <ArrowRight className="h-3.5 w-3.5" />
                   </a>
                 </div>
@@ -321,18 +321,18 @@ export default function DashboardPage() {
             ) : (
               <div className="text-center py-4">
                 <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-full bg-zinc-900 text-brand mb-2">
-                  <Lock className="h-4 w-4" />
+                  <Bot className="h-4 w-4" />
                 </div>
-                <h4 className="text-xs font-bold text-white">AI Coach Insights Locked</h4>
+                <h4 className="text-xs font-bold text-white">STRAP Coach</h4>
                 <p className="text-[11px] text-zinc-400 mt-1 mb-4">
-                  Upgrade to STRAP Premium for ₹100/mo to receive real-time Gemini load recommendations and split adaptations.
+                  Ask personalized questions about your lifts, programming, nutrition diary, and recovery.
                 </p>
-                <button
-                  onClick={() => openLock('AI Coach Insights', 'Unlock live conversational Gemini workout adaptations and progressive overload coaching.')}
-                  className="w-full py-2 rounded-xl bg-brand text-xs font-bold text-black shadow-glow"
+                <a
+                  href="/ai-assistant"
+                  className="block w-full py-2 rounded-xl bg-brand text-xs font-bold text-black shadow-glow"
                 >
-                  Unlock AI Insights
-                </button>
+                  Open STRAP Coach
+                </a>
               </div>
             )}
           </div>

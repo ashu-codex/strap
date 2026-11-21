@@ -1,13 +1,29 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { User, Scale, Sparkles, Check, AlertCircle, Save, ShieldAlert } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  User,
+  Scale,
+  Sparkles,
+  Check,
+  AlertCircle,
+  Save,
+  Dumbbell,
+  Target,
+  Flame,
+  Link2,
+  Unlink,
+  RotateCcw,
+} from 'lucide-react';
 import HeightInput from '@/components/ui/HeightInput';
 import { HeightUnit } from '@/lib/height';
+import { calculateNutritionTargets } from '@/lib/nutrition-calc';
+import { createClient as createBrowserClient } from '@/lib/supabase/client';
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [linkingGoogle, setLinkingGoogle] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [heightValid, setHeightValid] = useState(true);
@@ -16,6 +32,10 @@ export default function ProfilePage() {
     full_name: '',
     email: '',
     role: 'user',
+    training_style: 'muscle_building',
+    primary_goal: 'muscle_gain',
+    weekly_workout_days: 4,
+    google_linked: false,
   });
 
   const [metrics, setMetrics] = useState<any>({
@@ -31,12 +51,30 @@ export default function ProfilePage() {
     arms_cm: 35,
     workout_location: 'gym',
     experience_level: 'intermediate',
+    daily_activity_level: 'moderately_active',
+  });
+
+  const [customTargets, setCustomTargets] = useState<{
+    enabled: boolean;
+    target_calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fats_g: number;
+  }>({
+    enabled: false,
+    target_calories: 2500,
+    protein_g: 150,
+    carbs_g: 280,
+    fats_g: 75,
   });
 
   const [subscription, setSubscription] = useState<any>(null);
   const [isPremium, setIsPremium] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('linked=google')) {
+      setMessage('Google account successfully linked to your STRAP profile.');
+    }
     async function loadData() {
       try {
         const [profRes, metRes, subRes] = await Promise.all([
@@ -45,7 +83,28 @@ export default function ProfilePage() {
           fetch('/api/user/subscription').then((r) => r.json()),
         ]);
 
-        if (profRes.profile) setProfile(profRes.profile);
+        if (profRes.profile) {
+          setProfile((prev: any) => ({ ...prev, ...profRes.profile }));
+          if (profRes.profile.custom_nutrition_targets) {
+            const ct = profRes.profile.custom_nutrition_targets;
+            setCustomTargets({
+              enabled: true,
+              target_calories: ct.target_calories || 2500,
+              protein_g: ct.protein_g || 150,
+              carbs_g: ct.carbs_g || 280,
+              fats_g: ct.fats_g || 75,
+            });
+          } else if (profRes.profile.calculated_targets) {
+            const cal = profRes.profile.calculated_targets;
+            setCustomTargets({
+              enabled: false,
+              target_calories: cal.target_calories,
+              protein_g: cal.protein_g,
+              carbs_g: cal.carbs_g,
+              fats_g: cal.fats_g,
+            });
+          }
+        }
         if (metRes.metrics) {
           setMetrics((prev: any) => ({
             ...prev,
@@ -63,19 +122,46 @@ export default function ProfilePage() {
             current_weight_kg: profRes.profile.weight ?? prev.current_weight_kg,
             age: profRes.profile.age ?? prev.age,
             gender: profRes.profile.gender ?? prev.gender,
-            height_unit:
-              metRes.height_unit || profRes.profile.height_unit || 'cm',
+            experience_level: profRes.profile.experience_level ?? prev.experience_level,
+            daily_activity_level: profRes.profile.activity_level ?? prev.daily_activity_level,
+            height_unit: metRes.height_unit || profRes.profile.height_unit || 'cm',
           }));
         }
         setSubscription(subRes.subscription);
         setIsPremium(subRes.isPremium);
         setLoading(false);
-      } catch (err) {
+      } catch {
         setLoading(false);
       }
     }
     loadData();
   }, []);
+
+  const autoCalculated = useMemo(
+    () =>
+      calculateNutritionTargets({
+        age: Number(metrics.age) || 26,
+        gender: metrics.gender || 'male',
+        height_cm: Number(metrics.height_cm) || 175,
+        weight_kg: Number(metrics.current_weight_kg) || 72,
+        activity_level: metrics.daily_activity_level || 'moderately_active',
+        weekly_workout_days: Number(profile.weekly_workout_days) || 4,
+        experience_level: metrics.experience_level || 'intermediate',
+        primary_goal: profile.primary_goal || 'muscle_gain',
+        training_style: profile.training_style || 'muscle_building',
+      }),
+    [
+      metrics.age,
+      metrics.gender,
+      metrics.height_cm,
+      metrics.current_weight_kg,
+      metrics.daily_activity_level,
+      metrics.experience_level,
+      profile.weekly_workout_days,
+      profile.primary_goal,
+      profile.training_style,
+    ]
+  );
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,6 +183,19 @@ export default function ProfilePage() {
           body: JSON.stringify({
             full_name: profile.full_name,
             height_unit: metrics.height_unit || 'cm',
+            training_style: profile.training_style || 'muscle_building',
+            fitness_goal: profile.primary_goal || 'muscle_gain',
+            weekly_workout_days: Number(profile.weekly_workout_days) || 4,
+            activity_level: metrics.daily_activity_level || 'moderately_active',
+            experience_level: metrics.experience_level || 'intermediate',
+            custom_nutrition_targets: customTargets.enabled
+              ? {
+                  target_calories: Number(customTargets.target_calories),
+                  protein_g: Number(customTargets.protein_g),
+                  carbs_g: Number(customTargets.carbs_g),
+                  fats_g: Number(customTargets.fats_g),
+                }
+              : null,
           }),
         }),
         fetch('/api/user/metrics', {
@@ -118,11 +217,59 @@ export default function ProfilePage() {
       if (savedMet?.metrics) {
         setMetrics((prev: any) => ({ ...prev, ...savedMet.metrics }));
       }
-      setMessage('Profile and biometric parameters successfully updated.');
+      window.dispatchEvent(new Event('strap-auth-refresh'));
+      setMessage('Profile, training mode, biometrics, and nutrition targets updated.');
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to update profile.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleGoogleLink = async () => {
+    setLinkingGoogle(true);
+    setMessage(null);
+    setErrorMsg(null);
+    try {
+      if (profile.google_linked) {
+        const res = await fetch('/api/user/link-google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'unlink' }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not disconnect Google Sign-In.');
+        setProfile((prev: any) => ({ ...prev, google_linked: false }));
+        setMessage(data.message || 'Google Sign-In disconnected.');
+      } else {
+        const supabase = createBrowserClient();
+        if (supabase) {
+          await fetch('/api/user/link-google', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'prepare_link' }),
+          });
+          await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: `${window.location.origin}/auth/callback?link=google` },
+          });
+          return;
+        } else {
+          const res = await fetch('/api/user/link-google', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'link' }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Could not link Google Account.');
+          setProfile((prev: any) => ({ ...prev, google_linked: true }));
+          setMessage('Google Sign-In linked to your password account.');
+        }
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    } finally {
+      setLinkingGoogle(false);
     }
   };
 
@@ -137,22 +284,22 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-black text-white">Athlete Profile & Biometrics</h1>
+        <h1 className="text-2xl font-black text-white">Athlete Profile, Training & Targets</h1>
         <p className="text-xs text-zinc-400 mt-1">
-          Manage your personal information, physical measurements, and membership status.
+          Manage your personal information, primary training mode, biometric measurements, and daily nutrition targets.
         </p>
       </div>
 
       {message && (
         <div className="rounded-xl border border-brand/30 bg-brand/10 p-3.5 text-xs text-brand flex items-center gap-2">
-          <Check className="h-4 w-4" />
+          <Check className="h-4 w-4 shrink-0" />
           <span>{message}</span>
         </div>
       )}
 
       {errorMsg && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-400 flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
+          <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
@@ -177,8 +324,12 @@ export default function ProfilePage() {
           </div>
           <p className="text-xs text-zinc-400 mt-1">
             {isPremium
-              ? `Your premium subscription is valid until ${subscription?.current_period_end ? new Date(subscription.current_period_end).toLocaleDateString() : 'Active'}.`
-              : 'Upgrade to STRAP Premium for ₹100/mo to access unlimited AI splits and full exercise library.'}
+              ? `Your premium subscription is valid until ${
+                  subscription?.current_period_end
+                    ? new Date(subscription.current_period_end).toLocaleDateString()
+                    : 'Active'
+                }.`
+              : 'Upgrade to STRAP Premium to unlock unlimited AI splits, complete exercise library, and advanced analytics.'}
           </p>
         </div>
 
@@ -196,19 +347,44 @@ export default function ProfilePage() {
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow strap-primary"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              <span>Upgrade (₹100)</span>
+              <span>Upgrade to Premium</span>
             </a>
           )}
         </div>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
-        {/* Personal Details */}
+        {/* Personal Details & Google Account Linking */}
         <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <User className="h-4 w-4 text-brand" />
-            General Account Information
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <User className="h-4 w-4 text-brand" />
+              General Account Information
+            </h2>
+
+            <button
+              type="button"
+              disabled={linkingGoogle}
+              onClick={handleToggleGoogleLink}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors ${
+                profile.google_linked
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                  : 'border-zinc-700 bg-zinc-900 text-zinc-200 hover:border-brand'
+              }`}
+            >
+              {profile.google_linked ? (
+                <>
+                  <Unlink className="h-3.5 w-3.5" />
+                  <span>Google Linked (Click to Unlink)</span>
+                </>
+              ) : (
+                <>
+                  <Link2 className="h-3.5 w-3.5 text-brand" />
+                  <span>Link Google Sign-In</span>
+                </>
+              )}
+            </button>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -230,6 +406,123 @@ export default function ProfilePage() {
                 placeholder="Connected via Social Login (no email shared)"
                 className="w-full rounded-xl border border-zinc-900 bg-zinc-900/60 p-2.5 text-xs text-zinc-500 cursor-not-allowed"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Training Style & Fitness Goal Settings */}
+        <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
+          <h2 className="text-base font-bold text-white flex items-center gap-2">
+            <Dumbbell className="h-4 w-4 text-brand" />
+            Primary Training Style & Goal Settings
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setProfile({ ...profile, training_style: 'muscle_building' })}
+              className={`p-4 rounded-xl border text-left transition-all ${
+                profile.training_style !== 'powerlifting'
+                  ? 'border-[#B7F34A] bg-[#B7F34A]/15 text-white shadow-glow'
+                  : 'border-zinc-800 bg-zinc-950 text-zinc-400'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs font-extrabold text-white">
+                <span>Muscle Building (Hypertrophy Mode)</span>
+                {profile.training_style !== 'powerlifting' && (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#B7F34A] text-[#111318] font-black">
+                    Active
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-400 mt-1">
+                Adapts workout tracker for PPL, Upper/Lower, Full Body & Bro Splits with muscle-group volume and hypertrophy rep targets.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProfile({ ...profile, training_style: 'powerlifting' })}
+              className={`p-4 rounded-xl border text-left transition-all ${
+                profile.training_style === 'powerlifting'
+                  ? 'border-[#B7F34A] bg-[#B7F34A]/15 text-white shadow-glow'
+                  : 'border-zinc-800 bg-zinc-950 text-zinc-400'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs font-extrabold text-white">
+                <span>Powerlifting (Competition SBD Mode)</span>
+                {profile.training_style === 'powerlifting' && (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#B7F34A] text-[#111318] font-black">
+                    Active
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-400 mt-1">
+                Adapts workout tracker for Squat, Bench Press & Deadlift variations, %1RM loading, RPE/RIR, and peaking periodization.
+              </p>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-300 mb-1 flex items-center gap-1">
+                <Target className="h-3.5 w-3.5 text-brand" />
+                <span>Primary Fitness Goal</span>
+              </label>
+              <select
+                value={profile.primary_goal || 'muscle_gain'}
+                onChange={(e) => setProfile({ ...profile, primary_goal: e.target.value })}
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
+              >
+                <option value="fat_loss">Fat Loss</option>
+                <option value="muscle_gain">Muscle Gain</option>
+                <option value="recomposition">Body Recomposition</option>
+                <option value="maintenance">Weight Maintenance</option>
+                <option value="strength">Strength Improvement</option>
+                <option value="general_fitness">General Fitness</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Training Experience</label>
+              <select
+                value={metrics.experience_level || 'intermediate'}
+                onChange={(e) => setMetrics({ ...metrics, experience_level: e.target.value })}
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
+              >
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Activity Level</label>
+              <select
+                value={metrics.daily_activity_level || 'moderately_active'}
+                onChange={(e) => setMetrics({ ...metrics, daily_activity_level: e.target.value })}
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
+              >
+                <option value="sedentary">Sedentary</option>
+                <option value="lightly_active">Lightly Active</option>
+                <option value="moderately_active">Moderately Active</option>
+                <option value="very_active">Very Active</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Training Days / Week</label>
+              <select
+                value={profile.weekly_workout_days || 4}
+                onChange={(e) => setProfile({ ...profile, weekly_workout_days: Number(e.target.value) })}
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
+              >
+                {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                  <option key={d} value={d}>
+                    {d} {d === 1 ? 'Day' : 'Days'} / Week
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -332,6 +625,123 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Personalized & Adjustable Calorie / Macro Targets (Phase 5) */}
+        <div className="rounded-2xl border border-card-border bg-card p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Flame className="h-4 w-4 text-brand" />
+                Personalized Daily Calorie & Macro Targets
+              </h2>
+              <p className="text-[11px] text-zinc-400 mt-0.5">
+                BMR: <strong>{autoCalculated.bmr} kcal</strong> • TDEE: <strong>{autoCalculated.tdee} kcal</strong> ({autoCalculated.goal_label})
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setCustomTargets((prev) => ({
+                    enabled: !prev.enabled,
+                    target_calories: prev.enabled ? autoCalculated.target_calories : prev.target_calories,
+                    protein_g: prev.enabled ? autoCalculated.protein_g : prev.protein_g,
+                    carbs_g: prev.enabled ? autoCalculated.carbs_g : prev.carbs_g,
+                    fats_g: prev.enabled ? autoCalculated.fats_g : prev.fats_g,
+                  }))
+                }
+                className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors ${
+                  customTargets.enabled
+                    ? 'border-[#B7F34A] bg-[#B7F34A]/15 text-brand'
+                    : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-brand'
+                }`}
+              >
+                {customTargets.enabled ? 'Custom Targets Active' : 'Customize Targets'}
+              </button>
+              {customTargets.enabled && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCustomTargets({
+                      enabled: false,
+                      target_calories: autoCalculated.target_calories,
+                      protein_g: autoCalculated.protein_g,
+                      carbs_g: autoCalculated.carbs_g,
+                      fats_g: autoCalculated.fats_g,
+                    })
+                  }
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-zinc-800 bg-zinc-950 text-[11px] text-zinc-400 hover:text-white"
+                  title="Reset to scientifically calculated targets"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  <span>Auto</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-zinc-400 mb-1">
+                Daily Calories (kcal)
+              </label>
+              <input
+                type="number"
+                disabled={!customTargets.enabled}
+                value={customTargets.enabled ? customTargets.target_calories : autoCalculated.target_calories}
+                onChange={(e) =>
+                  setCustomTargets({ ...customTargets, target_calories: Number(e.target.value) })
+                }
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs font-bold text-white disabled:opacity-70"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-blue-400 mb-1">
+                Protein Target (g)
+              </label>
+              <input
+                type="number"
+                disabled={!customTargets.enabled}
+                value={customTargets.enabled ? customTargets.protein_g : autoCalculated.protein_g}
+                onChange={(e) =>
+                  setCustomTargets({ ...customTargets, protein_g: Number(e.target.value) })
+                }
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs font-bold text-white disabled:opacity-70"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-amber-400 mb-1">
+                Carbs Target (g)
+              </label>
+              <input
+                type="number"
+                disabled={!customTargets.enabled}
+                value={customTargets.enabled ? customTargets.carbs_g : autoCalculated.carbs_g}
+                onChange={(e) =>
+                  setCustomTargets({ ...customTargets, carbs_g: Number(e.target.value) })
+                }
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs font-bold text-white disabled:opacity-70"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-rose-400 mb-1">
+                Fat Target (g)
+              </label>
+              <input
+                type="number"
+                disabled={!customTargets.enabled}
+                value={customTargets.enabled ? customTargets.fats_g : autoCalculated.fats_g}
+                onChange={(e) =>
+                  setCustomTargets({ ...customTargets, fats_g: Number(e.target.value) })
+                }
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs font-bold text-white disabled:opacity-70"
+              />
+            </div>
+          </div>
+
+          <p className="text-[11px] text-zinc-500 italic">{autoCalculated.disclaimer}</p>
         </div>
 
         <button

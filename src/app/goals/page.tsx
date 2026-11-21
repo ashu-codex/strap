@@ -67,7 +67,7 @@ export default function GoalsPage() {
       <div>
         <h1 className="text-2xl font-black text-white">Fitness Goals & Periodization</h1>
         <p className="text-xs text-zinc-400 mt-1">
-          Adjust your target objective to direct the Gemini AI split generator and nutrition engine.
+          Adjust your target objective to direct the STRAP split generator and nutrition engine.
         </p>
       </div>
 

@@ -436,52 +436,615 @@ Return strictly JSON explaining how and WHY the training plan adapts for next we
   return { adaptation, isAiGenerated: false };
 }
 
+export interface CoachUserContext {
+  name?: string;
+  age?: number;
+  gender?: string;
+  heightCm?: number;
+  weight?: number;
+  goal?: string;
+  experienceLevel?: string;
+  trainingStyle?: 'powerlifting' | 'muscle_building';
+  weeklyDays?: number;
+  actual1RMs?: { squat?: number; bench?: number; deadlift?: number };
+  nutritionTargets?: {
+    bmr: number;
+    tdee: number;
+    target_calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fats_g: number;
+    fiber_g: number;
+    water_ml: number;
+    goal_label: string;
+  };
+  todayNutrition?: {
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+    fiber_g: number;
+    water_ml: number;
+    entries: any[];
+  };
+  workouts?: any[];
+  prs?: any[];
+  recoveryLogs?: any[];
+  plan?: string;
+}
+
 /**
- * AI FITNESS ASSISTANT INTERACTIVE CHAT
+ * STRAP COACH INTERACTIVE CHAT
+ * Uses live model when configured and falls back to a deeply personalized, question-specific sports science engine.
+ * Never exposes underlying AI provider or model names to end users.
  */
 export async function chatWithAIAssistant(
   userMessage: string,
   history: { role: "user" | "model"; parts: string }[] = [],
-  userContext?: { name?: string; goal?: string; weight?: number; plan?: string }
+  userContext?: CoachUserContext
 ): Promise<string> {
+  const ctx = userContext || {};
+  const athleteName = ctx.name || "Athlete";
+  const weightKg = Number(ctx.weight) || 75;
+  const heightCm = Number(ctx.heightCm) || 175;
+  const age = Number(ctx.age) || 26;
+  const gender = ctx.gender || "male";
+  const trainingStyleLabel =
+    ctx.trainingStyle === "powerlifting" ? "Powerlifting (Squat / Bench / Deadlift)" : "Muscle Building (Hypertrophy)";
+  const experience = ctx.experienceLevel || "intermediate";
+  const goalLabel = ctx.nutritionTargets?.goal_label || ctx.goal || "Strength & Hypertrophy";
+  const weeklyDays = Number(ctx.weeklyDays) || 4;
+
+  const targets = ctx.nutritionTargets || {
+    bmr: 1750,
+    tdee: 2450,
+    target_calories: 2350,
+    protein_g: Math.round(weightKg * 2.0),
+    carbs_g: Math.round(weightKg * 3.0),
+    fats_g: Math.round(weightKg * 0.9),
+    fiber_g: 32,
+    water_ml: 3200,
+    goal_label: goalLabel,
+  };
+
+  const todayNut = ctx.todayNutrition || {
+    calories: 0,
+    protein_g: 0,
+    carbs_g: 0,
+    fat_g: 0,
+    fiber_g: 0,
+    water_ml: 0,
+    entries: [],
+  };
+
+  const recentWorkoutsSummary =
+    (ctx.workouts || []).length > 0
+      ? (ctx.workouts || [])
+          .slice(0, 5)
+          .map(
+            (w: any) =>
+              `${w.workout_name || "Session"} (${String(w.completed_at || "").slice(0, 10)}, Vol: ${
+                w.total_volume_kg || 0
+              }kg)`
+          )
+          .join("; ")
+      : "No workout sessions logged yet";
+
+  const prSummary =
+    (ctx.prs || []).length > 0
+      ? (ctx.prs || [])
+          .slice(0, 8)
+          .map(
+            (p: any) =>
+              `${p.exercise_name}: ${p.max_weight_kg}kg × ${p.reps_at_max || 1} (Est 1RM: ${
+                p.estimated_1rm_kg || p.max_weight_kg
+              }kg)`
+          )
+          .join("; ")
+      : "No personal records logged yet";
+
+  const todayFoodList =
+    (todayNut.entries || []).length > 0
+      ? (todayNut.entries || [])
+          .map(
+            (e: any) =>
+              `${e.food_name} (${e.quantity} ${e.unit}: ${e.calories} kcal, ${e.protein_g}g P, ${e.carbs_g}g C, ${e.fat_g}g F)`
+          )
+          .join("; ")
+      : "No foods logged in today's nutrition diary yet";
+
   if (genAI && apiKey && apiKey !== "your-gemini-api-key") {
     try {
       const model = genAI.getGenerativeModel({
         model: modelName,
-        generationConfig: { maxOutputTokens: 1024, temperature: 0.6 },
-        systemInstruction: `You are the STRAP Fitness Coach.
-Your philosophy: Science-based, encouraging, precise, and practical.
-Brand: STRAP (Start, Train, Recover, Adapt, Progress).
-Tagline: Train Smart. Recover Better. Progress Faster.
-Client Context:
-- Name: ${userContext?.name || "Athlete"}
-- Current Goal: ${userContext?.goal || "Fitness & Strength"}
-- Weight: ${userContext?.weight || "75"} kg
-- Membership: ${userContext?.plan || "Premium"}
+        generationConfig: { maxOutputTokens: 1024, temperature: 0.55 },
+        systemInstruction: `You are STRAP Coach, an elite, science-based strength, hypertrophy, and nutrition coach inside the STRAP fitness platform.
+Never mention Google, Gemini, LLM models, API keys, or provider names. Identify yourself solely as STRAP Coach.
 
-Guidelines:
-1. Provide concise, actionable fitness, nutrition, and recovery advice.
-2. Structure answers with clean bullet points and bold highlights.
-3. Recommend safe progressive overload, mobility, and recovery strategies.
-4. If asked about medical diagnoses or prescription medications, remind them to consult a qualified physician.`,
+Athlete Profile & Real-Time Logged Data:
+- Name: ${athleteName}
+- Biometrics: Age ${age}, Gender ${gender}, Height ${heightCm} cm, Weight ${weightKg} kg
+- Primary Goal: ${goalLabel}
+- Training Mode: ${trainingStyleLabel} (${experience} level, ${weeklyDays} days/week)
+- Configured 1RMs: Squat ${ctx.actual1RMs?.squat || "not set"} kg, Bench ${ctx.actual1RMs?.bench || "not set"} kg, Deadlift ${ctx.actual1RMs?.deadlift || "not set"} kg
+- Logged Personal Records: ${prSummary}
+- Recent Workouts: ${recentWorkoutsSummary}
+- Daily Nutrition Targets (Mifflin-St Jeor): BMR ${targets.bmr} kcal, TDEE ${targets.tdee} kcal, Target ${targets.target_calories} kcal | Protein ${targets.protein_g}g | Carbs ${targets.carbs_g}g | Fat ${targets.fats_g}g | Fibre ${targets.fiber_g}g | Water ${targets.water_ml} ml
+- Today's Logged Nutrition Intake: ${todayNut.calories} kcal consumed | Protein ${todayNut.protein_g}g | Carbs ${todayNut.carbs_g}g | Fat ${todayNut.fat_g}g | Fibre ${todayNut.fiber_g}g | Water ${todayNut.water_ml} ml
+- Today's Logged Foods: ${todayFoodList}
+
+Coaching Rules:
+1. Answer the user's exact question directly and specifically. Never reply with a generic template.
+2. Reference the athlete's real logged numbers above when relevant, and clearly distinguish between logged data vs. calculated estimates.
+3. Structure answers clearly with bold headings, bullet points, sets/reps/RPE or gram targets.
+4. For medical or injury issues, advise safe biomechanics and consulting a qualified medical professional.`,
       });
 
-      const chat = model.startChat({
-        history: history.map((h) => ({
+      const validHistory = history
+        .filter((h) => h && h.parts && (h.role === "user" || h.role === "model"))
+        .map((h) => ({
           role: h.role,
           parts: [{ text: h.parts }],
-        })),
-      });
+        }));
+      // Gemini startChat requires first message in history to be from 'user'
+      while (validHistory.length > 0 && validHistory[0].role !== "user") {
+        validHistory.shift();
+      }
 
+      const chat = model.startChat({ history: validHistory });
       const response = await chat.sendMessage(userMessage);
-      return response.response.text();
+      const text = response.response.text();
+      if (text && text.trim().length > 20) {
+        return text.replace(/Google Gemini|Gemini AI|Gemini/gi, "STRAP Coach");
+      }
     } catch (err) {
-      console.warn("Gemini chat failed, fallback response:", err);
+      console.warn("STRAP Coach live model fallback triggered:", err);
     }
   }
 
-  // Graceful conversational response when API key is pending
-  return `**STRAP Assistant** (Local Coach Mode)\n\nThank you for reaching out regarding: "${userMessage}".\n\n- **Training Insight**: Always prioritize movement quality over raw weight. Progressive overload can be achieved via load, reps, tempo, or reduced rest intervals.\n- **Recovery & Nutrition**: Ensure adequate daily protein (1.6 - 2.2g/kg) and target 7-8 hours of continuous sleep to maximize muscle protein synthesis.\n- **Adaptive Next Step**: Check your active workout plan in the **Workout Planner** and log your sets in the **Workout Tracker** to enable continuous AI adaptation.\n\n*(Note: To unlock live conversational Gemini reasoning, configure \`GEMINI_API_KEY\` in your \`.env.local\` file!)*`;
+  return buildPersonalizedCoachReply(userMessage, history, {
+    athleteName,
+    age,
+    gender,
+    heightCm,
+    weightKg,
+    trainingStyle: ctx.trainingStyle || "muscle_building",
+    trainingStyleLabel,
+    experience,
+    goalLabel,
+    weeklyDays,
+    actual1RMs: ctx.actual1RMs || {},
+    targets,
+    todayNut,
+    workouts: ctx.workouts || [],
+    prs: ctx.prs || [],
+    recoveryLogs: ctx.recoveryLogs || [],
+  });
+}
+
+function buildPersonalizedCoachReply(
+  userMessage: string,
+  _history: { role: "user" | "model"; parts: string }[],
+  c: {
+    athleteName: string;
+    age: number;
+    gender: string;
+    heightCm: number;
+    weightKg: number;
+    trainingStyle: "powerlifting" | "muscle_building";
+    trainingStyleLabel: string;
+    experience: string;
+    goalLabel: string;
+    weeklyDays: number;
+    actual1RMs: { squat?: number; bench?: number; deadlift?: number };
+    targets: {
+      bmr: number;
+      tdee: number;
+      target_calories: number;
+      protein_g: number;
+      carbs_g: number;
+      fats_g: number;
+      fiber_g: number;
+      water_ml: number;
+      goal_label: string;
+    };
+    todayNut: {
+      calories: number;
+      protein_g: number;
+      carbs_g: number;
+      fat_g: number;
+      fiber_g: number;
+      water_ml: number;
+      entries: any[];
+    };
+    workouts: any[];
+    prs: any[];
+    recoveryLogs: any[];
+  }
+): string {
+  const q = userMessage.toLowerCase();
+
+  // Find relevant logged PRs
+  const benchPr = c.prs.find((p: any) => /bench/i.test(p.exercise_name || ""));
+  const squatPr = c.prs.find((p: any) => /squat/i.test(p.exercise_name || ""));
+  const deadliftPr = c.prs.find((p: any) => /deadlift/i.test(p.exercise_name || ""));
+
+  const loggedBench1RM =
+    Number(c.actual1RMs.bench) ||
+    Number(benchPr?.estimated_1rm_kg) ||
+    Number(benchPr?.max_weight_kg) ||
+    0;
+  const estBench1RM = loggedBench1RM || Math.round(c.weightKg * 1.05);
+
+  const loggedSquat1RM =
+    Number(c.actual1RMs.squat) ||
+    Number(squatPr?.estimated_1rm_kg) ||
+    Number(squatPr?.max_weight_kg) ||
+    0;
+  const estSquat1RM = loggedSquat1RM || Math.round(c.weightKg * 1.4);
+
+  const loggedDeadlift1RM =
+    Number(c.actual1RMs.deadlift) ||
+    Number(deadliftPr?.estimated_1rm_kg) ||
+    Number(deadliftPr?.max_weight_kg) ||
+    0;
+  const estDeadlift1RM = loggedDeadlift1RM || Math.round(c.weightKg * 1.65);
+
+  // 1. BENCH PRESS PROGRESSION
+  if (q.includes("bench")) {
+    const dataNote = loggedBench1RM
+      ? `Based on your **logged Bench Press 1RM of ${loggedBench1RM} kg** (at ${c.weightKg} kg bodyweight)`
+      : `You haven't logged a competition Bench Press 1RM yet, so using an **estimated working 1RM of ~${estBench1RM} kg** for your ${c.weightKg} kg bodyweight and **${c.experience}** profile`;
+
+    const topSingle = Math.round((estBench1RM * 0.875) / 2.5) * 2.5;
+    const backoffLoad = Math.round((estBench1RM * 0.775) / 2.5) * 2.5;
+    const hypertrophyLoad = Math.round((estBench1RM * 0.725) / 2.5) * 2.5;
+
+    return `### Bench Press Progression Blueprint for ${c.athleteName}
+
+${dataNote}, here is your structured plan tailored to your **${c.trainingStyleLabel}** mode and **${c.goalLabel}** goal:
+
+#### 1. Weekly Frequency & Loading Structure
+- **Day A – Primary Heavy Bench**:
+  - **Top Set**: 1 set × 3–4 reps @ **${topSingle} kg** (~87.5% 1RM, RPE 8–8.5 / 1–2 RIR)
+  - **Back-off Volume**: 3–4 sets × 5–6 reps @ **${backoffLoad} kg** (~77.5% 1RM, RPE 7.5–8)
+  - **Rest Interval**: 3 to 4 minutes between heavy sets.
+- **Day B – Variation & Hypertrophy Bench (48–72h later)**:
+  - **Paused Bench Press or Spoto Press**: 4 sets × 6–8 reps @ **${hypertrophyLoad} kg** (1-second pause on chest to eliminate momentum and build bottom-end drive).
+  - **Incline Dumbbell Press**: 3 sets × 8–10 reps @ RPE 8.
+
+#### 2. Weak-Point Accessory Prescription
+- **Off-the-Chest Sticking Point**: Paused Bench Press, Cambered/Deep Dumbbell Press, and Weighted Dips (3 × 8–10).
+- **Mid-Range / Lockout Sticking Point**: Close-Grip Bench Press (3 × 6–8), Skull Crushers, and Rope Triceps Pushdowns (3 × 10–12).
+- **Upper-Back Stability Shelf**: Barbell Rows, Chest-Supported Rows, and Face Pulls (3–4 sets × 10–15) to create a rigid scapular base.
+
+#### 3. Technical Execution Cues
+- **Scapular Retraction & Depression**: Pull shoulder blades back and down into the bench before unracking.
+- **Leg Drive**: Push your heels horizontally into the floor to drive force toward your traps without lifting your glutes off the pad.
+- **Double-Progression Rule**: Once you hit the top of your prescribed rep range across all working sets at RPE ≤ 8, increase the bar load by **+2.5 kg** next week.`;
+  }
+
+  // 2. SQUAT PROGRESSION / PLATEAU
+  if (q.includes("squat")) {
+    const dataNote = loggedSquat1RM
+      ? `Looking at your **logged Squat 1RM of ${loggedSquat1RM} kg** (at ${c.weightKg} kg bodyweight)`
+      : `Since no Squat 1RM is logged yet, using an **estimated reference 1RM of ~${estSquat1RM} kg** for your ${c.weightKg} kg bodyweight and **${c.experience}** level`;
+
+    const primaryLoad = Math.round((estSquat1RM * 0.825) / 2.5) * 2.5;
+    const pauseLoad = Math.round((estSquat1RM * 0.725) / 2.5) * 2.5;
+
+    return `### Squat Plateau & Progression Analysis for ${c.athleteName}
+
+${dataNote} in **${c.trainingStyleLabel}** mode, squat plateaus typically stem from one of three bottlenecks: **bracing/positional loss in the hole**, **quad/glute drive deficit**, or **accumulated systemic fatigue**.
+
+#### 1. Diagnose & Fix Your Sticking Point
+- **Collapsing Forward Out of the Hole ("Good-Morning Squat")**:
+  - *Cause*: Quads are shifting load to the posterior chain or thoracic/core brace is softening at depth.
+  - *Fix*: Add **Pause Squats** (3 sets × 4 reps @ **${pauseLoad} kg**, 2-sec pause in the hole) and **Front Squats or Hack Squats** (3 × 8–10) to build upright quad drive.
+- **Slowing Down Mid-Ascent**:
+  - *Cause*: Concentric rate-of-force production through the sticking point.
+  - *Fix*: Program **Tempo Squats (3-1-0)** or **Box Squats** plus **Bulgarian Split Squats** (3 × 8–10/leg).
+
+#### 2. Recommended 2-Day Weekly Squat Wave
+- **Session 1 (Primary Strength)**:
+  - **Competition Squat (High-Bar or Low-Bar)**: 4 sets × 4–5 reps @ **${primaryLoad} kg** (~82.5% 1RM, RPE 8 / 2 RIR).
+  - **Romanian Deadlift**: 3 sets × 8 reps (hamstring & erector support).
+- **Session 2 (Technical Variation)**:
+  - **Pause Squat**: 3 sets × 4–5 reps @ **${pauseLoad} kg** (RPE 7.5).
+  - **Leg Press or Hack Squat**: 3 sets × 10–12 reps for quad hypertrophy without spinal axial fatigue.
+
+#### 3. Recovery & Nutrition Check
+- Your daily target is **${c.targets.target_calories} kcal** and **${c.targets.protein_g}g protein** (today you have logged **${c.todayNut.calories} kcal** and **${c.todayNut.protein_g}g protein**). Under-recovering between heavy lower-body sessions stalls central nervous system output—aim for 7.5+ hours of sleep and 3.5–4m rest between heavy squat sets.`;
+  }
+
+  // 3. DEADLIFT PROGRESSION
+  if (q.includes("deadlift")) {
+    const dataNote = loggedDeadlift1RM
+      ? `Based on your **logged Deadlift 1RM of ${loggedDeadlift1RM} kg**`
+      : `Using an **estimated Deadlift 1RM of ~${estDeadlift1RM} kg** for your ${c.weightKg} kg profile`;
+    const workWeight = Math.round((estDeadlift1RM * 0.825) / 2.5) * 2.5;
+    const rdlWeight = Math.round((estDeadlift1RM * 0.65) / 2.5) * 2.5;
+
+    return `### Deadlift Progression Strategy for ${c.athleteName}
+
+${dataNote} (${c.trainingStyleLabel}), the deadlift demands high central nervous system (CNS) recovery and strict wedge mechanics:
+
+- **Primary Pulling Session (1x/week Heavy)**:
+  - **Top Working Sets**: 2–3 sets × 3–5 reps @ **${workWeight} kg** (~82.5% 1RM, RPE 8 / 2 RIR). Avoid pulling to RPE 10 failure every week.
+- **Secondary Posterior Chain Session**:
+  - **Romanian Deadlift (RDL) or Pause Deadlift**: 3 sets × 6–8 reps @ **${rdlWeight} kg** (~65% 1RM) to reinforce lat engagement and hamstring tension.
+- **Weak-Point Variations**:
+  - *Slow off the floor*: **Deficit Deadlifts** (1–1.5 inch deficit, 3 × 4 @ 72–75% 1RM) and quad work (Leg Press / Front Squat).
+  - *Slow at knee/lockout*: **Block Pulls / Rack Pulls** and heavy **Barbell Hip Thrusts** + **Chest-Supported Rows**.`;
+  }
+
+  // 4. PROTEIN INTAKE QUESTION ("Am I eating enough protein?")
+  if (q.includes("protein")) {
+    const targetP = c.targets.protein_g;
+    const loggedP = c.todayNut.protein_g;
+    const remainingP = Math.max(0, Math.round((targetP - loggedP) * 10) / 10);
+    const gPerKg = (targetP / Math.max(1, c.weightKg)).toFixed(2);
+    const statusText =
+      c.todayNut.entries.length === 0
+        ? `You currently have **0g protein logged today** (no meals entered in today's diary yet).`
+        : loggedP >= targetP
+        ? `**Yes — you have hit your protein target today!** You have logged **${loggedP}g / ${targetP}g** protein across ${c.todayNut.entries.length} logged item(s).`
+        : `**Not yet for today:** You have logged **${loggedP}g protein** out of your **${targetP}g daily target**, leaving **${remainingP}g remaining** today.`;
+
+    const loggedItemsBreak =
+      c.todayNut.entries.length > 0
+        ? `\n- **Today's Logged Protein Sources**: ${c.todayNut.entries
+            .map((e: any) => `${e.food_name} (${e.protein_g}g P)`)
+            .join(", ")}`
+        : "";
+
+    return `### Personalized Protein Intake Assessment for ${c.athleteName}
+
+- **Your Biometric Profile**: **${c.weightKg} kg** bodyweight • Goal: **${c.goalLabel}** • Mode: **${c.trainingStyleLabel}**
+- **Optimal Daily Target**: **${targetP}g protein/day** (**${gPerKg} g/kg** of bodyweight, calibrated inside the evidence-based 1.6–2.2 g/kg range)
+- **Today's Status**: ${statusText}${loggedItemsBreak}
+
+#### How to Close a ${remainingP > 0 ? `${remainingP}g` : "Daily"} Protein Gap Easily
+1. **Whey Protein Isolate / Concentrate**: 1 scoop (32g) = **24–25g protein** (~120 kcal)
+2. **Chicken Breast (Cooked, 150g)**: **46g protein** (~248 kcal)
+3. **Low-Fat Paneer (150g) or Tofu (200g)**: **27–30g protein**
+4. **4 Whole Eggs or 6 Egg Whites**: **22–25g protein**
+5. **Soya Chunks (50g dry weight)**: **26g protein** (~172 kcal)
+6. **Greek Yogurt / Curd (250g bowl) + Dal/Rajma (1 katori)**: **22–24g protein**
+
+*Tip: Distribute your **${targetP}g** target across 3–4 meals (**~${Math.round(targetP / 4)}g protein per meal**) to maximize muscle protein synthesis throughout the day.*`;
+  }
+
+  // 5. TODAY'S LOGGED NUTRITION / CALORIE DEFICIT OR SURPLUS ANALYSIS
+  if (
+    q.includes("nutrition") ||
+    q.includes("calorie") ||
+    q.includes("diet") ||
+    q.includes("macro") ||
+    q.includes("eating") ||
+    q.includes("food") ||
+    q.includes("deficit") ||
+    q.includes("surplus") ||
+    q.includes("logged")
+  ) {
+    const calDiff = c.targets.target_calories - c.todayNut.calories;
+    const pDiff = Math.max(0, Math.round((c.targets.protein_g - c.todayNut.protein_g) * 10) / 10);
+    const cDiff = Math.max(0, Math.round((c.targets.carbs_g - c.todayNut.carbs_g) * 10) / 10);
+    const fDiff = Math.max(0, Math.round((c.targets.fats_g - c.todayNut.fat_g) * 10) / 10);
+
+    const entriesList =
+      c.todayNut.entries.length > 0
+        ? c.todayNut.entries
+            .map(
+              (e: any) =>
+                `  - **${e.food_name}** (${e.quantity} ${e.unit} in *${e.meal_category}*): **${e.calories} kcal** | P: ${e.protein_g}g | C: ${e.carbs_g}g | F: ${e.fat_g}g`
+            )
+            .join("\n")
+        : "  - *No food items logged for today yet. Open the **Nutrition Tracker** (`/nutrition`) to log Breakfast, Lunch, Snacks, Dinner, or Supplements.*";
+
+    return `### Daily Nutrition & Metabolic Audit for ${c.athleteName}
+
+#### 1. Your Personalized Energy Equations (Mifflin-St Jeor)
+- **Biometrics**: Age ${c.age} • ${c.heightCm} cm • ${c.weightKg} kg • Goal: **${c.goalLabel}**
+- **Basal Metabolic Rate (BMR)**: **${c.targets.bmr} kcal/day**
+- **Total Daily Energy Expenditure (TDEE)**: **${c.targets.tdee} kcal/day**
+- **Daily Goal Target**: **${c.targets.target_calories} kcal/day** (${
+      c.targets.target_calories < c.targets.tdee
+        ? `${c.targets.tdee - c.targets.target_calories} kcal deficit for fat loss while preserving lean tissue`
+        : c.targets.target_calories > c.targets.tdee
+        ? `+${c.targets.target_calories - c.targets.tdee} kcal controlled surplus for lean tissue & strength accretion`
+        : `isocaloric maintenance / recomposition`
+    })
+
+#### 2. Today's Logged Intake vs. Targets
+- **Calories**: **${Math.round(c.todayNut.calories)} kcal** consumed / **${c.targets.target_calories} kcal** target (${
+      calDiff >= 0 ? `**${Math.round(calDiff)} kcal remaining**` : `**${Math.abs(Math.round(calDiff))} kcal over target**`
+    })
+- **Protein**: **${c.todayNut.protein_g}g** / ${c.targets.protein_g}g (${pDiff}g remaining)
+- **Carbohydrates**: **${c.todayNut.carbs_g}g** / ${c.targets.carbs_g}g (${cDiff}g remaining)
+- **Total Fat**: **${c.todayNut.fat_g}g** / ${c.targets.fats_g}g (${fDiff}g remaining)
+- **Dietary Fibre**: **${c.todayNut.fiber_g}g** / ${c.targets.fiber_g}g
+- **Hydration**: **${c.todayNut.water_ml} ml** / ${c.targets.water_ml} ml
+
+#### 3. Foods & Supplements Logged Today (${c.todayNut.entries.length} items)
+${entriesList}
+
+#### 4. Coach Recommendation
+${
+  c.todayNut.entries.length === 0
+    ? `Start by logging your first meal in the **Nutrition Tracker**. Aim for **~${Math.round(
+        c.targets.protein_g / 4
+      )}g protein** and **~${Math.round(c.targets.target_calories / 4)} kcal** per meal across 4 feedings.`
+    : pDiff > 30
+    ? `Priority for your next meal: focus on high-protein density (e.g., Paneer, Chicken Breast, Eggs, Soya Chunks, or 1 scoop Whey Isolate) to close your **${pDiff}g protein gap** while keeping calories within your **${Math.max(
+        0,
+        Math.round(calDiff)
+      )} kcal** remaining budget.`
+    : `Your protein pacing is on track! Keep hydration near **${(c.targets.water_ml / 1000).toFixed(
+        1
+      )} L** and hit at least **${c.targets.fiber_g}g dietary fibre** from vegetables, oats, or pulses.`
+}`;
+  }
+
+  // 6. REAR DELTS / SHOULDER / SPECIFIC MUSCLE GROUP EXERCISES
+  if (
+    q.includes("rear delt") ||
+    q.includes("posterior delt") ||
+    q.includes("shoulder") ||
+    q.includes("exercise") ||
+    q.includes("chest") ||
+    q.includes("back") ||
+    q.includes("lat") ||
+    q.includes("bicep") ||
+    q.includes("tricep") ||
+    q.includes("hamstring") ||
+    q.includes("quad") ||
+    q.includes("glute")
+  ) {
+    if (q.includes("rear delt") || q.includes("posterior delt") || q.includes("shoulder")) {
+      return `### Targeted Rear Delt & Shoulder Hypertrophy Guide for ${c.athleteName}
+
+To isolate the **posterior deltoid** without letting the upper traps or mid-back (rhomboids) take over, focus on horizontal abduction with a neutral or slightly internally rotated humerus:
+
+#### Top 4 Rear Delt Exercises (Ranked by Biomechanical Tension)
+1. **Reverse Pec Deck (Rear Delt Machine Fly)**
+   - **Prescription**: 3–4 sets × 12–15 reps @ RPE 8.5–9 (60–75s rest)
+   - **Execution Cue**: Drive the backs of your wrists outward in a wide arc ("push the walls apart") rather than pinching your shoulder blades together.
+2. **Single-Arm or Cross-Body Cable Rear Delt Fly**
+   - **Prescription**: 3 sets × 12–15 reps per arm @ RPE 8.5
+   - **Execution Cue**: Set cables at shoulder height and pull across a 45° downward path to align directly with posterior deltoid fibers.
+3. **Chest-Supported Incline Dumbbell Rear Delt Row / Swing**
+   - **Prescription**: 3 sets × 15–20 reps @ RPE 8–9
+   - **Execution Cue**: Keep elbows flared at a 60–75° angle relative to the torso; pause for 0.5s at peak contraction.
+4. **High-Pulley Rope Face Pulls (External Rotation Focus)**
+   - **Prescription**: 3 sets × 15–20 reps @ RPE 8
+   - **Execution Cue**: Pull the rope toward your forehead while rotating your thumbs backward so your biceps finish in a double-biceps pose—essential for rotator cuff health and bench press stability.
+
+*Programming Tip for your **${c.trainingStyleLabel}** split: Train rear delts **2x/week** for **8–12 total working sets/week** at the end of Pull or Upper-Body sessions.*`;
+    }
+
+    return `### Biomechanical Exercise Selection for ${c.athleteName} (${c.trainingStyleLabel})
+
+Based on your **${c.experience}** experience level and **${c.goalLabel}** goal, here are the highest-yield movements sorted by mechanical tension profile:
+
+- **Chest**: Barbell Bench Press (3–4 × 5–8), Incline Dumbbell Press (3 × 8–10), Cable Fly / Pec Deck (3 × 12–15).
+- **Back (Width & Thickness)**: Weighted/Assisted Pull-Ups or Lat Pulldown (3–4 × 8–10), Chest-Supported Row or T-Bar Row (3–4 × 8–10), Seated Cable Row (3 × 10–12).
+- **Shoulders**: Overhead Barbell/Dumbbell Press (3 × 6–8), Cable Lateral Raises (4 × 12–15), Reverse Pec Deck / Face Pulls (3 × 15).
+- **Legs (Quads & Posterior Chain)**: High/Low-Bar Squat or Hack Squat (3–4 × 6–8), Romanian Deadlift (3 × 8–10), Seated/Lying Leg Curl (3 × 10–12), Standing Calf Raises (4 × 12–15).
+- **Arms**: Incline Dumbbell Curl & Preacher Curl (3 × 10–12), Overhead Cable Triceps Extension & Rope Pushdown (3 × 10–12).
+
+*You can log any of these directly in the **Workout Tracker** (\`/workout-tracker\`), or create custom exercises via the **+ Custom Exercise** button.*`;
+  }
+
+  // 7. NEXT TRAINING WEEK / WORKOUT PLAN / SPLIT
+  if (
+    q.includes("week") ||
+    q.includes("plan") ||
+    q.includes("split") ||
+    q.includes("program") ||
+    q.includes("routine") ||
+    q.includes("schedule")
+  ) {
+    if (c.trainingStyle === "powerlifting") {
+      return `### Next Training Week — Powerlifting SBD Block for ${c.athleteName}
+
+Tailored for your **${c.weightKg} kg** profile, **${c.goalLabel}** goal, and **${c.weeklyDays} days/week** schedule (Squat ref: ~${estSquat1RM}kg | Bench ref: ~${estBench1RM}kg | Deadlift ref: ~${estDeadlift1RM}kg):
+
+- **Day 1 – Heavy Squat & Quad Accessories**
+  1. Competition Squat: 1 top set × 3 reps @ **${Math.round(estSquat1RM * 0.85)} kg** (RPE 8), then 3 × 5 @ **${Math.round(estSquat1RM * 0.775)} kg**
+  2. Leg Press or Hack Squat: 3 sets × 8–10 reps @ RPE 8
+  3. Seated Leg Curl: 3 sets × 10–12 reps
+  4. Hanging Leg Raises / Plank: 3 sets
+- **Day 2 – Heavy Bench Press & Upper Hypertrophy**
+  1. Paused Barbell Bench Press: 1 top set × 3 reps @ **${Math.round(estBench1RM * 0.85)} kg** (RPE 8), then 4 × 5 @ **${Math.round(estBench1RM * 0.775)} kg**
+  2. Incline Dumbbell Press: 3 sets × 8–10 reps
+  3. Chest-Supported Row: 4 sets × 10 reps
+  4. Rope Triceps Pushdown + Face Pulls: 3 sets × 12–15 reps
+- **Day 3 – Heavy Deadlift & Secondary Bench**
+  1. Competition Deadlift: 1 top set × 3 reps @ **${Math.round(estDeadlift1RM * 0.85)} kg** (RPE 8), then 2 × 4 @ **${Math.round(estDeadlift1RM * 0.775)} kg**
+  2. Close-Grip or Spoto Bench Press: 3 sets × 6–8 reps @ **${Math.round(estBench1RM * 0.725)} kg**
+  3. Lat Pulldown: 3 sets × 10–12 reps
+- **Day 4 – Technical Squat / RDL & Arm Accessories**
+  1. Pause Squat (2-sec pause): 3 sets × 4 reps @ **${Math.round(estSquat1RM * 0.725)} kg** (RPE 7.5)
+  2. Romanian Deadlift: 3 sets × 8 reps @ **${Math.round(estDeadlift1RM * 0.625)} kg**
+  3. Barbell/Dumbbell Curls + Overhead Triceps Extensions: 3 sets × 10–12 reps
+
+*Load this directly in **Workout Tracker** (\`/workout-tracker\`) using the Powerlifting Periodization Templates.*`;
+    }
+
+    return `### Next Training Week — Hypertrophy & Progressive Overload Split for ${c.athleteName}
+
+Designed for your **${c.trainingStyleLabel}** mode, **${c.goalLabel}** objective, and **${c.weeklyDays} days/week** frequency (Daily nutrition target: **${c.targets.target_calories} kcal** & **${c.targets.protein_g}g protein**):
+
+- **Day 1 – Upper Body A (Chest & Back Thickness Focus)**
+  1. Barbell Bench Press: 3 sets × 6–8 reps @ RPE 8
+  2. Barbell or Chest-Supported Row: 3 sets × 8–10 reps @ RPE 8
+  3. Incline Dumbbell Press: 3 sets × 8–10 reps @ RPE 8.5
+  4. Lat Pulldown: 3 sets × 10–12 reps @ RPE 8.5
+  5. Cable Lateral Raises + Rope Triceps Pushdown: 3 sets × 12–15 reps
+- **Day 2 – Lower Body A (Quad & Glute Dominance)**
+  1. High-Bar Squat or Hack Squat: 3 sets × 6–8 reps @ RPE 8
+  2. Romanian Deadlift: 3 sets × 8–10 reps @ RPE 8
+  3. Leg Extension: 3 sets × 12–15 reps @ RPE 9
+  4. Lying/Seated Leg Curl: 3 sets × 10–12 reps @ RPE 8.5
+  5. Standing Calf Raises: 4 sets × 12–15 reps
+- **Day 3 – Upper Body B (Shoulder Width & Arm Hypertrophy)**
+  1. Overhead Dumbbell Shoulder Press: 3 sets × 8–10 reps @ RPE 8
+  2. Weighted Pull-Ups or Seated Cable Row: 3 sets × 8–10 reps
+  3. Cable Fly or Pec Deck: 3 sets × 12–15 reps @ RPE 9
+  4. Reverse Pec Deck / Face Pulls (Rear Delts): 3 sets × 15 reps
+  5. Incline Dumbbell Curl + Overhead Cable Triceps Extension: 3 sets × 10–12 reps
+- **Day 4 – Lower Body B (Posterior Chain & Unilateral)**
+  1. Conventional/Trap-Bar Deadlift or Hip Thrust: 3 sets × 6–8 reps @ RPE 8
+  2. Bulgarian Split Squat or Leg Press: 3 sets × 10–12 reps
+  3. Seated Leg Curl: 3 sets × 12–15 reps
+  4. Hanging Leg Raises & Cable Crunch: 3 sets × 12–15 reps`;
+  }
+
+  // 8. SUPPLEMENTS / CREATINE / WHEY / PRE-WORKOUT
+  if (
+    q.includes("supplement") ||
+    q.includes("creatine") ||
+    q.includes("whey") ||
+    q.includes("vitamin") ||
+    q.includes("omega") ||
+    q.includes("pre-workout") ||
+    q.includes("bcaa")
+  ) {
+    return `### Evidence-Based Supplement Protocol for ${c.athleteName} (${c.weightKg} kg)
+
+For your **${c.goalLabel}** goal and **${c.trainingStyleLabel}** training style, here are the tier-1 scientifically validated supplements you can track in the **Supplements** tab of your STRAP Nutrition Tracker:
+
+1. **Creatine Monohydrate (3–5g daily)**
+   - *Calories/Macros*: 0 kcal, 0g protein.
+   - *Protocol*: Take **5g (1 scoop) daily** at any consistent time with water or a meal. Saturates intramuscular phosphocreatine stores to boost 1–8 rep strength output and cell hydration.
+2. **Whey Protein Isolate or Concentrate (1–2 scoops/day as needed)**
+   - *Calories/Macros*: ~120 kcal, **24–25g protein** per 30–32g scoop.
+   - *Protocol*: Use post-workout or between meals to help hit your **${c.targets.protein_g}g daily protein target** (you currently have **${c.todayNut.protein_g}g** logged today).
+3. **Omega-3 Fish Oil (1000–2000mg combined EPA + DHA)**
+   - *Protocol*: Take with a meal containing dietary fat to support joint recovery and cardiovascular health.
+4. **Vitamin D3 (2000–4000 IU) + K2 & Magnesium Glycinate (300–400mg)**
+   - *Protocol*: Vitamin D3+K2 with breakfast/lunch; Magnesium 45 minutes before sleep to support nervous system recovery.
+
+*Educational Note: Supplements complement whole-food nutrition and are not medical treatments.*`;
+  }
+
+  // 9. DEFAULT CONTEXT-AWARE PERSONALIZED COACHING ANSWER
+  return `### STRAP Coach Assessment for ${c.athleteName}
+
+Regarding your question: **"${userMessage}"**
+
+#### 1. Your Current Athlete Telemetry
+- **Profile**: ${c.age} yrs • ${c.heightCm} cm • **${c.weightKg} kg** • Mode: **${c.trainingStyleLabel}** (${c.experience})
+- **Primary Goal**: **${c.goalLabel}** (${c.weeklyDays} training days/week)
+- **Daily Metabolic Targets**: **${c.targets.target_calories} kcal** (BMR: ${c.targets.bmr} kcal | TDEE: ${c.targets.tdee} kcal) • Protein: **${c.targets.protein_g}g** • Carbs: **${c.targets.carbs_g}g** • Fat: **${c.targets.fats_g}g**
+- **Today's Logged Nutrition**: **${Math.round(c.todayNut.calories)} kcal** & **${c.todayNut.protein_g}g protein** across **${c.todayNut.entries.length} logged item(s)** • Water: **${c.todayNut.water_ml} ml**
+- **Logged Workouts & PRs**: ${c.workouts.length} recent workout session(s) and ${c.prs.length} PR record(s) tracked.
+
+#### 2. Actionable Coaching Guidance
+- **Training Execution**: In **${c.trainingStyleLabel}** mode, anchor your sessions around progressive overload at **RPE 7.5–8.5 (1.5–2.5 RIR)**. Add **+2.5 kg** or **+1 rep** whenever you complete all prescribed sets at the top of your target rep range with clean technique.
+- **Nutrition Alignment**: Aim to finish today within **±100 kcal** of your **${c.targets.target_calories} kcal** target and hit at least **${c.targets.protein_g}g protein** (**${(c.targets.protein_g / Math.max(1, c.weightKg)).toFixed(1)} g/kg**) to support muscle recovery.
+- **Next Step**: Ask me specifically about your **Bench Press**, **Squat**, **Deadlift**, **Today's Logged Nutrition**, **Protein Target**, **Rear Delt / Muscle Group Exercises**, or **Next Training Week Plan** for a detailed breakdown!`;
 }
 
 /**

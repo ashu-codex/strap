@@ -32,7 +32,7 @@ export default function PricingPage() {
     'Cumulative training volume analytics',
     'Weekly AI workout adaptation based on fatigue logs',
     'Body circumference measurement tracking',
-    '24/7 Gemini AI fitness coach chat',
+    '24/7 STRAP Coach chat',
     'Automated workout calendar & streak monitoring',
   ];
 
@@ -109,7 +109,7 @@ export default function PricingPage() {
             </div>
 
             <p className="text-xs text-zinc-300 mb-6 leading-relaxed">
-              Full autonomous fitness system powered by Google Gemini AI, progressive overload tracking, and recovery readiness.
+              Full autonomous fitness system with personalized coaching, progressive overload tracking, nutrition tracking, and recovery readiness.
             </p>
 
             <div className="space-y-2.5 mb-8 max-h-80 overflow-y-auto pr-1">

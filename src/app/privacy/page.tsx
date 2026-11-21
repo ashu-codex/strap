@@ -22,9 +22,9 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-base font-bold text-white uppercase tracking-wider">2. Google Gemini AI Processing</h2>
+        <h2 className="text-base font-bold text-white uppercase tracking-wider">2. STRAP Intelligence Processing</h2>
         <p>
-          Biometric metrics passed to Google Gemini are sanitized and scoped purely to prompt context for workout split and nutrition synthesis. We never expose API credentials to client applications.
+          Biometric metrics processed by the STRAP coaching engine are sanitized and scoped purely to your personal context for workout split and nutrition synthesis. We never expose API credentials to client applications.
         </p>
       </section>
 

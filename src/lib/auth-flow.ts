@@ -10,6 +10,8 @@ export interface AuthLookupResult {
   exists: boolean;
   emailVerified: boolean;
   providers: string[];
+  hasEmailPassword?: boolean;
+  googleLinked?: boolean;
 }
 
 /**
@@ -18,7 +20,14 @@ export interface AuthLookupResult {
  */
 export async function lookupAuthAccount(normalizedEmail: string): Promise<AuthLookupResult> {
   const email = normalizedEmail.trim().toLowerCase();
-  if (!email) return { exists: false, emailVerified: false, providers: [] };
+  if (!email) return { exists: false, emailVerified: false, providers: [], hasEmailPassword: false, googleLinked: false };
+
+  const profileRow = await db.selectOne('user_profiles', { eq: { email } }).catch(() => null);
+  const prefRow = profileRow?.id
+    ? await db.selectOne('user_preferences', { eq: { user_id: profileRow.id } }).catch(() => null)
+    : null;
+  const prefGoogleLinked = Boolean(prefRow?.preferences?.google_linked);
+  const prefAuthOrigin = prefRow?.preferences?.auth_origin;
 
   if (isServiceRoleConfigured()) {
     const admin = createAdminClient();
@@ -29,32 +38,55 @@ export async function lookupAuthAccount(normalizedEmail: string): Promise<AuthLo
       });
       if (!rpcErr && Array.isArray(rpcData)) {
         if (rpcData.length > 0) {
+          const providers: string[] = Array.isArray(rpcData[0].providers) ? rpcData[0].providers : ['email'];
+          const hasEmailPassword = providers.includes('email') || prefAuthOrigin === 'email';
+          const googleLinked = prefGoogleLinked || (!hasEmailPassword && providers.includes('google'));
           return {
             exists: true,
             emailVerified: Boolean(rpcData[0].email_confirmed),
-            providers: Array.isArray(rpcData[0].providers) ? rpcData[0].providers : ['email'],
+            providers,
+            hasEmailPassword,
+            googleLinked,
           };
         }
-        return { exists: false, emailVerified: false, providers: [] };
+        return { exists: false, emailVerified: false, providers: [], hasEmailPassword: false, googleLinked: false };
       }
 
       // 2. Fallback if RPC migration hasn't been run yet: check user_profiles
-      const profile = await db.selectOne('user_profiles', { eq: { email } }).catch(() => null);
-      if (profile) {
-        return { exists: true, emailVerified: true, providers: ['email'] };
+      if (profileRow) {
+        const hasEmailPassword = prefAuthOrigin !== 'google';
+        return {
+          exists: true,
+          emailVerified: true,
+          providers: hasEmailPassword ? ['email'] : ['google'],
+          hasEmailPassword,
+          googleLinked: prefGoogleLinked || !hasEmailPassword,
+        };
       }
-      return { exists: false, emailVerified: false, providers: [] };
+      return { exists: false, emailVerified: false, providers: [], hasEmailPassword: false, googleLinked: false };
     }
   }
 
   if (isDevFallbackAllowed()) {
     const devUser = await db.selectOne('dev_auth_users', { eq: { email } });
     if (devUser) {
-      return { exists: true, emailVerified: Boolean(devUser.email_confirmed), providers: ['email'] };
+      const providers: string[] = Array.isArray(devUser.providers)
+        ? devUser.providers
+        : prefGoogleLinked
+        ? ['email', 'google']
+        : ['email'];
+      const hasEmailPassword = providers.includes('email') || Boolean(devUser.password_hash);
+      return {
+        exists: true,
+        emailVerified: Boolean(devUser.email_confirmed),
+        providers,
+        hasEmailPassword,
+        googleLinked: Boolean(devUser.google_linked || prefGoogleLinked),
+      };
     }
   }
 
-  return { exists: false, emailVerified: false, providers: [] };
+  return { exists: false, emailVerified: false, providers: [], hasEmailPassword: false, googleLinked: false };
 }
 
 /**

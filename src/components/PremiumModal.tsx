@@ -26,7 +26,7 @@ export default function PremiumModal({
     'Personalized daily calories, macro targets (P/C/F) & meal timing',
     'Daily sleep and readiness scoring (Ready, Recovering, Rest Recommended)',
     'Interactive workout session tracker & PR records tracker',
-    'Direct 24/7 conversation with STRAP Gemini AI Fitness Coach',
+    'Direct 24/7 conversation with STRAP Coach',
     'Automatic weekly plan adaptations based on recovery logs',
   ];
 
