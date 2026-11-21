@@ -553,7 +553,6 @@ export async function chatWithAIAssistant(
       : "No foods logged in today's nutrition diary yet";
 
   if (genAI && apiKey && apiKey !== "your-gemini-api-key") {
-    const candidateModels = Array.from(new Set([modelName, "gemini-2.5-flash", "gemini-2.0-flash"]));
     const validHistory = history
       .filter((h) => h && h.parts && (h.role === "user" || h.role === "model"))
       .map((h) => ({
@@ -564,16 +563,14 @@ export async function chatWithAIAssistant(
       validHistory.shift();
     }
 
-    for (const candidateModel of candidateModels) {
-      try {
-        const model = genAI.getGenerativeModel({
-          model: candidateModel,
-          generationConfig: {
-            maxOutputTokens: 4096,
-            temperature: 0.55,
-            thinkingConfig: { thinkingBudget: 0 },
-          } as any,
-          systemInstruction: `You are STRAP Coach, an elite, science-based strength, hypertrophy, and nutrition coach inside the STRAP fitness platform.
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          maxOutputTokens: 8192,
+          temperature: 0.55,
+        },
+        systemInstruction: `You are STRAP Coach, an elite, science-based strength, hypertrophy, and nutrition coach inside the STRAP fitness platform.
 Never mention Google, Gemini, LLM models, API keys, or provider names. Identify yourself solely as STRAP Coach.
 
 Athlete Profile & Real-Time Logged Data:
@@ -593,31 +590,30 @@ Coaching Rules:
 2. Reference the athlete's real logged numbers above when relevant, and clearly distinguish between logged data vs. calculated estimates.
 3. Keep the response well-structured and concise (250-450 words) with clear headings, bullet points, and specific numbers (sets/reps/RPE or grams/calories).
 4. For medical or injury issues, advise safe biomechanics and consulting a qualified medical professional.`,
-        });
+      });
 
-        const chat = model.startChat({ history: validHistory });
-        const response = await Promise.race([
-          chat.sendMessage(userMessage),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Model request timed out after 9s")), 9000)
-          ),
-        ]);
+      const chat = model.startChat({ history: validHistory });
+      const response = await Promise.race([
+        chat.sendMessage(userMessage),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Model request timed out after 22s")), 22000)
+        ),
+      ]);
 
-        let text = (response.response.text() || "").trim();
-        const finishReason = response.response.candidates?.[0]?.finishReason;
-        if (finishReason === "MAX_TOKENS" && text.length > 0 && !/[.!?*`)]$/.test(text)) {
-          const lastSentenceIdx = Math.max(text.lastIndexOf(". "), text.lastIndexOf(".\n"), text.lastIndexOf("\n"));
-          if (lastSentenceIdx > text.length * 0.6) {
-            text = text.slice(0, lastSentenceIdx + 1).trim();
-          }
+      let text = (response.response.text() || "").trim();
+      const finishReason = response.response.candidates?.[0]?.finishReason;
+      if (finishReason === "MAX_TOKENS" && text.length > 0 && !/[.!?*`)]$/.test(text)) {
+        const lastSentenceIdx = Math.max(text.lastIndexOf(". "), text.lastIndexOf(".\n"), text.lastIndexOf("\n"));
+        if (lastSentenceIdx > text.length * 0.6) {
+          text = text.slice(0, lastSentenceIdx + 1).trim();
         }
-
-        if (text && text.length > 60 && /[a-zA-Z0-9.!?*`)]$/.test(text)) {
-          return text.replace(/Google Gemini|Gemini AI|Gemini/gi, "STRAP Coach");
-        }
-      } catch (err) {
-        console.warn(`STRAP Coach model ${candidateModel} fallback triggered:`, (err as any)?.message || err);
       }
+
+      if (text && text.length > 60 && /[a-zA-Z0-9.!?*`)]$/.test(text)) {
+        return text.replace(/Google Gemini|Gemini AI|Gemini/gi, "STRAP Coach");
+      }
+    } catch (err) {
+      console.warn(`STRAP Coach live model (${modelName}) fallback triggered:`, (err as any)?.message || err);
     }
   }
 
