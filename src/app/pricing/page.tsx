@@ -2,8 +2,12 @@
 
 import React from 'react';
 import { CheckCircle2, Check, Sparkles, ArrowRight, ShieldCheck, HelpCircle } from 'lucide-react';
+import { useApp } from '@/components/Providers';
 
 export default function PricingPage() {
+  const { auth } = useApp();
+  const isLoggedIn = Boolean(auth?.user);
+  const isPremium = Boolean(auth?.isPremium);
   const freeFeatures = [
     'User account creation & profile',
     'Biometric & fitness goal selection',
@@ -81,10 +85,10 @@ export default function PricingPage() {
           </div>
 
           <a
-            href="/signup"
+            href={isLoggedIn ? '/dashboard' : '/signup'}
             className="w-full text-center py-3 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-bold text-white hover:bg-zinc-800 transition-colors"
           >
-            Start Free
+            {isLoggedIn ? 'Go to Dashboard' : 'Start Free'}
           </a>
         </div>
 
@@ -123,10 +127,10 @@ export default function PricingPage() {
           </div>
 
           <a
-            href="/checkout"
+            href={isLoggedIn && isPremium ? '/dashboard' : '/checkout'}
             className="w-full flex items-center justify-center gap-2 text-center py-3.5 rounded-xl bg-brand text-xs font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-[1.02] strap-primary"
           >
-            <span>Upgrade to Premium (₹100)</span>
+            <span>{isLoggedIn && isPremium ? 'Premium Active — Open Dashboard' : 'Upgrade to Premium (₹100)'}</span>
             <ArrowRight className="h-4 w-4" />
           </a>
         </div>

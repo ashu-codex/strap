@@ -87,6 +87,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Already-authenticated users should never be sent to Create Account or Sign In pages
+  if (user && (path === '/signup' || path === '/login') && !request.nextUrl.searchParams.get('error')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
   return response;
 }
 
