@@ -83,7 +83,13 @@ export default function AdminDashboardPage() {
   const loadAllAdminData = useCallback(async () => {
     setLoading(true);
     try {
-      const statsRes = await fetch('/api/admin/stats');
+      const [statsRes, usersRes, paymentsRes, settingsRes, contentRes] = await Promise.all([
+        fetch('/api/admin/stats'),
+        fetch('/api/admin/users').then((r) => (r.ok ? r.json() : ({ users: [] } as any))).catch(() => ({ users: [] } as any)),
+        fetch('/api/admin/payments').then((r) => (r.ok ? r.json() : ({ payments: [] } as any))).catch(() => ({ payments: [] } as any)),
+        fetch('/api/admin/settings').then((r) => (r.ok ? r.json() : ({} as any))).catch(() => ({} as any)),
+        fetch('/api/admin/content').then((r) => (r.ok ? r.json() : ({} as any))).catch(() => ({} as any)),
+      ]);
       if (statsRes.status === 401 || statsRes.status === 403) {
         setAuthorized(false);
         setLoading(false);
@@ -95,13 +101,6 @@ export default function AdminDashboardPage() {
       setAiStats(statsJson.aiStats);
       setSystemHealth(statsJson.systemHealth);
       setCurrentAdminEmail(statsJson.currentAdmin || '');
-
-      const [usersRes, paymentsRes, settingsRes, contentRes] = await Promise.all([
-        fetch('/api/admin/users').then((r) => r.json()).catch(() => ({ users: [] })),
-        fetch('/api/admin/payments').then((r) => r.json()).catch(() => ({ payments: [] })),
-        fetch('/api/admin/settings').then((r) => r.json()).catch(() => ({})),
-        fetch('/api/admin/content').then((r) => r.json()).catch(() => ({})),
-      ]);
 
       if (Array.isArray(usersRes.users)) setUsers(usersRes.users);
       if (Array.isArray(paymentsRes.payments)) setPayments(paymentsRes.payments);

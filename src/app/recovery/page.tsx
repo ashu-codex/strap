@@ -35,11 +35,12 @@ export default function RecoveryPage() {
   useEffect(() => {
     async function loadRecovery() {
       try {
-        const subRes = await fetch('/api/user/subscription').then((r) => r.json());
-        setIsPremium(subRes.isPremium);
-
-        if (subRes.isPremium) {
-          const recRes = await fetch('/api/user/recovery').then((r) => r.json());
+        const [subRes, recRes] = await Promise.all([
+          fetch('/api/user/subscription').then((r) => r.json()).catch(() => ({ isPremium: false })),
+          fetch('/api/user/recovery').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        ]);
+        setIsPremium(Boolean(subRes?.isPremium));
+        if (recRes) {
           setSleepLogs(recRes.sleepLogs || []);
           setRecoveryLogs(recRes.recoveryLogs || []);
         }

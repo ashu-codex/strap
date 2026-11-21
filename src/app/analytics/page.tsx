@@ -41,18 +41,14 @@ export default function AnalyticsPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const subRes = await fetch('/api/user/subscription').then((r) => r.json());
-        setIsPremium(subRes.isPremium);
-
-        if (subRes.isPremium) {
-          const [mRes, wRes] = await Promise.all([
-            fetch('/api/user/measurements').then((r) => r.json()),
-            fetch('/api/workouts').then((r) => r.json()),
-          ]);
-
-          setMeasurements(mRes.measurements || []);
-          setPrs(wRes.prs || []);
-        }
+        const [subRes, mRes, wRes] = await Promise.all([
+          fetch('/api/user/subscription').then((r) => r.json()).catch(() => ({ isPremium: false })),
+          fetch('/api/user/measurements').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+          fetch('/api/workouts').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        ]);
+        setIsPremium(Boolean(subRes?.isPremium));
+        if (mRes?.measurements) setMeasurements(mRes.measurements);
+        if (wRes?.prs) setPrs(wRes.prs);
         setLoading(false);
       } catch (err) {
         setLoading(false);

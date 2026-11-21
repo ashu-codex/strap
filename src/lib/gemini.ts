@@ -17,6 +17,31 @@ const modelName = RETIRED_MODELS.has(rawModel) ? "gemini-3.8-flash" : rawModel;
 
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
+// Fast circuit-breaker & timeout guard so users never wait on slow/503 upstream model calls
+let liveModelCooldownUntil = 0;
+
+function canAttemptLiveModel(): boolean {
+  return Boolean(
+    genAI &&
+      apiKey &&
+      apiKey !== "your-gemini-api-key" &&
+      Date.now() >= liveModelCooldownUntil
+  );
+}
+
+function withFastTimeout<T>(promise: Promise<T>, ms = 3200): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Fast timeout after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
+function tripLiveModelCooldown() {
+  liveModelCooldownUntil = Date.now() + 180_000;
+}
+
 /**
  * Safely parse JSON from Gemini text response (handling markdown code fences)
  */
@@ -44,15 +69,16 @@ export async function generateWorkoutPlanAI(params: {
 }): Promise<{ plan: GeneratedWorkoutPlan; isAiGenerated: boolean }> {
   const { metrics, goal } = params;
 
-  if (genAI && apiKey && apiKey !== "your-gemini-api-key") {
+  if (canAttemptLiveModel()) {
     try {
-      const model = genAI.getGenerativeModel({
+      const model = genAI!.getGenerativeModel({
         model: modelName,
         generationConfig: {
           temperature: 0.3,
           maxOutputTokens: 4096,
           responseMimeType: "application/json",
-        },
+          thinkingConfig: { thinkingBudget: 0 },
+        } as any,
       });
 
       const prompt = `You are the lead exercise physiologist for STRAP Fitness.
@@ -104,12 +130,13 @@ Return valid JSON strictly adhering to this structure:
   ]
 }`;
 
-      const result = await model.generateContent(prompt);
+      const result = await withFastTimeout(model.generateContent(prompt), 3500);
       const text = result.response.text();
       const plan = extractJsonFromText<GeneratedWorkoutPlan>(text);
       return { plan, isAiGenerated: true };
     } catch (error) {
-      console.warn("Gemini API call failed, utilizing high-precision fallback engine:", error);
+      tripLiveModelCooldown();
+      console.warn("Gemini API call failed, utilizing high-precision fallback engine:", (error as any)?.message || error);
     }
   }
 
@@ -142,15 +169,16 @@ export async function generateNutritionPlanAI(params: {
   else if (primaryGoal === "muscle_gain") targetCalories = Math.round(tdee * 1.12);
   else if (primaryGoal === "strength") targetCalories = Math.round(tdee * 1.05);
 
-  if (genAI && apiKey && apiKey !== "your-gemini-api-key") {
+  if (canAttemptLiveModel()) {
     try {
-      const model = genAI.getGenerativeModel({
+      const model = genAI!.getGenerativeModel({
         model: modelName,
         generationConfig: {
           temperature: 0.2,
           maxOutputTokens: 4096,
           responseMimeType: "application/json",
-        },
+          thinkingConfig: { thinkingBudget: 0 },
+        } as any,
       });
 
       const prompt = `You are a certified sports nutritionist for STRAP Fitness.
@@ -186,12 +214,13 @@ Return strictly JSON matching this structure:
   }
 }`;
 
-      const result = await model.generateContent(prompt);
+      const result = await withFastTimeout(model.generateContent(prompt), 3500);
       const text = result.response.text();
       const plan = extractJsonFromText<NutritionPlan>(text);
       return { plan, isAiGenerated: true };
     } catch (err) {
-      console.warn("Gemini nutrition call failed, falling back to scientific formulas:", err);
+      tripLiveModelCooldown();
+      console.warn("Gemini nutrition call failed, falling back to scientific formulas:", (err as any)?.message || err);
     }
   }
 
@@ -279,15 +308,16 @@ export async function generateRecoveryAnalysisAI(params: {
     readiness = "recovering";
   }
 
-  if (genAI && apiKey && apiKey !== "your-gemini-api-key") {
+  if (canAttemptLiveModel()) {
     try {
-      const model = genAI.getGenerativeModel({
+      const model = genAI!.getGenerativeModel({
         model: modelName,
         generationConfig: {
           temperature: 0.3,
           maxOutputTokens: 4096,
           responseMimeType: "application/json",
-        },
+          thinkingConfig: { thinkingBudget: 0 },
+        } as any,
       });
 
       const prompt = `You are the STRAP Recovery & Autonomic Nervous System Coach.
@@ -313,12 +343,13 @@ Return strictly JSON:
   ]
 }`;
 
-      const res = await model.generateContent(prompt);
+      const res = await withFastTimeout(model.generateContent(prompt), 3500);
       const text = res.response.text();
       const analysis = extractJsonFromText<RecoveryAnalysis>(text);
       return { analysis, isAiGenerated: true };
     } catch (err) {
-      console.warn("Gemini recovery call failed, falling back to rule engine:", err);
+      tripLiveModelCooldown();
+      console.warn("Gemini recovery call failed, falling back to rule engine:", (err as any)?.message || err);
     }
   }
 
@@ -358,15 +389,16 @@ export async function generateWeeklyAdaptationAI(params: {
 }): Promise<{ adaptation: WeeklyAdaptation; isAiGenerated: boolean }> {
   const { completedWorkoutsCount, averageRpe, missedWorkouts, currentSplit } = params;
 
-  if (genAI && apiKey && apiKey !== "your-gemini-api-key") {
+  if (canAttemptLiveModel()) {
     try {
-      const model = genAI.getGenerativeModel({
+      const model = genAI!.getGenerativeModel({
         model: modelName,
         generationConfig: {
           temperature: 0.3,
           maxOutputTokens: 4096,
           responseMimeType: "application/json",
-        },
+          thinkingConfig: { thinkingBudget: 0 },
+        } as any,
       });
 
       const prompt = `You are the STRAP Adaptive Intelligence System.
@@ -392,12 +424,13 @@ Return strictly JSON explaining how and WHY the training plan adapts for next we
   "coach_message": "Inspiring, data-driven message from your AI coach."
 }`;
 
-      const res = await model.generateContent(prompt);
+      const res = await withFastTimeout(model.generateContent(prompt), 3500);
       const text = res.response.text();
       const adaptation = extractJsonFromText<WeeklyAdaptation>(text);
       return { adaptation, isAiGenerated: true };
     } catch (err) {
-      console.warn("Gemini weekly adaptation failed, falling back to rule engine:", err);
+      tripLiveModelCooldown();
+      console.warn("Gemini weekly adaptation failed, falling back to rule engine:", (err as any)?.message || err);
     }
   }
 
@@ -552,7 +585,7 @@ export async function chatWithAIAssistant(
           .join("; ")
       : "No foods logged in today's nutrition diary yet";
 
-  if (genAI && apiKey && apiKey !== "your-gemini-api-key") {
+  if (canAttemptLiveModel()) {
     const validHistory = history
       .filter((h) => h && h.parts && (h.role === "user" || h.role === "model"))
       .map((h) => ({
@@ -564,12 +597,13 @@ export async function chatWithAIAssistant(
     }
 
     try {
-      const model = genAI.getGenerativeModel({
+      const model = genAI!.getGenerativeModel({
         model: modelName,
         generationConfig: {
           maxOutputTokens: 8192,
           temperature: 0.55,
-        },
+          thinkingConfig: { thinkingBudget: 0 },
+        } as any,
         systemInstruction: `You are STRAP Coach, an elite, science-based strength, hypertrophy, and nutrition coach inside the STRAP fitness platform.
 Never mention Google, Gemini, LLM models, API keys, or provider names. Identify yourself solely as STRAP Coach.
 
@@ -593,12 +627,7 @@ Coaching Rules:
       });
 
       const chat = model.startChat({ history: validHistory });
-      const response = await Promise.race([
-        chat.sendMessage(userMessage),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Model request timed out after 22s")), 22000)
-        ),
-      ]);
+      const response = await withFastTimeout(chat.sendMessage(userMessage), 3200);
 
       let text = (response.response.text() || "").trim();
       const finishReason = response.response.candidates?.[0]?.finishReason;
@@ -613,7 +642,8 @@ Coaching Rules:
         return text.replace(/Google Gemini|Gemini AI|Gemini/gi, "STRAP Coach");
       }
     } catch (err) {
-      console.warn(`STRAP Coach live model (${modelName}) fallback triggered:`, (err as any)?.message || err);
+      tripLiveModelCooldown();
+      console.warn(`STRAP Coach live model (${modelName}) fast fallback triggered:`, (err as any)?.message || err);
     }
   }
 

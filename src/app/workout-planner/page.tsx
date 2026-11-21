@@ -31,15 +31,13 @@ export default function WorkoutPlannerPage() {
   useEffect(() => {
     async function loadPlan() {
       try {
-        const subRes = await fetch('/api/user/subscription').then((r) => r.json());
-        setIsPremium(subRes.isPremium);
-
-        if (subRes.isPremium) {
-          const planRes = await fetch('/api/ai/generate-plan');
-          const data = await planRes.json();
-          if (data.plan) {
-            setPlan(data.plan);
-          }
+        const [subRes, planData] = await Promise.all([
+          fetch('/api/user/subscription').then((r) => r.json()).catch(() => ({ isPremium: false })),
+          fetch('/api/ai/generate-plan').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        ]);
+        setIsPremium(Boolean(subRes?.isPremium));
+        if (planData?.plan) {
+          setPlan(planData.plan);
         }
         setLoading(false);
       } catch (err: any) {
