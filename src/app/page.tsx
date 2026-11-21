@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   Sparkles,
   ArrowRight,
@@ -21,9 +22,10 @@ import { useApp } from '@/components/Providers';
 
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const { auth } = useApp();
+  const { auth, authLoading } = useApp();
   const isLoggedIn = Boolean(auth?.user);
   const isPremium = Boolean(auth?.isPremium);
+  const evalHref = isLoggedIn || authLoading ? '/onboarding' : '/signup';
 
   const strapSteps = [
     {
@@ -148,19 +150,19 @@ export default function LandingPage() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
-              href={isLoggedIn ? '/onboarding' : '/signup'}
+            <Link
+              href={evalHref}
               className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-brand px-8 py-3.5 text-sm font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
             >
               <span>Start Free Evaluation</span>
               <ArrowRight className="h-4 w-4" />
-            </a>
-            <a
+            </Link>
+            <Link
               href={isLoggedIn && isPremium ? '/dashboard' : '/checkout'}
               className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-zinc-900 border border-zinc-700 px-8 py-3.5 text-sm font-bold text-white hover:border-brand/50 hover:bg-zinc-800 transition-all"
             >
               <span>{isLoggedIn && isPremium ? 'Open Dashboard' : 'Unlock Premium — ₹100/mo'}</span>
-            </a>
+            </Link>
           </div>
 
           {/* Biometric highlights pill */}
@@ -301,12 +303,12 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <a
-              href={isLoggedIn ? '/dashboard' : '/signup'}
+            <Link
+              href={isLoggedIn || authLoading ? '/dashboard' : '/signup'}
               className="w-full text-center py-3 text-xs font-bold text-white bg-zinc-900 border border-zinc-700 rounded-xl hover:bg-zinc-800 transition-colors"
             >
               {isLoggedIn ? 'Go to Dashboard' : 'Get Started Free'}
-            </a>
+            </Link>
           </div>
 
           {/* PREMIUM PLAN */}
@@ -350,13 +352,13 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <a
+            <Link
               href={isLoggedIn && isPremium ? '/dashboard' : '/checkout'}
               className="w-full flex items-center justify-center gap-2 text-center py-3 text-xs font-extrabold text-black bg-brand rounded-xl hover:bg-brand-400 transition-all shadow-glow hover:scale-[1.02] strap-primary"
             >
               <span>{isLoggedIn && isPremium ? 'Premium Active — Open Dashboard' : 'Upgrade to Premium (₹100)'}</span>
               <ArrowRight className="h-4 w-4" />
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -410,18 +412,18 @@ export default function LandingPage() {
             Join STRAP today. Build your baseline, execute your custom split, and let the AI handle your periodization.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a
-              href={isLoggedIn ? '/onboarding' : '/signup'}
+            <Link
+              href={evalHref}
               className="w-full sm:w-auto px-7 py-3 rounded-xl bg-brand text-black font-extrabold text-xs shadow-glow hover:bg-brand-400 transition-all strap-primary"
             >
               {isLoggedIn ? 'Start Free Evaluation' : 'Create Account Free'}
-            </a>
-            <a
+            </Link>
+            <Link
               href={isLoggedIn && isPremium ? '/dashboard' : '/checkout'}
               className="w-full sm:w-auto px-7 py-3 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-bold text-xs hover:border-brand/50 transition-colors"
             >
               {isLoggedIn && isPremium ? 'Open Dashboard' : 'Pay via UPI (₹100)'}
-            </a>
+            </Link>
           </div>
         </div>
       </section>

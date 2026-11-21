@@ -242,7 +242,7 @@ export default function AiAssistantPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 flex flex-col h-[calc(100vh-7.5rem)]">
+    <div className="mx-auto max-w-5xl px-3 sm:px-6 lg:px-8 pt-4 pb-20 lg:py-6 flex flex-col h-[calc(100dvh-4.5rem)] lg:h-[calc(100vh-7rem)]">
       {/* Top Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E1E4E8] dark:border-zinc-800 pb-4 mb-3 shrink-0">
         <div className="flex items-center gap-3">

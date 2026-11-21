@@ -1208,10 +1208,14 @@ export default function NutritionTrackerPage() {
               </div>
             </div>
 
-            {/* Modal Body: Split View (Food List on Left, Live Quantity/Unit Calculator on Right) */}
+            {/* Modal Body: Split View on Desktop, Step-Switch on Mobile */}
             <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
               {/* Left 7 Cols: Search Results or Saved Meals */}
-              <div className="lg:col-span-7 overflow-y-auto divide-y divide-[#E1E4E8] dark:divide-[#2A2D35] max-h-[55vh]">
+              <div
+                className={`${
+                  selectedFood ? 'hidden lg:block' : 'block'
+                } lg:col-span-7 overflow-y-auto divide-y divide-[#E1E4E8] dark:divide-[#2A2D35] max-h-[60vh] lg:max-h-[55vh]`}
+              >
                 {selectedTab === 'Saved Meals' ? (
                   (diaryData?.savedMeals || []).length === 0 ? (
                     <div className="p-8 text-center text-xs text-[#5A6069] dark:text-[#9CA3AF]">
@@ -1315,7 +1319,11 @@ export default function NutritionTrackerPage() {
               </div>
 
               {/* Right 5 Cols: Selected Food Live Macro & Quantity Calculator */}
-              <div className="lg:col-span-5 border-t lg:border-t-0 lg:border-l border-[#E1E4E8] dark:border-[#2A2D35] bg-[#F8F9FA] dark:bg-[#14161A] p-5 overflow-y-auto max-h-[55vh]">
+              <div
+                className={`${
+                  selectedFood ? 'block' : 'hidden lg:block'
+                } lg:col-span-5 border-t lg:border-t-0 lg:border-l border-[#E1E4E8] dark:border-[#2A2D35] bg-[#F8F9FA] dark:bg-[#14161A] p-4 sm:p-5 overflow-y-auto max-h-[65vh] lg:max-h-[55vh]`}
+              >
                 {!selectedFood ? (
                   <div className="h-full flex flex-col items-center justify-center text-center py-12 text-xs text-[#5A6069] dark:text-[#9CA3AF]">
                     <Scale className="h-8 w-8 text-brand mb-2 opacity-80" />
@@ -1329,6 +1337,14 @@ export default function NutritionTrackerPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFood(null)}
+                      className="lg:hidden inline-flex items-center gap-1 text-xs font-bold text-brand hover:underline"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span>Back to Search Results</span>
+                    </button>
                     <div>
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-brand">

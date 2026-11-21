@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Sparkles,
   Flame,
@@ -125,23 +126,23 @@ export default function DashboardPage() {
         </div>
 
         {/* Action button */}
-        <div className="flex items-center gap-3">
-          <a
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
             href="/workout-tracker"
             className="flex items-center gap-2 rounded-xl bg-brand px-5 py-3 text-xs font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow hover:scale-105 strap-primary"
           >
             <Dumbbell className="h-4 w-4" />
             <span>Start Today's Workout</span>
-          </a>
+          </Link>
 
           {!isPremium && (
-            <a
+            <Link
               href="/checkout"
               className="flex items-center gap-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-3 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition-colors"
             >
               <Sparkles className="h-3.5 w-3.5" />
               <span>Upgrade (₹100)</span>
-            </a>
+            </Link>
           )}
         </div>
       </div>
@@ -214,13 +215,13 @@ export default function DashboardPage() {
                 </span>
                 <h3 className="text-lg font-bold text-white">Upper Day 1: Horizontal Push & Pull</h3>
               </div>
-              <a
+              <Link
                 href="/workout-planner"
                 className="text-xs font-semibold text-brand hover:underline flex items-center gap-1"
               >
                 <span>View Full Split</span>
                 <ChevronRight className="h-3.5 w-3.5" />
-              </a>
+              </Link>
             </div>
 
             {/* Exercise preview checklist */}
@@ -253,15 +254,15 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-zinc-800/60">
               <span className="text-xs text-zinc-400">Estimated Duration: ~60 mins</span>
-              <a
+              <Link
                 href="/workout-tracker"
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow strap-primary"
               >
                 <span>Launch Workout Tracker</span>
                 <ArrowRight className="h-3.5 w-3.5" />
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -272,9 +273,9 @@ export default function DashboardPage() {
                 <Award className="h-5 w-5 text-brand" />
                 Verified Personal Records (1RM)
               </h3>
-              <a href="/analytics" className="text-xs text-brand hover:underline">
+              <Link href="/analytics" className="text-xs text-brand hover:underline">
                 View Progression
-              </a>
+              </Link>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -309,13 +310,13 @@ export default function DashboardPage() {
                   "Based on your recent 80kg bench performance with RPE 8, your nervous system recovery is optimal today (+82%). Recommended progression: Attempt 82.5kg for your first 2 working sets."
                 </p>
                 <div className="pt-2">
-                  <a
+                  <Link
                     href="/ai-assistant"
                     className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-bold text-white hover:border-brand transition-colors"
                   >
                     <span>Ask STRAP Coach</span>
                     <ArrowRight className="h-3.5 w-3.5" />
-                  </a>
+                  </Link>
                 </div>
               </div>
             ) : (
@@ -327,63 +328,48 @@ export default function DashboardPage() {
                 <p className="text-[11px] text-zinc-400 mt-1 mb-4">
                   Ask personalized questions about your lifts, programming, nutrition diary, and recovery.
                 </p>
-                <a
+                <Link
                   href="/ai-assistant"
                   className="block w-full py-2 rounded-xl bg-brand text-xs font-bold text-black shadow-glow"
                 >
                   Open STRAP Coach
-                </a>
+                </Link>
               </div>
             )}
           </div>
 
-          {/* Nutrition Summary Card (Premium Locked for free) */}
+          {/* Nutrition Summary Card */}
           <div className="rounded-2xl border border-card-border bg-card p-6">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-white flex items-center gap-1.5">
                 <Sparkles className="h-4 w-4 text-brand" />
-                Daily Calorie & Macro Target
+                Daily Calorie &amp; Macro Target
               </span>
-              {!isPremium && <Lock className="h-3.5 w-3.5 text-zinc-500" />}
             </div>
 
-            {isPremium ? (
-              <div className="space-y-3">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-2xl font-black text-white">2,650</span>
-                  <span className="text-xs text-brand font-semibold">+250 kcal (Surplus)</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
-                    <span className="text-[10px] text-zinc-400 block">Protein</span>
-                    <strong className="text-white">165g</strong>
-                  </div>
-                  <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
-                    <span className="text-[10px] text-zinc-400 block">Carbs</span>
-                    <strong className="text-white">320g</strong>
-                  </div>
-                  <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
-                    <span className="text-[10px] text-zinc-400 block">Fats</span>
-                    <strong className="text-white">75g</strong>
-                  </div>
-                </div>
-                <a href="/nutrition" className="text-[11px] text-brand hover:underline block text-right pt-1">
-                  View Full Meal Timing →
-                </a>
+            <div className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <span className="text-2xl font-black text-white">2,650</span>
+                <span className="text-xs text-brand font-semibold">Nutrition Tracker Active</span>
               </div>
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-[11px] text-zinc-400 mb-3">
-                  Customized Mifflin-St Jeor metabolic calorie and protein targets are reserved for Premium members.
-                </p>
-                <button
-                  onClick={() => openLock('Metabolic Nutrition Target', 'Get precise protein, carbohydrate, and fat targets based on your biometric weight and goals.')}
-                  className="w-full py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-bold text-white hover:border-brand transition-colors"
-                >
-                  View Macro Breakdown
-                </button>
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
+                  <span className="text-[10px] text-zinc-400 block">Protein</span>
+                  <strong className="text-white">165g</strong>
+                </div>
+                <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
+                  <span className="text-[10px] text-zinc-400 block">Carbs</span>
+                  <strong className="text-white">320g</strong>
+                </div>
+                <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800">
+                  <span className="text-[10px] text-zinc-400 block">Fats</span>
+                  <strong className="text-white">75g</strong>
+                </div>
               </div>
-            )}
+              <Link href="/nutrition" className="text-[11px] text-brand hover:underline block text-right pt-1">
+                Open Nutrition &amp; Supplement Diary →
+              </Link>
+            </div>
           </div>
 
           {/* Quick Nav Tools */}
@@ -391,7 +377,7 @@ export default function DashboardPage() {
             <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider px-2 block mb-1">
               Quick Shortcuts
             </span>
-            <a
+            <Link
               href="/exercise-library"
               className="flex items-center justify-between p-2.5 rounded-lg text-xs font-semibold text-zinc-300 hover:text-white hover:bg-zinc-900 transition-colors"
             >
@@ -400,18 +386,18 @@ export default function DashboardPage() {
                 <span>Exercise Library (12 Categories)</span>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-zinc-500" />
-            </a>
-            <a
+            </Link>
+            <Link
               href="/recovery"
               className="flex items-center justify-between p-2.5 rounded-lg text-xs font-semibold text-zinc-300 hover:text-white hover:bg-zinc-900 transition-colors"
             >
               <div className="flex items-center gap-2">
                 <HeartPulse className="h-4 w-4 text-emerald-400" />
-                <span>Log Sleep & Fatigue</span>
+                <span>Log Sleep &amp; Fatigue</span>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-zinc-500" />
-            </a>
-            <a
+            </Link>
+            <Link
               href="/profile"
               className="flex items-center justify-between p-2.5 rounded-lg text-xs font-semibold text-zinc-300 hover:text-white hover:bg-zinc-900 transition-colors"
             >
@@ -420,7 +406,7 @@ export default function DashboardPage() {
                 <span>Update Body Measurements</span>
               </div>
               <ChevronRight className="h-3.5 w-3.5 text-zinc-500" />
-            </a>
+            </Link>
           </div>
         </div>
       </div>

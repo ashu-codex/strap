@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import {
   User,
   Scale,
@@ -335,20 +336,20 @@ export default function ProfilePage() {
 
         <div>
           {isPremium ? (
-            <a
+            <Link
               href="/payment-history"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-semibold text-white hover:bg-zinc-800 transition-colors"
             >
               Payment History
-            </a>
+            </Link>
           ) : (
-            <a
+            <Link
               href="/checkout"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand text-xs font-bold text-black hover:bg-brand-400 transition-colors shadow-glow strap-primary"
             >
               <Sparkles className="h-3.5 w-3.5" />
               <span>Upgrade to Premium</span>
-            </a>
+            </Link>
           )}
         </div>
       </div>

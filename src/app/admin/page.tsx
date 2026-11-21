@@ -335,10 +335,40 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* Mobile Horizontal Admin Module Strip */}
+      <div className="lg:hidden border-b border-[#E1E4E8] dark:border-[#242730] bg-white dark:bg-[#14171C] px-3 py-2.5 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 min-w-max">
+          {navTabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setActiveTab(t.id)}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition whitespace-nowrap ${
+                activeTab === t.id
+                  ? 'bg-brand text-black shadow-sm'
+                  : 'bg-[#F3F4F6] dark:bg-[#1C2026] text-[#5A6069] dark:text-zinc-300'
+              }`}
+            >
+              {t.icon}
+              <span>{t.label}</span>
+              {typeof t.badge === 'number' && t.badge > 0 && (
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
+                    activeTab === t.id ? 'bg-black/20 text-black' : 'bg-brand/15 text-brand'
+                  }`}
+                >
+                  {t.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Main Layout: Sidebar Navigation + Operations Workspace */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Sidebar Navigation (3 Cols) */}
-        <aside className="lg:col-span-3 space-y-2">
+      <div className="mx-auto max-w-7xl px-3 sm:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Sidebar Navigation (Desktop 3 Cols) */}
+        <aside className="hidden lg:block lg:col-span-3 space-y-2">
           <div className="rounded-2xl border border-[#E1E4E8] dark:border-[#242730] bg-white dark:bg-[#14171C] p-3 space-y-1">
             <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#5A6069] dark:text-zinc-500">
               Administration Modules
