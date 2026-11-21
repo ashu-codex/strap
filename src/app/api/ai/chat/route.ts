@@ -13,6 +13,14 @@ const schema = z.object({
     .max(1000, 'Message is too long (max 1000 characters).'),
 });
 
+function sanitizeStoredMessage(text: string): string {
+  return String(text || '')
+    .replace(/\*\*STRAP Assistant\*\* \(Local Coach Mode\)/gi, '**STRAP Coach**')
+    .replace(/\/?\*\(Note: To unlock live conversational Gemini reasoning[\s\S]*?\)\*/gi, '')
+    .replace(/Google Gemini|Gemini AI|Gemini/gi, 'STRAP Coach')
+    .trim();
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { message } = await parseBody(req, schema);
@@ -24,7 +32,10 @@ export async function POST(req: NextRequest) {
       .catch(() => []);
     const history = past
       .reverse()
-      .map((m) => ({ role: m.role as 'user' | 'model', parts: String(m.content).slice(0, 1500) }));
+      .map((m) => ({
+        role: m.role as 'user' | 'model',
+        parts: sanitizeStoredMessage(String(m.content)).slice(0, 1500),
+      }));
 
     const ctx = await loadFitnessContext(user.id);
     const reply = await chatWithAIAssistant(message, history, {
@@ -65,7 +76,10 @@ export async function GET(req: NextRequest) {
       .catch(() => []);
     const ctx = await loadFitnessContext(user.id);
     return json({
-      messages: rows.reverse().map((m) => ({ role: m.role, parts: m.content })),
+      messages: rows.reverse().map((m) => ({
+        role: m.role,
+        parts: m.role === 'model' ? sanitizeStoredMessage(m.content) : m.content,
+      })),
       athleteSummary: {
         name: user.full_name || ctx.profile?.full_name || 'Athlete',
         trainingStyle: ctx.trainingStyle,
@@ -78,6 +92,16 @@ export async function GET(req: NextRequest) {
         prsLogged: ctx.prs.length,
       },
     });
+  } catch (e) {
+    return handleError(e);
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { user } = await requireUser(req);
+    await db.delete('ai_chat_messages', { user_id: user.id }).catch(() => 0);
+    return json({ success: true });
   } catch (e) {
     return handleError(e);
   }

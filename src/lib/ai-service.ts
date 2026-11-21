@@ -19,14 +19,20 @@ export async function aiGuard(req: NextRequest, endpoint: keyof typeof LIMITS) {
   const ctx = endpoint === 'chat' ? await requireUser(req) : await requirePremium(req);
   const lim = LIMITS[endpoint];
   const now = Date.now();
-  const hour = await db.count('ai_usage_log', {
-    eq: { user_id: ctx.user.id, endpoint },
-    gte: { created_at: new Date(now - 3600_000).toISOString() },
-  });
-  const day = await db.count('ai_usage_log', {
-    eq: { user_id: ctx.user.id, endpoint },
-    gte: { created_at: new Date(now - 86400_000).toISOString() },
-  });
+  const [hour, day] = await Promise.all([
+    db
+      .count('ai_usage_log', {
+        eq: { user_id: ctx.user.id, endpoint },
+        gte: { created_at: new Date(now - 3600_000).toISOString() },
+      })
+      .catch(() => 0),
+    db
+      .count('ai_usage_log', {
+        eq: { user_id: ctx.user.id, endpoint },
+        gte: { created_at: new Date(now - 86400_000).toISOString() },
+      })
+      .catch(() => 0),
+  ]);
   if (hour >= lim.perHour || day >= lim.perDay) {
     throw new HttpError(429, 'Coach usage limit reached. Please try again later.', 'AI_RATE_LIMITED');
   }
@@ -59,7 +65,7 @@ export async function loadFitnessContext(userId: string) {
     db.selectOne('fitness_goals', { eq: { user_id: userId } }).catch(() => null),
     db.selectOne('user_preferences', { eq: { user_id: userId } }).catch(() => null),
     db.select('workout_logs', { eq: { user_id: userId }, order: ['completed_at', 'desc'], limit: 10 }).catch(() => []),
-    db.select('progress_records', { eq: { user_id: userId }, order: ['recorded_at', 'desc'], limit: 15 }).catch(() => []),
+    db.select('progress_records', { eq: { user_id: userId }, order: ['achieved_at', 'desc'], limit: 15 }).catch(() => []),
     db.select('recovery_logs', { eq: { user_id: userId }, order: ['log_date', 'desc'], limit: 5 }).catch(() => []),
   ]);
 

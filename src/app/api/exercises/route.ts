@@ -35,42 +35,18 @@ const customExerciseSchema = z.object({
 
 async function loadAllExercises(userId?: string | null): Promise<ExtendedExerciseItem[]> {
   const list: ExtendedExerciseItem[] = [...SEED_EXERCISES];
-  // 1. Load admin-added global exercises from app_settings or custom_exercises table if any
-  try {
-    const customGlobal = await db.select('custom_exercises', { limit: 500 }).catch(() => []);
-    for (const row of customGlobal) {
-      if (!row.user_id || row.user_id === userId || row.is_global) {
-        list.push({
-          id: row.id || `custom-${row.name}`,
-          name: row.name,
-          target_muscle: row.target_muscle || row.category,
-          secondary_muscles: Array.isArray(row.secondary_muscles) ? row.secondary_muscles : [],
-          category: row.category || 'Full Body',
-          equipment: row.equipment || 'Barbell',
-          difficulty: row.difficulty || 'Intermediate',
-          exercise_type: row.exercise_type || 'Compound',
-          training_styles: row.training_styles || ['powerlifting', 'muscle_building'],
-          competition_lift: row.competition_lift || 'accessory',
-          instructions: row.instructions || 'Perform with strict biomechanics.',
-          default_sets: Number(row.default_sets) || 3,
-          default_reps: row.default_reps || '8-12',
-          default_rest_sec: Number(row.default_rest_sec) || 90,
-          alternatives: Array.isArray(row.alternatives) ? row.alternatives : [],
-        });
-      }
-    }
-  } catch {
-    // ignore
-  }
 
-  // 2. Load user-specific custom exercises from user_preferences
+  // Load user-specific and admin-added custom exercises from user_preferences
   if (userId) {
     try {
       const pref = await db.selectOne('user_preferences', { eq: { user_id: userId } }).catch(() => null);
       const userCustom: any[] = Array.isArray(pref?.preferences?.custom_exercises)
         ? pref!.preferences.custom_exercises
         : [];
-      for (const ex of userCustom) {
+      const adminCustom: any[] = Array.isArray(pref?.preferences?.admin_exercises)
+        ? pref!.preferences.admin_exercises
+        : [];
+      for (const ex of [...adminCustom, ...userCustom]) {
         if (!list.some((item) => item.name.toLowerCase() === String(ex.name).toLowerCase())) {
           list.push(ex);
         }
@@ -168,15 +144,6 @@ export async function POST(req: NextRequest) {
       },
       'user_id'
     );
-
-    // Also mirror in custom_exercises table if available
-    await db
-      .insert('custom_exercises', {
-        ...newEx,
-        user_id: user.id,
-        is_global: Boolean(isAdmin),
-      })
-      .catch(() => null);
 
     return json({ success: true, exercise: newEx });
   } catch (e) {

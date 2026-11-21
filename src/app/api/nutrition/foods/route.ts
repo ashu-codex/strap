@@ -29,24 +29,16 @@ const customFoodSchema = z.object({
 
 async function loadCustomFoods(userId?: string | null): Promise<FoodItem[]> {
   const out: FoodItem[] = [];
-  try {
-    const rows = await db.select('custom_foods', { limit: 500 }).catch(() => []);
-    for (const r of rows) {
-      if (!r.user_id || r.user_id === userId || r.is_global) {
-        out.push(r as FoodItem);
-      }
-    }
-  } catch {
-    // ignore
-  }
-
   if (userId) {
     try {
       const pref = await db.selectOne('user_preferences', { eq: { user_id: userId } }).catch(() => null);
       const userFoods: FoodItem[] = Array.isArray(pref?.preferences?.custom_foods)
         ? pref!.preferences.custom_foods
         : [];
-      for (const f of userFoods) {
+      const adminFoods: FoodItem[] = Array.isArray(pref?.preferences?.admin_foods)
+        ? pref!.preferences.admin_foods
+        : [];
+      for (const f of [...adminFoods, ...userFoods]) {
         if (!out.some((x) => x.id === f.id)) out.push(f);
       }
     } catch {
@@ -219,14 +211,6 @@ export async function POST(req: NextRequest) {
       },
       'user_id'
     );
-
-    await db
-      .insert('custom_foods', {
-        ...newFood,
-        user_id: user.id,
-        is_global: Boolean(isAdmin),
-      })
-      .catch(() => null);
 
     return json({ success: true, food: newFood });
   } catch (e) {

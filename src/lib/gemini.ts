@@ -523,7 +523,7 @@ export async function chatWithAIAssistant(
           .slice(0, 5)
           .map(
             (w: any) =>
-              `${w.workout_name || "Session"} (${String(w.completed_at || "").slice(0, 10)}, Vol: ${
+              `${w.name || w.workout_name || "Session"} (${String(w.completed_at || w.created_at || "").slice(0, 10)}, Vol: ${
                 w.total_volume_kg || 0
               }kg)`
           )
@@ -534,12 +534,11 @@ export async function chatWithAIAssistant(
     (ctx.prs || []).length > 0
       ? (ctx.prs || [])
           .slice(0, 8)
-          .map(
-            (p: any) =>
-              `${p.exercise_name}: ${p.max_weight_kg}kg × ${p.reps_at_max || 1} (Est 1RM: ${
-                p.estimated_1rm_kg || p.max_weight_kg
-              }kg)`
-          )
+          .map((p: any) => {
+            const val = Number(p.value) || Number(p.estimated_1rm_kg) || Number(p.max_weight_kg) || 0;
+            const kind = p.record_type === "max_volume" ? "Max Vol" : "Est 1RM";
+            return `${p.exercise_name}: ${val}kg (${kind})`;
+          })
           .join("; ")
       : "No personal records logged yet";
 
@@ -554,11 +553,27 @@ export async function chatWithAIAssistant(
       : "No foods logged in today's nutrition diary yet";
 
   if (genAI && apiKey && apiKey !== "your-gemini-api-key") {
-    try {
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        generationConfig: { maxOutputTokens: 1024, temperature: 0.55 },
-        systemInstruction: `You are STRAP Coach, an elite, science-based strength, hypertrophy, and nutrition coach inside the STRAP fitness platform.
+    const candidateModels = Array.from(new Set([modelName, "gemini-2.5-flash", "gemini-2.0-flash"]));
+    const validHistory = history
+      .filter((h) => h && h.parts && (h.role === "user" || h.role === "model"))
+      .map((h) => ({
+        role: h.role,
+        parts: [{ text: h.parts }],
+      }));
+    while (validHistory.length > 0 && validHistory[0].role !== "user") {
+      validHistory.shift();
+    }
+
+    for (const candidateModel of candidateModels) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: candidateModel,
+          generationConfig: {
+            maxOutputTokens: 4096,
+            temperature: 0.55,
+            thinkingConfig: { thinkingBudget: 0 },
+          } as any,
+          systemInstruction: `You are STRAP Coach, an elite, science-based strength, hypertrophy, and nutrition coach inside the STRAP fitness platform.
 Never mention Google, Gemini, LLM models, API keys, or provider names. Identify yourself solely as STRAP Coach.
 
 Athlete Profile & Real-Time Logged Data:
@@ -574,31 +589,35 @@ Athlete Profile & Real-Time Logged Data:
 - Today's Logged Foods: ${todayFoodList}
 
 Coaching Rules:
-1. Answer the user's exact question directly and specifically. Never reply with a generic template.
+1. Answer the user's exact question directly, completely, and specifically. Never reply with a generic template and never stop mid-sentence.
 2. Reference the athlete's real logged numbers above when relevant, and clearly distinguish between logged data vs. calculated estimates.
-3. Structure answers clearly with bold headings, bullet points, sets/reps/RPE or gram targets.
+3. Keep the response well-structured and concise (250-450 words) with clear headings, bullet points, and specific numbers (sets/reps/RPE or grams/calories).
 4. For medical or injury issues, advise safe biomechanics and consulting a qualified medical professional.`,
-      });
+        });
 
-      const validHistory = history
-        .filter((h) => h && h.parts && (h.role === "user" || h.role === "model"))
-        .map((h) => ({
-          role: h.role,
-          parts: [{ text: h.parts }],
-        }));
-      // Gemini startChat requires first message in history to be from 'user'
-      while (validHistory.length > 0 && validHistory[0].role !== "user") {
-        validHistory.shift();
-      }
+        const chat = model.startChat({ history: validHistory });
+        const response = await Promise.race([
+          chat.sendMessage(userMessage),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Model request timed out after 9s")), 9000)
+          ),
+        ]);
 
-      const chat = model.startChat({ history: validHistory });
-      const response = await chat.sendMessage(userMessage);
-      const text = response.response.text();
-      if (text && text.trim().length > 20) {
-        return text.replace(/Google Gemini|Gemini AI|Gemini/gi, "STRAP Coach");
+        let text = (response.response.text() || "").trim();
+        const finishReason = response.response.candidates?.[0]?.finishReason;
+        if (finishReason === "MAX_TOKENS" && text.length > 0 && !/[.!?*`)]$/.test(text)) {
+          const lastSentenceIdx = Math.max(text.lastIndexOf(". "), text.lastIndexOf(".\n"), text.lastIndexOf("\n"));
+          if (lastSentenceIdx > text.length * 0.6) {
+            text = text.slice(0, lastSentenceIdx + 1).trim();
+          }
+        }
+
+        if (text && text.length > 60 && /[a-zA-Z0-9.!?*`)]$/.test(text)) {
+          return text.replace(/Google Gemini|Gemini AI|Gemini/gi, "STRAP Coach");
+        }
+      } catch (err) {
+        console.warn(`STRAP Coach model ${candidateModel} fallback triggered:`, (err as any)?.message || err);
       }
-    } catch (err) {
-      console.warn("STRAP Coach live model fallback triggered:", err);
     }
   }
 
@@ -664,13 +683,14 @@ function buildPersonalizedCoachReply(
 ): string {
   const q = userMessage.toLowerCase();
 
-  // Find relevant logged PRs
-  const benchPr = c.prs.find((p: any) => /bench/i.test(p.exercise_name || ""));
-  const squatPr = c.prs.find((p: any) => /squat/i.test(p.exercise_name || ""));
-  const deadliftPr = c.prs.find((p: any) => /deadlift/i.test(p.exercise_name || ""));
+  // Find relevant logged PRs (supporting both `value` from progress_records and legacy fields)
+  const benchPr = c.prs.find((p: any) => /bench/i.test(p.exercise_name || "") && p.record_type !== "max_volume");
+  const squatPr = c.prs.find((p: any) => /squat/i.test(p.exercise_name || "") && p.record_type !== "max_volume");
+  const deadliftPr = c.prs.find((p: any) => /deadlift/i.test(p.exercise_name || "") && p.record_type !== "max_volume");
 
   const loggedBench1RM =
     Number(c.actual1RMs.bench) ||
+    Number(benchPr?.value) ||
     Number(benchPr?.estimated_1rm_kg) ||
     Number(benchPr?.max_weight_kg) ||
     0;
@@ -678,6 +698,7 @@ function buildPersonalizedCoachReply(
 
   const loggedSquat1RM =
     Number(c.actual1RMs.squat) ||
+    Number(squatPr?.value) ||
     Number(squatPr?.estimated_1rm_kg) ||
     Number(squatPr?.max_weight_kg) ||
     0;
@@ -685,6 +706,7 @@ function buildPersonalizedCoachReply(
 
   const loggedDeadlift1RM =
     Number(c.actual1RMs.deadlift) ||
+    Number(deadliftPr?.value) ||
     Number(deadliftPr?.estimated_1rm_kg) ||
     Number(deadliftPr?.max_weight_kg) ||
     0;
@@ -778,7 +800,124 @@ ${dataNote} (${c.trainingStyleLabel}), the deadlift demands high central nervous
   - *Slow at knee/lockout*: **Block Pulls / Rack Pulls** and heavy **Barbell Hip Thrusts** + **Chest-Supported Rows**.`;
   }
 
-  // 4. PROTEIN INTAKE QUESTION ("Am I eating enough protein?")
+  // 4. FAT LOSS / BELLY FAT / GETTING LEAN / CUTTING / ABS
+  if (
+    q.includes("belly") ||
+    q.includes("lose fat") ||
+    q.includes("fat loss") ||
+    q.includes("weight loss") ||
+    q.includes("lose weight") ||
+    q.includes("get lean") ||
+    q.includes("lean") ||
+    q.includes("cut") ||
+    q.includes("shred") ||
+    q.includes("waist") ||
+    q.includes("six pack") ||
+    q.includes("6 pack")
+  ) {
+    const cutCalories = Math.max(1450, c.targets.tdee - 450);
+    const cutProtein = Math.round(c.weightKg * 2.1);
+    const cutFats = Math.round(c.weightKg * 0.8);
+    const cutCarbs = Math.max(80, Math.round((cutCalories - cutProtein * 4 - cutFats * 9) / 4));
+
+    return `### Evidence-Based Fat Loss & Leaning Blueprint for ${c.athleteName}
+
+Spot-reducing abdominal/belly fat is physiologically impossible—visceral and subcutaneous abdominal fat is mobilized when you sustain a **controlled caloric deficit** while keeping protein and mechanical lifting tension high to protect lean muscle.
+
+#### 1. Your Calibrated Fat-Loss Macros (Based on ${c.weightKg} kg, ${c.heightCm} cm, Age ${c.age})
+- **Estimated Maintenance (TDEE)**: **${c.targets.tdee} kcal/day** (BMR: ${c.targets.bmr} kcal)
+- **Recommended Fat-Loss Target (-450 kcal Deficit)**: **${cutCalories} kcal/day** (~0.4–0.5 kg fat loss/week)
+- **High-Retention Protein Target**: **${cutProtein}g/day** (2.1 g/kg to prevent muscle loss during a deficit)
+- **Carbohydrates**: **${cutCarbs}g/day** (timed around your workouts for training performance)
+- **Dietary Fats**: **${cutFats}g/day** (supports hormonal health)
+- **Dietary Fibre**: **${c.targets.fiber_g}g/day** (maximizes satiety and digestion)
+- *(Note: Your profile is currently set to **${c.goalLabel}** at **${c.targets.target_calories} kcal**. You can switch your goal to **Fat Loss** anytime in **Profile & Settings** \`/profile\`!)*
+
+#### 2. Training & Daily Activity Protocol
+- **Keep Lifting Heavy (${c.weeklyDays} days/week)**: Maintain your working weights on compound lifts (Squat, Bench, Row, RDL, Overhead Press) at **RPE 8**—mechanical tension is the primary signal that forces your body to burn body fat instead of muscle tissue.
+- **Daily Step Count (NEAT)**: Target **8,000–10,000 steps/day** plus **2–3 × 25-minute Zone-2 incline treadmill walks or cycling sessions** post-workout.
+- **Core Hypertrophy**: Train abs directly 2–3x/week with **Cable Crunches (3 × 12–15)** and **Hanging Leg Raises (3 × 10–15)** so your abdominal wall is well-developed as body fat drops.`;
+  }
+
+  // 5. BREAKFAST / PRE-WORKOUT / POST-WORKOUT / MEAL IDEAS / WHAT TO EAT
+  if (
+    q.includes("breakfast") ||
+    q.includes("lunch") ||
+    q.includes("dinner") ||
+    q.includes("pre-workout") ||
+    q.includes("pre workout") ||
+    q.includes("post-workout") ||
+    q.includes("post workout") ||
+    q.includes("what should i eat") ||
+    q.includes("meal idea") ||
+    q.includes("meal plan")
+  ) {
+    const mealCal = Math.round(c.targets.target_calories / 4);
+    const mealProt = Math.round(c.targets.protein_g / 4);
+
+    return `### Personalized Breakfast, Pre-Workout & Meal Blueprint for ${c.athleteName}
+
+Calibrated to your **${c.targets.target_calories} kcal** and **${c.targets.protein_g}g protein** daily target (**~${mealCal} kcal** & **~${mealProt}g protein** per meal across 4 meals):
+
+#### 1. High-Protein Breakfast Options (~${mealCal} kcal | ${mealProt}g+ Protein)
+- **Option A (Eggs & Oats Power Bowl)**:
+  - 3 Whole Eggs + 3 Egg Whites Bhurji/Omelette + 60g Rolled Oats cooked in 200ml Skim/Toned Milk + 1 Banana (**~580 kcal | 38g Protein | 64g Carbs | 16g Fat**).
+- **Option B (Vegetarian Indian High-Protein)**:
+  - 150g Low-Fat Paneer Bhurji + 2 Whole Wheat Rotis (or 1 bowl Poha/Upma) + 150g Curd (**~610 kcal | 36g Protein | 62g Carbs | 20g Fat**).
+- **Option C (Whey + Overnight Oats)**:
+  - 1 scoop (32g) Whey Protein Isolate/Concentrate + 70g Oats + 15g Peanut Butter + 1 Apple (**~560 kcal | 37g Protein | 68g Carbs | 14g Fat**).
+
+#### 2. Optimal Pre-Workout Fueling
+- **60–90 Minutes Before Training (Sustained Glycogen + Amino Acids)**:
+  - 150g Cooked White Rice or 2 Slices Whole Wheat Bread + 120g Chicken Breast (or 100g Paneer / 4 Egg Whites) + 1 Banana (**~420 kcal | 32g Protein | 58g Carbs | 5g Fat**).
+- **20–30 Minutes Before Training (Fast Digestion)**:
+  - 1 Large Banana + 1 scoop Whey Protein in water + Black Coffee or Pre-Workout (200mg caffeine + 6g L-Citrulline Malate) (**~225 kcal | 25g Protein | 28g Carbs | 1g Fat**).
+
+#### 3. Post-Workout Recovery Meal (Within 60–90 Mins)
+- 1 scoop Whey Protein + 5g Creatine Monohydrate immediately post-workout, followed by 200g Cooked Rice / 2 Rotis + 150g Chicken Breast or 1 katori Dal + 50g Soya Chunks / Paneer.
+
+*Log any of these items in seconds inside the **Nutrition Tracker** (\`/nutrition\`)!*`;
+  }
+
+  // 6. WATER / HYDRATION / SLEEP / RECOVERY / SORENESS / DELOAD / WARM-UP
+  if (
+    q.includes("water") ||
+    q.includes("hydrat") ||
+    q.includes("sleep") ||
+    q.includes("recover") ||
+    q.includes("sore") ||
+    q.includes("doms") ||
+    q.includes("fatigue") ||
+    q.includes("deload") ||
+    q.includes("warm") ||
+    q.includes("mobility") ||
+    q.includes("pain")
+  ) {
+    const waterLiters = (c.targets.water_ml / 1000).toFixed(2);
+    const remainingWater = Math.max(0, c.targets.water_ml - c.todayNut.water_ml);
+
+    return `### Recovery, Hydration & Sleep Architecture for ${c.athleteName}
+
+For your **${c.weightKg} kg** bodyweight, **${c.trainingStyleLabel}** workload (${c.weeklyDays} days/week), and **${c.goalLabel}** objective:
+
+#### 1. Daily Hydration Target & Today's Status
+- **Baseline Daily Water Target**: **${c.targets.water_ml} ml (${waterLiters} Litres/day)** (~40–45 ml per kg of bodyweight).
+- **Training Day Sweat Addition**: Add **+500 to 750 ml** with electrolytes (Sodium/Potassium) per hour of intense gym training.
+- **Today's Logged Water**: **${c.todayNut.water_ml} ml** logged (**${remainingWater} ml remaining** today).
+- *Why It Matters*: Even a 2% drop in intracellular hydration reduces barbell power output and increases perceived RPE by 1–1.5 points.
+
+#### 2. Sleep Duration & Central Nervous System (CNS) Recovery
+- **Target Sleep Window**: **7.5 to 9.0 hours** of continuous nightly sleep.
+- **Physiological Impact**:
+  - **Deep Slow-Wave Sleep**: Drives ~70% of daily pulsatile Growth Hormone (GH) secretion for tissue repair and tendon remodeling.
+  - **REM & Late-Stage Sleep**: Restores motor-unit firing rate and central nervous system readiness for heavy compound lifts.
+- **Evening Recovery Protocol**: Stop caffeine 8 hours before bed, consume 30–40g slow-digesting protein (Casein, Curd, or Paneer) at dinner, and consider 300–400mg Magnesium Glycinate 45 minutes pre-sleep.
+
+#### 3. Managing Soreness (DOMS) & When to Deload
+- If soreness lasts >72 hours or your primary lifts regress for 2 consecutive weeks at RPE 9+, run a **1-Week Reactive Deload**: keep bar weight at **85–90%** of normal working loads, cut total sets by **40%**, and stay at **RPE 6–7 (3–4 RIR)**.`;
+  }
+
+  // 7. PROTEIN INTAKE QUESTION ("Am I eating enough protein?")
   if (q.includes("protein")) {
     const targetP = c.targets.protein_g;
     const loggedP = c.todayNut.protein_g;
@@ -815,7 +954,7 @@ ${dataNote} (${c.trainingStyleLabel}), the deadlift demands high central nervous
 *Tip: Distribute your **${targetP}g** target across 3–4 meals (**~${Math.round(targetP / 4)}g protein per meal**) to maximize muscle protein synthesis throughout the day.*`;
   }
 
-  // 5. TODAY'S LOGGED NUTRITION / CALORIE DEFICIT OR SURPLUS ANALYSIS
+  // 8. TODAY'S LOGGED NUTRITION / CALORIE DEFICIT OR SURPLUS ANALYSIS
   if (
     q.includes("nutrition") ||
     q.includes("calorie") ||
@@ -886,7 +1025,7 @@ ${
 }`;
   }
 
-  // 6. REAR DELTS / SHOULDER / SPECIFIC MUSCLE GROUP EXERCISES
+  // 9. REAR DELTS / SHOULDER / SPECIFIC MUSCLE GROUP EXERCISES
   if (
     q.includes("rear delt") ||
     q.includes("posterior delt") ||
@@ -899,7 +1038,11 @@ ${
     q.includes("tricep") ||
     q.includes("hamstring") ||
     q.includes("quad") ||
-    q.includes("glute")
+    q.includes("glute") ||
+    q.includes("arm") ||
+    q.includes("leg") ||
+    q.includes("calf") ||
+    q.includes("calves")
   ) {
     if (q.includes("rear delt") || q.includes("posterior delt") || q.includes("shoulder")) {
       return `### Targeted Rear Delt & Shoulder Hypertrophy Guide for ${c.athleteName}
@@ -936,7 +1079,7 @@ Based on your **${c.experience}** experience level and **${c.goalLabel}** goal, 
 *You can log any of these directly in the **Workout Tracker** (\`/workout-tracker\`), or create custom exercises via the **+ Custom Exercise** button.*`;
   }
 
-  // 7. NEXT TRAINING WEEK / WORKOUT PLAN / SPLIT
+  // 10. NEXT TRAINING WEEK / WORKOUT PLAN / SPLIT
   if (
     q.includes("week") ||
     q.includes("plan") ||
@@ -1001,15 +1144,17 @@ Designed for your **${c.trainingStyleLabel}** mode, **${c.goalLabel}** objective
   4. Hanging Leg Raises & Cable Crunch: 3 sets × 12–15 reps`;
   }
 
-  // 8. SUPPLEMENTS / CREATINE / WHEY / PRE-WORKOUT
+  // 11. SUPPLEMENTS / CREATINE / WHEY / PRE-WORKOUT
   if (
     q.includes("supplement") ||
     q.includes("creatine") ||
     q.includes("whey") ||
     q.includes("vitamin") ||
     q.includes("omega") ||
-    q.includes("pre-workout") ||
-    q.includes("bcaa")
+    q.includes("fish oil") ||
+    q.includes("bcaa") ||
+    q.includes("eaa") ||
+    q.includes("magnesium")
   ) {
     return `### Evidence-Based Supplement Protocol for ${c.athleteName} (${c.weightKg} kg)
 
@@ -1029,7 +1174,34 @@ For your **${c.goalLabel}** goal and **${c.trainingStyleLabel}** training style,
 *Educational Note: Supplements complement whole-food nutrition and are not medical treatments.*`;
   }
 
-  // 9. DEFAULT CONTEXT-AWARE PERSONALIZED COACHING ANSWER
+  // 12. MUSCLE GAIN / BULKING / HYPERTROPHY / SETS & REPS / RPE & RIR / CARDIO
+  if (
+    q.includes("bulk") ||
+    q.includes("gain") ||
+    q.includes("muscle") ||
+    q.includes("grow") ||
+    q.includes("hypertrophy") ||
+    q.includes("volume") ||
+    q.includes("rpe") ||
+    q.includes("rir") ||
+    q.includes("cardio")
+  ) {
+    const bulkCal = c.targets.tdee + 300;
+    return `### Hypertrophy, Volume & Progressive Overload Guide for ${c.athleteName}
+
+Tailored to your **${c.weightKg} kg** profile (${c.trainingStyleLabel} • **${c.goalLabel}**):
+
+#### 1. Weekly Volume & Effort Landmarks (RPE / RIR)
+- **Optimal Weekly Set Volume**: Aim for **10–18 hard working sets per muscle group per week**, split across **2 sessions/week** (5–9 sets per muscle per session).
+- **Effort Calibration**: Take compound lifts (Squat, Bench, RDL, Row, Overhead Press) to **RPE 8–8.5 (1.5–2 RIR)** and isolation movements (Lateral Raises, Cable Flyes, Curls, Pushdowns, Leg Extensions) to **RPE 9–9.5 (0.5–1 RIR)** on the final set.
+- **Double-Progression Rule**: Work inside a fixed rep range (e.g., 6–8 or 8–12 reps). When you hit the top of the rep range on all sets at RPE ≤ 8.5, add **+2.5 kg** next session.
+
+#### 2. Caloric & Protein Alignment
+- **Lean Muscle Accretion Target**: **${bulkCal} kcal/day** (+300 kcal above your **${c.targets.tdee} kcal** TDEE) with **${c.targets.protein_g}g protein/day** and **${c.targets.carbs_g}g carbs/day** to fuel glycogen-dependent training volume.
+- **Cardio Pairing**: Perform **2–3 × 20–25 min Zone-2 LISS cardio** sessions (120–135 BPM) on rest days or after lifting to maximize work capacity and insulin sensitivity without interfering with hypertrophy.`;
+  }
+
+  // 13. DEFAULT CONTEXT-AWARE PERSONALIZED COACHING ANSWER
   return `### STRAP Coach Assessment for ${c.athleteName}
 
 Regarding your question: **"${userMessage}"**
@@ -1041,10 +1213,9 @@ Regarding your question: **"${userMessage}"**
 - **Today's Logged Nutrition**: **${Math.round(c.todayNut.calories)} kcal** & **${c.todayNut.protein_g}g protein** across **${c.todayNut.entries.length} logged item(s)** • Water: **${c.todayNut.water_ml} ml**
 - **Logged Workouts & PRs**: ${c.workouts.length} recent workout session(s) and ${c.prs.length} PR record(s) tracked.
 
-#### 2. Actionable Coaching Guidance
+#### 2. Direct Coaching Guidance
 - **Training Execution**: In **${c.trainingStyleLabel}** mode, anchor your sessions around progressive overload at **RPE 7.5–8.5 (1.5–2.5 RIR)**. Add **+2.5 kg** or **+1 rep** whenever you complete all prescribed sets at the top of your target rep range with clean technique.
-- **Nutrition Alignment**: Aim to finish today within **±100 kcal** of your **${c.targets.target_calories} kcal** target and hit at least **${c.targets.protein_g}g protein** (**${(c.targets.protein_g / Math.max(1, c.weightKg)).toFixed(1)} g/kg**) to support muscle recovery.
-- **Next Step**: Ask me specifically about your **Bench Press**, **Squat**, **Deadlift**, **Today's Logged Nutrition**, **Protein Target**, **Rear Delt / Muscle Group Exercises**, or **Next Training Week Plan** for a detailed breakdown!`;
+- **Nutrition & Recovery Alignment**: Stay within **±100 kcal** of your **${c.targets.target_calories} kcal** target, hit **${c.targets.protein_g}g protein** (**${(c.targets.protein_g / Math.max(1, c.weightKg)).toFixed(1)} g/kg**), drink **${(c.targets.water_ml / 1000).toFixed(1)} L water**, and get **7.5–8.5 hours** of sleep.`;
 }
 
 /**
