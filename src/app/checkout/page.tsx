@@ -32,6 +32,11 @@ export default function CheckoutPage() {
   const [amount, setAmount] = useState(100);
   const pollStartedAtRef = useRef<number | null>(null);
   const statusCheckInFlightRef = useRef(false);
+  const submittedPaymentRef = useRef<any | null>(null);
+
+  useEffect(() => {
+    submittedPaymentRef.current = submittedPayment;
+  }, [submittedPayment]);
 
   const upiName = 'STRAP Fitness';
   const note = 'STRAP Premium Subscription';
@@ -81,19 +86,20 @@ export default function CheckoutPage() {
         );
 
         const payments: any[] = Array.isArray(histRes?.payments) ? histRes.payments : [];
-        const matched = submittedPayment
+        const currentSubmitted = submittedPaymentRef.current;
+        const matched = currentSubmitted
           ? payments.find(
               (p) =>
-                (submittedPayment.id && p.id === submittedPayment.id) ||
-                (submittedPayment.utr_reference && p.utr_reference === submittedPayment.utr_reference)
+                (currentSubmitted.id && p.id === currentSubmitted.id) ||
+                (currentSubmitted.utr_reference && p.utr_reference === currentSubmitted.utr_reference)
             )
           : payments.find((p) => p.payment_status === 'pending');
 
         if (subData?.isPremium || matched?.payment_status === 'approved') {
           setIsAlreadyPremium(true);
-          if (matched || submittedPayment) {
+          if (matched || currentSubmitted) {
             setSubmittedPayment({
-              ...(matched || submittedPayment),
+              ...(matched || currentSubmitted),
               payment_status: 'approved',
             });
           }
@@ -106,7 +112,11 @@ export default function CheckoutPage() {
           return;
         }
 
-        if (matched && matched.payment_status === 'pending') {
+        if (
+          matched &&
+          matched.payment_status === 'pending' &&
+          (!currentSubmitted || currentSubmitted.id !== matched.id)
+        ) {
           setSubmittedPayment(matched);
         }
       } finally {
@@ -114,7 +124,7 @@ export default function CheckoutPage() {
         if (manual) setCheckingStatus(false);
       }
     },
-    [refreshSubscription, submittedPayment]
+    [refreshSubscription]
   );
 
   // Initial load: fetch subscription config once and restore any genuinely pending payment
