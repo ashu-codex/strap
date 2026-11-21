@@ -579,7 +579,7 @@ export default function AdminDashboardPage() {
                   <thead>
                     <tr className="border-b border-[#E1E4E8] dark:border-[#242730] text-[#5A6069] dark:text-zinc-400 uppercase text-[10px]">
                       <th className="py-3 px-3">User / Email</th>
-                      <th className="py-3 px-3">Auth Method</th>
+                      <th className="py-3 px-3">Account Type</th>
                       <th className="py-3 px-3">Training Mode</th>
                       <th className="py-3 px-3">Tier &amp; Status</th>
                       <th className="py-3 px-3">Activity</th>
@@ -597,12 +597,18 @@ export default function AdminDashboardPage() {
                           </div>
                         </td>
                         <td className="py-3 px-3">
-                          <span className="rounded-md bg-[#F3F4F6] dark:bg-[#222630] px-2 py-0.5 text-[10px] font-semibold">
-                            {u.auth_origin === 'google' ? 'Google OAuth' : 'Email + Password'}
+                          <span
+                            className={`rounded-md px-2.5 py-0.5 text-[10px] font-bold ${
+                              u.auth_origin === 'google'
+                                ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
+                                : 'bg-[#F3F4F6] dark:bg-[#222630] text-[#111318] dark:text-zinc-200 border border-[#E1E4E8] dark:border-[#2E323D]'
+                            }`}
+                          >
+                            {u.auth_origin === 'google' ? 'Google' : 'Email'}
                           </span>
                           {u.google_linked && u.auth_origin !== 'google' && (
-                            <span className="ml-1 rounded-md bg-sky-500/15 text-sky-400 px-1.5 py-0.5 text-[10px]">
-                              +Google Linked
+                            <span className="ml-1 rounded-md bg-sky-500/15 text-sky-400 px-1.5 py-0.5 text-[10px] font-semibold">
+                              + Google
                             </span>
                           )}
                         </td>
@@ -1164,8 +1170,8 @@ export default function AdminDashboardPage() {
                     <thead>
                       <tr className="border-b border-[#E1E4E8] dark:border-[#242730] text-[10px] uppercase text-[#5A6069] dark:text-zinc-400">
                         <th className="py-2 px-3">Email</th>
-                        <th className="py-2 px-3">Primary Auth Provider</th>
-                        <th className="py-2 px-3">Explicit Google Link</th>
+                        <th className="py-2 px-3">Account Type</th>
+                        <th className="py-2 px-3">Google Link Status</th>
                         <th className="py-2 px-3">Timestamp</th>
                       </tr>
                     </thead>
@@ -1173,8 +1179,24 @@ export default function AdminDashboardPage() {
                       {(systemHealth?.authLogs || []).map((a: any, i: number) => (
                         <tr key={i}>
                           <td className="py-2 px-3 font-mono">{a.email}</td>
-                          <td className="py-2 px-3">{a.auth_origin}</td>
-                          <td className="py-2 px-3">{a.google_linked ? 'Linked' : 'Separate'}</td>
+                          <td className="py-2 px-3">
+                            <span
+                              className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                                a.auth_origin === 'google'
+                                  ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
+                                  : 'bg-[#F3F4F6] dark:bg-[#222630] text-[#111318] dark:text-zinc-200 border border-[#E1E4E8] dark:border-[#2E323D]'
+                              }`}
+                            >
+                              {a.auth_origin === 'google' ? 'Google' : 'Email'}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3">
+                            {a.auth_origin === 'google'
+                              ? 'Primary Google Account'
+                              : a.google_linked
+                              ? 'Google Linked'
+                              : 'Email Only'}
+                          </td>
                           <td className="py-2 px-3 text-[#5A6069] dark:text-zinc-400">
                             {a.created_at ? new Date(a.created_at).toLocaleString() : 'Active'}
                           </td>
@@ -1237,9 +1259,13 @@ export default function AdminDashboardPage() {
                 <strong className="uppercase text-brand">{selectedUser.subscriptionPlan}</strong>
               </div>
               <div className="rounded-xl bg-[#F8F9FA] dark:bg-[#0D0F12] p-3">
-                <span className="text-[#5A6069] dark:text-zinc-400 block">Authentication Origin</span>
+                <span className="text-[#5A6069] dark:text-zinc-400 block">Account Type</span>
                 <strong>
-                  {selectedUser.auth_origin === 'google' ? 'Google Sign-In' : 'Email & Password'}
+                  {selectedUser.auth_origin === 'google'
+                    ? 'Google'
+                    : selectedUser.google_linked
+                    ? 'Email (+ Google Linked)'
+                    : 'Email'}
                 </strong>
               </div>
               <div className="rounded-xl bg-[#F8F9FA] dark:bg-[#0D0F12] p-3">

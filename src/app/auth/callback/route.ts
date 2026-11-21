@@ -110,6 +110,21 @@ export async function GET(req: NextRequest) {
         await supabase.auth.signOut().catch(() => null);
         return fail('email_password_account', email ? `&email=${encodeURIComponent(email)}` : '');
       }
+
+      // Persist auth_origin = 'google' for Google-created accounts
+      if (hasGoogleIdentity && !hasEmailIdentity && prefs.auth_origin !== 'google') {
+        await db
+          .upsert(
+            'user_preferences',
+            {
+              user_id: userId,
+              theme: existingPref?.theme || 'system',
+              preferences: { ...prefs, auth_origin: 'google', google_linked: true },
+            },
+            'user_id'
+          )
+          .catch(() => null);
+      }
     } else if (tokenHash && type) {
       const { data, error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
       if (error || !data.user) return fail('link_expired');

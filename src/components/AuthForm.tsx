@@ -5,25 +5,18 @@ import { useSearchParams } from 'next/navigation';
 import {
   ArrowRight,
   CheckCircle2,
-  Dumbbell,
   Eye,
   EyeOff,
-  Flame,
   Info,
   Loader2,
   Lock,
   Mail,
   RefreshCw,
-  Scale,
-  Target,
   User,
 } from 'lucide-react';
 import { createClient as createBrowserClient } from '@/lib/supabase/client';
 import BrandLogo from '@/components/ui/BrandLogo';
 import { PrimaryButton } from '@/components/ui/Buttons';
-import HeightInput from '@/components/ui/HeightInput';
-import { HeightUnit } from '@/lib/height';
-import { calculateNutritionTargets } from '@/lib/nutrition-calc';
 
 const CALLBACK_ERRORS: Record<string, string> = {
   oauth_cancelled: 'Google sign-in was cancelled. You can try again anytime.',
@@ -54,22 +47,6 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Registration biometric & preference fields (Phase 2 & Phase 5)
-  const [age, setAge] = useState<string>('25');
-  const [gender, setGender] = useState<'male' | 'female' | 'other' | 'prefer_not_to_say'>('male');
-  const [heightCm, setHeightCm] = useState<number>(175);
-  const [heightUnit, setHeightUnit] = useState<HeightUnit>('cm');
-  const [heightValid, setHeightValid] = useState<boolean>(true);
-  const [weightKg, setWeightKg] = useState<string>('72');
-  const [fitnessGoal, setFitnessGoal] = useState<
-    'fat_loss' | 'muscle_gain' | 'recomposition' | 'maintenance' | 'strength' | 'general_fitness'
-  >('muscle_gain');
-  const [experienceLevel, setExperienceLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
-  const [trainingStyle, setTrainingStyle] = useState<'powerlifting' | 'muscle_building'>('muscle_building');
-  const [activityLevel, setActivityLevel] = useState<
-    'sedentary' | 'lightly_active' | 'moderately_active' | 'very_active'
-  >('moderately_active');
-
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState<{
     checkedEmail: string;
@@ -98,23 +75,6 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
       setError(CALLBACK_ERRORS[urlError] || 'Authentication could not be completed. Please try again.');
     }
   }, [urlError]);
-
-  // Live preview of personalized calorie & macro targets on Create Account
-  const previewTargets = useMemo(
-    () =>
-      calculateNutritionTargets({
-        age: Number(age) || 25,
-        gender,
-        height_cm: heightCm,
-        weight_kg: Number(weightKg) || 72,
-        activity_level: activityLevel,
-        weekly_workout_days: 4,
-        experience_level: experienceLevel,
-        primary_goal: fitnessGoal,
-        training_style: trainingStyle,
-      }),
-    [age, gender, heightCm, weightKg, activityLevel, experienceLevel, fitnessGoal, trainingStyle]
-  );
 
   // Password strength assessment
   const passwordChecks = useMemo(() => {
@@ -176,7 +136,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
         }
       } else {
         setMode('signup');
-        setInfoMessage('New email detected. Complete your STRAP account details below.');
+        setInfoMessage('New email detected. Create your STRAP account below.');
       }
     } catch {
       // Non-blocking: submit handlers still enforce all rules server-side
@@ -219,23 +179,6 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
         setLoading(false);
         return;
       }
-      const parsedAge = Number(age);
-      if (!Number.isFinite(parsedAge) || parsedAge < 10 || parsedAge > 100) {
-        setError('Please enter a valid age between 10 and 100.');
-        setLoading(false);
-        return;
-      }
-      if (!heightValid) {
-        setError('Please enter a valid height before creating your account.');
-        setLoading(false);
-        return;
-      }
-      const parsedWeight = Number(weightKg);
-      if (!Number.isFinite(parsedWeight) || parsedWeight < 20 || parsedWeight > 500) {
-        setError('Please enter a valid body weight between 20 kg and 500 kg.');
-        setLoading(false);
-        return;
-      }
 
       try {
         const res = await fetch('/api/auth/signup', {
@@ -246,16 +189,6 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
             email: normalizedEmail,
             password,
             confirm_password: confirmPassword,
-            age: Math.round(parsedAge),
-            gender,
-            height_cm: heightCm,
-            height_unit: heightUnit,
-            weight_kg: Math.round(parsedWeight * 10) / 10,
-            fitness_goal: fitnessGoal,
-            experience_level: experienceLevel,
-            training_style: trainingStyle,
-            activity_level: activityLevel,
-            weekly_workout_days: 4,
           }),
         });
         const data = await res.json();
@@ -269,12 +202,13 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
 
         if (data.requiresEmailVerification) {
           setVerificationNotice(
-            data.message || `We sent a verification link to ${normalizedEmail}. Open it to activate your account, then sign in.`
+            data.message ||
+              `We sent a verification link to ${normalizedEmail}. Open it to activate your account, then sign in.`
           );
           return;
         }
 
-        window.location.href = data.redirectTo || '/dashboard';
+        window.location.href = data.redirectTo || '/onboarding';
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -393,11 +327,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
 
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
-      <div
-        className={`w-full ${
-          mode === 'signup' ? 'max-w-2xl' : 'max-w-md'
-        } rounded-[14px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-6 sm:p-8 shadow-glow transition-all`}
-      >
+      <div className="w-full max-w-md rounded-[14px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-6 sm:p-8 shadow-glow transition-all">
         {/* Brand Header */}
         <div className="text-center mb-6 flex flex-col items-center">
           <BrandLogo size="lg" showTagline={false} className="mb-3" />
@@ -407,7 +337,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
           <p className="text-xs text-[#52525B] dark:text-[#9496A1] mt-1">
             {mode === 'login'
               ? 'Sign in to access your STRAP profile, workouts & recovery data'
-              : 'Configure your personal profile, training style & metabolic targets'}
+              : 'Start your personalized training & nutrition journey'}
           </p>
         </div>
 
@@ -530,10 +460,22 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
                   </svg>
                 )}
                 <span>{oauthLoading === 'google' ? 'Connecting to Google...' : 'Continue with Google'}</span>
@@ -550,376 +492,144 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Account Credentials Section */}
-              <div className={mode === 'signup' ? 'grid grid-cols-1 sm:grid-cols-2 gap-4' : 'space-y-4'}>
-                {mode === 'signup' && (
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300 mb-1">
-                      Full Name
-                    </label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A] dark:text-[#9496A1]" />
-                      <input
-                        type="text"
-                        required
-                        autoComplete="name"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Alex Mercer"
-                        className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] py-2.5 pl-9 pr-3 text-xs text-[#111318] dark:text-white placeholder-[#71717A] dark:placeholder-[#9496A1] focus:border-[#B7F34A] focus:outline-none focus:ring-1 focus:ring-[#B7F34A]"
-                      />
-                    </div>
-                  </div>
-                )}
-
+              {mode === 'signup' && (
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300">
-                      Email Address
-                    </label>
-                    {checkingEmail && (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-[#71717A] dark:text-[#9496A1]">
-                        <Loader2 className="h-3 w-3 animate-spin" /> Checking...
-                      </span>
-                    )}
-                    {!checkingEmail && emailStatus && emailStatus.checkedEmail === email.trim().toLowerCase() && (
-                      <span className="text-[10px] font-semibold text-[#6BA814] dark:text-[#B7F34A]">
-                        {emailStatus.exists ? 'Account found' : 'New email'}
-                      </span>
-                    )}
-                  </div>
+                  <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300 mb-1">
+                    Full Name
+                  </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A] dark:text-[#9496A1]" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A] dark:text-[#9496A1]" />
                     <input
-                      type="email"
+                      type="text"
                       required
-                      autoComplete="email"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        if (lastCheckedRef.current && e.target.value.trim().toLowerCase() !== lastCheckedRef.current) {
-                          lastCheckedRef.current = '';
-                        }
-                      }}
-                      onBlur={(e) => checkEmailRegistration(e.target.value)}
-                      placeholder="athlete@example.com"
+                      autoComplete="name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Alex Mercer"
                       className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] py-2.5 pl-9 pr-3 text-xs text-[#111318] dark:text-white placeholder-[#71717A] dark:placeholder-[#9496A1] focus:border-[#B7F34A] focus:outline-none focus:ring-1 focus:ring-[#B7F34A]"
                     />
                   </div>
                 </div>
+              )}
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300">
+                    Email Address
+                  </label>
+                  {checkingEmail && (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-[#71717A] dark:text-[#9496A1]">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Checking...
+                    </span>
+                  )}
+                  {!checkingEmail && emailStatus && emailStatus.checkedEmail === email.trim().toLowerCase() && (
+                    <span className="text-[10px] font-semibold text-[#6BA814] dark:text-[#B7F34A]">
+                      {emailStatus.exists ? 'Account found' : 'New email'}
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A] dark:text-[#9496A1]" />
+                  <input
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (lastCheckedRef.current && e.target.value.trim().toLowerCase() !== lastCheckedRef.current) {
+                        lastCheckedRef.current = '';
+                      }
+                    }}
+                    onBlur={(e) => checkEmailRegistration(e.target.value)}
+                    placeholder="athlete@example.com"
+                    className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] py-2.5 pl-9 pr-3 text-xs text-[#111318] dark:text-white placeholder-[#71717A] dark:placeholder-[#9496A1] focus:border-[#B7F34A] focus:outline-none focus:ring-1 focus:ring-[#B7F34A]"
+                  />
+                </div>
               </div>
 
-              {/* Password & Confirm Password */}
-              <div className={mode === 'signup' ? 'grid grid-cols-1 sm:grid-cols-2 gap-4' : 'space-y-4'}>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300">
+                    Password
+                  </label>
+                  {mode === 'login' && (
+                    <a
+                      href="/forgot-password"
+                      className="text-[11px] font-semibold text-[#6BA814] dark:text-[#B7F34A] hover:underline"
+                    >
+                      Forgot password?
+                    </a>
+                  )}
+                  {mode === 'signup' && password.length > 0 && (
+                    <span
+                      className={`text-[10px] font-bold ${
+                        passwordChecks.valid ? 'text-[#6BA814] dark:text-[#B7F34A]' : 'text-amber-400'
+                      }`}
+                    >
+                      Strength: {passwordChecks.label}
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A] dark:text-[#9496A1]" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    minLength={mode === 'signup' ? 8 : 1}
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={mode === 'signup' ? 'Min 8 chars, letters & numbers' : '••••••••'}
+                    className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] py-2.5 pl-9 pr-9 text-xs text-[#111318] dark:text-white placeholder-[#71717A] dark:placeholder-[#9496A1] focus:border-[#B7F34A] focus:outline-none focus:ring-1 focus:ring-[#B7F34A]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[#71717A] dark:text-[#9496A1] hover:text-[#111318] dark:hover:text-white"
+                  >
+                    {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              {mode === 'signup' && (
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300">
-                      Password
+                      Confirm Password
                     </label>
-                    {mode === 'login' && (
-                      <a
-                        href="/forgot-password"
-                        className="text-[11px] font-semibold text-[#6BA814] dark:text-[#B7F34A] hover:underline"
-                      >
-                        Forgot password?
-                      </a>
-                    )}
-                    {mode === 'signup' && password.length > 0 && (
+                    {confirmPassword.length > 0 && (
                       <span
                         className={`text-[10px] font-bold ${
-                          passwordChecks.valid ? 'text-[#6BA814] dark:text-[#B7F34A]' : 'text-amber-400'
+                          password === confirmPassword ? 'text-[#6BA814] dark:text-[#B7F34A]' : 'text-red-400'
                         }`}
                       >
-                        Strength: {passwordChecks.label}
+                        {password === confirmPassword ? 'Passwords match' : 'Does not match'}
                       </span>
                     )}
                   </div>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A] dark:text-[#9496A1]" />
                     <input
-                      type={showPassword ? 'text' : 'password'}
+                      type={showConfirmPassword ? 'text' : 'password'}
                       required
-                      minLength={mode === 'signup' ? 8 : 1}
-                      autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={mode === 'signup' ? 'Min 8 chars, letters & numbers' : '••••••••'}
+                      minLength={8}
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter your password"
                       className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] py-2.5 pl-9 pr-9 text-xs text-[#111318] dark:text-white placeholder-[#71717A] dark:placeholder-[#9496A1] focus:border-[#B7F34A] focus:outline-none focus:ring-1 focus:ring-[#B7F34A]"
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[#71717A] dark:text-[#9496A1] hover:text-[#111318] dark:hover:text-white"
                     >
-                      {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      {showConfirmPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                     </button>
-                  </div>
-                </div>
-
-                {mode === 'signup' && (
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300">
-                        Confirm Password
-                      </label>
-                      {confirmPassword.length > 0 && (
-                        <span
-                          className={`text-[10px] font-bold ${
-                            password === confirmPassword ? 'text-[#6BA814] dark:text-[#B7F34A]' : 'text-red-400'
-                          }`}
-                        >
-                          {password === confirmPassword ? 'Passwords match' : 'Does not match'}
-                        </span>
-                      )}
-                    </div>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A] dark:text-[#9496A1]" />
-                      <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        required
-                        minLength={8}
-                        autoComplete="new-password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Re-enter your password"
-                        className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] py-2.5 pl-9 pr-9 text-xs text-[#111318] dark:text-white placeholder-[#71717A] dark:placeholder-[#9496A1] focus:border-[#B7F34A] focus:outline-none focus:ring-1 focus:ring-[#B7F34A]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword((prev) => !prev)}
-                        aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[#71717A] dark:text-[#9496A1] hover:text-[#111318] dark:hover:text-white"
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Biometrics, Goals & Training Style Section (Create Account Mode) */}
-              {mode === 'signup' && (
-                <div className="pt-3 border-t border-[#E1E4E8] dark:border-[#30333A] space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#6BA814] dark:text-[#B7F34A] flex items-center gap-1.5">
-                      <Scale className="h-3.5 w-3.5" />
-                      <span>Athlete Biometrics & Training Profile</span>
-                    </span>
-                    <span className="text-[10px] text-[#71717A] dark:text-[#9496A1]">
-                      Calibrates BMR, TDEE & Workout Tracker
-                    </span>
-                  </div>
-
-                  {/* Age, Gender, Weight */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300 mb-1">
-                        Age (years)
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        min={10}
-                        max={100}
-                        value={age}
-                        onChange={(e) => setAge(e.target.value)}
-                        className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] p-2.5 text-xs text-[#111318] dark:text-white focus:border-[#B7F34A] focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300 mb-1">
-                        Gender
-                      </label>
-                      <select
-                        value={gender}
-                        onChange={(e) => setGender(e.target.value as any)}
-                        className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] p-2.5 text-xs text-[#111318] dark:text-white focus:border-[#B7F34A] focus:outline-none"
-                      >
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                        <option value="prefer_not_to_say">Prefer not to say</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300 mb-1">
-                        Weight (kg)
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        step="0.1"
-                        min={20}
-                        max={500}
-                        value={weightKg}
-                        onChange={(e) => setWeightKg(e.target.value)}
-                        className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] p-2.5 text-xs text-[#111318] dark:text-white focus:border-[#B7F34A] focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Height (CM | FT + IN) & Activity Level */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-                    <HeightInput
-                      heightCm={heightCm}
-                      unit={heightUnit}
-                      onChange={(nextCm, nextUnit, isValid) => {
-                        setHeightCm(nextCm);
-                        setHeightUnit(nextUnit);
-                        setHeightValid(isValid);
-                      }}
-                    />
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300 mb-1">
-                        Daily Activity Level
-                      </label>
-                      <select
-                        value={activityLevel}
-                        onChange={(e) => setActivityLevel(e.target.value as any)}
-                        className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] p-2.5 text-xs text-[#111318] dark:text-white focus:border-[#B7F34A] focus:outline-none"
-                      >
-                        <option value="sedentary">Sedentary (Desk job, low movement)</option>
-                        <option value="lightly_active">Lightly Active (1–3 days/wk exercise)</option>
-                        <option value="moderately_active">Moderately Active (3–5 days/wk training)</option>
-                        <option value="very_active">Very Active (6–7 days/wk hard training)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Fitness Goal & Training Experience */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300 mb-1 flex items-center gap-1">
-                        <Target className="h-3.5 w-3.5 text-[#6BA814] dark:text-[#B7F34A]" />
-                        <span>Fitness Goal</span>
-                      </label>
-                      <select
-                        value={fitnessGoal}
-                        onChange={(e) => setFitnessGoal(e.target.value as any)}
-                        className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] p-2.5 text-xs text-[#111318] dark:text-white focus:border-[#B7F34A] focus:outline-none"
-                      >
-                        <option value="fat_loss">Fat Loss</option>
-                        <option value="muscle_gain">Muscle Gain</option>
-                        <option value="recomposition">Body Recomposition</option>
-                        <option value="maintenance">Weight Maintenance</option>
-                        <option value="strength">Strength Improvement</option>
-                        <option value="general_fitness">General Fitness</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300 mb-1">
-                        Training Experience
-                      </label>
-                      <select
-                        value={experienceLevel}
-                        onChange={(e) => setExperienceLevel(e.target.value as any)}
-                        className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] p-2.5 text-xs text-[#111318] dark:text-white focus:border-[#B7F34A] focus:outline-none"
-                      >
-                        <option value="beginner">Beginner (0–1 year lifting)</option>
-                        <option value="intermediate">Intermediate (1–3 years lifting)</option>
-                        <option value="advanced">Advanced (3+ years structured training)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Preferred Training Type (Powerlifting vs Muscle Building) */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300 mb-1.5 flex items-center gap-1">
-                      <Dumbbell className="h-3.5 w-3.5 text-[#6BA814] dark:text-[#B7F34A]" />
-                      <span>Preferred Training Type</span>
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setTrainingStyle('muscle_building')}
-                        className={`p-3 rounded-[10px] border text-left transition-all ${
-                          trainingStyle === 'muscle_building'
-                            ? 'border-[#B7F34A] bg-[#B7F34A]/15 text-[#111318] dark:text-white shadow-glow'
-                            : 'border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] text-[#52525B] dark:text-[#9496A1]'
-                        }`}
-                      >
-                        <div className="text-xs font-extrabold text-[#111318] dark:text-white flex items-center justify-between">
-                          <span>Muscle Building (Hypertrophy)</span>
-                          {trainingStyle === 'muscle_building' && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#B7F34A] text-[#111318] font-black">
-                              Selected
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-[#52525B] dark:text-[#9496A1] mt-1">
-                          PPL, Upper/Lower & Bro Splits • Muscular volume, isolation & progressive rep ranges.
-                        </p>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setTrainingStyle('powerlifting')}
-                        className={`p-3 rounded-[10px] border text-left transition-all ${
-                          trainingStyle === 'powerlifting'
-                            ? 'border-[#B7F34A] bg-[#B7F34A]/15 text-[#111318] dark:text-white shadow-glow'
-                            : 'border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] text-[#52525B] dark:text-[#9496A1]'
-                        }`}
-                      >
-                        <div className="text-xs font-extrabold text-[#111318] dark:text-white flex items-center justify-between">
-                          <span>Powerlifting (SBD Strength)</span>
-                          {trainingStyle === 'powerlifting' && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#B7F34A] text-[#111318] font-black">
-                              Selected
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-[#52525B] dark:text-[#9496A1] mt-1">
-                          Squat, Bench & Deadlift competition variations • %1RM, RPE/RIR & peaking periodization.
-                        </p>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Live Calculated Calorie & Macro Target Preview */}
-                  <div className="rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#6BA814] dark:text-[#B7F34A] flex items-center gap-1">
-                        <Flame className="h-3 w-3" />
-                        <span>Estimated Daily Targets ({previewTargets.goal_label})</span>
-                      </span>
-                      <span className="text-[10px] font-mono text-[#52525B] dark:text-[#9496A1]">
-                        BMR {previewTargets.bmr} • TDEE {previewTargets.tdee} kcal
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2 text-center">
-                      <div className="rounded-[8px] bg-white dark:bg-[#1B1D22] p-2 border border-[#E1E4E8] dark:border-[#30333A]">
-                        <span className="text-[9px] uppercase text-[#71717A] dark:text-[#9496A1] block">Calories</span>
-                        <span className="text-xs font-black text-[#111318] dark:text-white">
-                          {previewTargets.target_calories} kcal
-                        </span>
-                      </div>
-                      <div className="rounded-[8px] bg-white dark:bg-[#1B1D22] p-2 border border-[#E1E4E8] dark:border-[#30333A]">
-                        <span className="text-[9px] uppercase text-blue-500 dark:text-blue-400 block">Protein</span>
-                        <span className="text-xs font-black text-[#111318] dark:text-white">
-                          {previewTargets.protein_g}g
-                        </span>
-                      </div>
-                      <div className="rounded-[8px] bg-white dark:bg-[#1B1D22] p-2 border border-[#E1E4E8] dark:border-[#30333A]">
-                        <span className="text-[9px] uppercase text-amber-500 dark:text-amber-400 block">Carbs</span>
-                        <span className="text-xs font-black text-[#111318] dark:text-white">
-                          {previewTargets.carbs_g}g
-                        </span>
-                      </div>
-                      <div className="rounded-[8px] bg-white dark:bg-[#1B1D22] p-2 border border-[#E1E4E8] dark:border-[#30333A]">
-                        <span className="text-[9px] uppercase text-rose-500 dark:text-rose-400 block">Fat</span>
-                        <span className="text-xs font-black text-[#111318] dark:text-white">
-                          {previewTargets.fats_g}g
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-[#71717A] dark:text-[#9496A1] leading-tight">
-                      {previewTargets.disclaimer}
-                    </p>
                   </div>
                 </div>
               )}

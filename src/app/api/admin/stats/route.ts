@@ -2,8 +2,50 @@ import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { handleError, json } from '@/lib/api';
 import { isActivePremium, requireOwnerAdmin } from '@/lib/auth-helpers';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { isServiceRoleConfigured } from '@/lib/config';
 import { SEED_EXERCISES } from '@/lib/exercises';
 import { SEED_FOODS } from '@/lib/food-database';
+
+function resolveAuthAccountType(
+  authUser: any | undefined,
+  pref: Record<string, any>
+): { auth_origin: 'google' | 'email'; google_linked: boolean } {
+  const identities: any[] = Array.isArray(authUser?.identities) ? authUser.identities : [];
+  const metaProviders: string[] = Array.isArray(authUser?.app_metadata?.providers)
+    ? authUser.app_metadata.providers
+    : [];
+  const primaryProvider = String(authUser?.app_metadata?.provider || '').toLowerCase();
+  const providers = Array.from(
+    new Set([
+      ...metaProviders.map((p) => String(p).toLowerCase()),
+      ...identities.map((i: any) => String(i.provider || '').toLowerCase()).filter(Boolean),
+      ...(primaryProvider ? [primaryProvider] : []),
+    ])
+  );
+
+  const sortedIdentities = [...identities].sort((a, b) =>
+    String(a.created_at || '').localeCompare(String(b.created_at || ''))
+  );
+  const firstIdentityProvider = String(sortedIdentities[0]?.provider || '').toLowerCase();
+
+  if (
+    pref.auth_origin === 'google' ||
+    primaryProvider === 'google' ||
+    firstIdentityProvider === 'google' ||
+    (providers.includes('google') && !providers.includes('email'))
+  ) {
+    return {
+      auth_origin: 'google',
+      google_linked: true,
+    };
+  }
+
+  return {
+    auth_origin: 'email',
+    google_linked: Boolean(pref.google_linked || providers.includes('google')),
+  };
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -23,6 +65,7 @@ export async function GET(req: NextRequest) {
       aiLogs,
       auditLogs,
       prefs,
+      authUsersList,
     ] = await Promise.all([
       db.select('user_profiles', { order: ['created_at', 'desc'], limit: 2000 }).catch(() => []),
       db.select('subscriptions').catch(() => []),
@@ -33,14 +76,44 @@ export async function GET(req: NextRequest) {
       db.select('ai_usage_log', { order: ['created_at', 'desc'], limit: 500 }).catch(() => []),
       db.select('admin_audit_logs', { order: ['created_at', 'desc'], limit: 50 }).catch(() => []),
       db.select('user_preferences', { limit: 2000 }).catch(() => []),
+      (async () => {
+        if (!isServiceRoleConfigured()) return [];
+        const adminClient = createAdminClient();
+        if (!adminClient) return [];
+        const { data } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 }).catch(() => ({ data: null }));
+        return data?.users || [];
+      })(),
     ]);
 
-    const totalUsers = profiles.length;
+    const authById = new Map<string, any>();
+    const authByEmail = new Map<string, any>();
+    for (const au of authUsersList) {
+      if (au.id) authById.set(au.id, au);
+      if (au.email) authByEmail.set(String(au.email).toLowerCase(), au);
+    }
+
+    const combinedProfiles: any[] = [...profiles];
+    const seenIds = new Set(profiles.map((p: any) => p.id));
+    for (const au of authUsersList) {
+      if (au.id && !seenIds.has(au.id)) {
+        combinedProfiles.push({
+          id: au.id,
+          email: au.email || '',
+          full_name:
+            au.user_metadata?.full_name ||
+            au.user_metadata?.name ||
+            (au.email ? String(au.email).split('@')[0] : 'Athlete'),
+          created_at: au.created_at,
+        });
+      }
+    }
+
+    const totalUsers = combinedProfiles.length;
     const premiumUsers = subs.filter((s) => isActivePremium(s as any)).length;
     const freeUsers = Math.max(0, totalUsers - premiumUsers);
 
-    const newRegistrations7d = profiles.filter((u) => u.created_at && u.created_at >= sevenDaysAgo).length;
-    const newRegistrations30d = profiles.filter((u) => u.created_at && u.created_at >= thirtyDaysAgo).length;
+    const newRegistrations7d = combinedProfiles.filter((u) => u.created_at && u.created_at >= sevenDaysAgo).length;
+    const newRegistrations30d = combinedProfiles.filter((u) => u.created_at && u.created_at >= thirtyDaysAgo).length;
     const activeUsers = Math.max(1, newRegistrations30d || totalUsers);
 
     const approved = payments.filter((p) => p.payment_status === 'approved');
@@ -64,16 +137,18 @@ export async function GET(req: NextRequest) {
     }
 
     const prefMap = new Map(prefs.map((p: any) => [p.user_id, p.preferences || {}]));
-    const authLogs = profiles.slice(0, 25).map((u: any) => {
+    const authLogs = combinedProfiles.slice(0, 35).map((u: any) => {
       const p = prefMap.get(u.id) || {};
+      const authUser = authById.get(u.id) || (u.email ? authByEmail.get(String(u.email).toLowerCase()) : undefined);
+      const authInfo = resolveAuthAccountType(authUser, p);
       return {
         user_id: u.id,
-        email: u.email,
+        email: u.email || authUser?.email || '',
         full_name: u.full_name,
-        auth_origin: p.auth_origin || 'email_password',
-        google_linked: Boolean(p.google_linked),
+        auth_origin: authInfo.auth_origin,
+        google_linked: authInfo.google_linked,
         training_style: p.training_style || 'muscle_building',
-        created_at: u.created_at,
+        created_at: u.created_at || authUser?.created_at,
       };
     });
 

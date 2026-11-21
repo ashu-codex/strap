@@ -41,6 +41,7 @@ export default function OnboardingPage() {
     arms_cm: 35,
 
     // Step 2: Fitness & Experience
+    training_style: 'muscle_building' as 'powerlifting' | 'muscle_building',
     experience_level: 'intermediate',
     workout_location: 'gym',
     weekly_workout_days: 4,
@@ -187,6 +188,16 @@ export default function OnboardingPage() {
         const d = await goalRes.json().catch(() => null);
         throw new Error(d?.error || 'Failed to save fitness goals.');
       }
+
+      // 3. Save Preferred Training Type (Powerlifting vs Muscle Building)
+      await fetch('/api/workouts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'set_training_style',
+          training_style: formData.training_style,
+        }),
+      }).catch(() => null);
 
       router.push('/dashboard');
       window.location.href = '/dashboard';
@@ -364,11 +375,59 @@ export default function OnboardingPage() {
             <div>
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Dumbbell className="h-5 w-5 text-brand" />
-                Training Profile & Gear
+                Training Profile &amp; Gear
               </h2>
               <p className="text-xs text-zinc-400 mt-0.5">
-                The AI will choose the optimal split and exercises strictly tailored to your equipment.
+                STRAP will configure your workout tracker and split recommendations for your training style and equipment.
               </p>
+            </div>
+
+            {/* Preferred Training Type */}
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-300 mb-2">
+                Preferred Training Type
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, training_style: 'muscle_building' })}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    formData.training_style === 'muscle_building'
+                      ? 'border-brand bg-brand/15 text-white shadow-glow'
+                      : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <div className="text-xs font-extrabold text-white flex items-center justify-between">
+                    <span>Muscle Building (Hypertrophy)</span>
+                    {formData.training_style === 'muscle_building' && (
+                      <CheckCircle2 className="h-4 w-4 text-brand" />
+                    )}
+                  </div>
+                  <p className="text-[10px] text-zinc-400 mt-1">
+                    PPL, Upper/Lower &amp; Bro Splits • Muscular volume, isolation &amp; hypertrophy rep ranges.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, training_style: 'powerlifting' })}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    formData.training_style === 'powerlifting'
+                      ? 'border-brand bg-brand/15 text-white shadow-glow'
+                      : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <div className="text-xs font-extrabold text-white flex items-center justify-between">
+                    <span>Powerlifting (SBD Strength)</span>
+                    {formData.training_style === 'powerlifting' && (
+                      <CheckCircle2 className="h-4 w-4 text-brand" />
+                    )}
+                  </div>
+                  <p className="text-[10px] text-zinc-400 mt-1">
+                    Squat, Bench &amp; Deadlift variations • %1RM, RPE/RIR &amp; periodization blocks.
+                  </p>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
