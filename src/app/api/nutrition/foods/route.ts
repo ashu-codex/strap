@@ -113,6 +113,70 @@ async function searchOpenFoodFacts(query: string, barcode?: string | null): Prom
   }
 }
 
+/** Optional USDA FoodData Central lookup when USDA_API_KEY is configured in server env */
+async function searchUSDAFoodData(query: string): Promise<FoodItem[]> {
+  const usdaKey = process.env.USDA_API_KEY?.trim();
+  if (!usdaKey || !query) return [];
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2800);
+    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(
+      usdaKey
+    )}&query=${encodeURIComponent(query)}&pageSize=5`;
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const list: any[] = Array.isArray(data?.foods) ? data.foods : [];
+    const out: FoodItem[] = [];
+    for (const item of list) {
+      const nuts: any[] = Array.isArray(item.foodNutrients) ? item.foodNutrients : [];
+      const getNut = (num: string) => {
+        const found = nuts.find((n) => String(n.nutrientNumber) === num);
+        return Number(found?.value) || 0;
+      };
+      const calories = Math.round(getNut('208'));
+      const protein = Math.round(getNut('203') * 10) / 10;
+      const carbs = Math.round(getNut('205') * 10) / 10;
+      const fat = Math.round(getNut('204') * 10) / 10;
+      const satFat = Math.round(getNut('606') * 10) / 10;
+      const fiber = Math.round(getNut('291') * 10) / 10;
+      const sugar = Math.round(getNut('269') * 10) / 10;
+      const sodium = Math.round(getNut('307'));
+      const cholesterol = Math.round(getNut('601'));
+      if (!item.description || (!calories && !protein && !carbs && !fat)) continue;
+      const servingG = Number(item.servingSize) || 100;
+      out.push({
+        id: `usda-${item.fdcId}`,
+        name: String(item.description).trim(),
+        brand: String(item.brandOwner || item.brandName || 'USDA FoodData Central').trim(),
+        category: 'International & Packaged',
+        default_unit: 'g',
+        default_quantity: 100,
+        servings: [
+          { unit: 'g', label: 'Gram (g)', grams: 1 },
+          { unit: 'serving', label: `1 Serving (${servingG}g)`, grams: servingG },
+        ],
+        per100g: {
+          calories,
+          protein_g: protein,
+          carbs_g: carbs,
+          fat_g: fat,
+          saturated_fat_g: satFat,
+          unsaturated_fat_g: Math.max(0, Math.round((fat - satFat) * 10) / 10),
+          fiber_g: fiber,
+          sugar_g: sugar,
+          sodium_mg: sodium,
+          cholesterol_mg: cholesterol,
+        },
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { user } = await getAuthUser(req);
@@ -146,8 +210,11 @@ export async function GET(req: NextRequest) {
     }
 
     if ((includeExternal || results.length < 3) && (search.length >= 3 || barcode)) {
-      const offItems = await searchOpenFoodFacts(search, barcode);
-      for (const item of offItems) {
+      const [offItems, usdaItems] = await Promise.all([
+        searchOpenFoodFacts(search, barcode),
+        barcode ? Promise.resolve([]) : searchUSDAFoodData(search),
+      ]);
+      for (const item of [...offItems, ...usdaItems]) {
         if (!results.some((r) => r.id === item.id || r.name.toLowerCase() === item.name.toLowerCase())) {
           results.push(item);
         }

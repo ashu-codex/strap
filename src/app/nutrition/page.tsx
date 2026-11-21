@@ -23,7 +23,9 @@ import {
   Info,
   Sliders,
   Globe,
+  ScanBarcode,
 } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import ThreeDotMenu from '@/components/ui/ThreeDotMenu';
 import {
   FoodItem,
@@ -191,7 +193,12 @@ export default function NutritionTrackerPage() {
     setSearchingFoods(true);
     try {
       const params = new URLSearchParams();
-      if (searchQuery.trim()) params.set('search', searchQuery.trim());
+      const trimmed = searchQuery.trim();
+      if (/^\d{8,14}$/.test(trimmed)) {
+        params.set('barcode', trimmed);
+      } else if (trimmed) {
+        params.set('search', trimmed);
+      }
       if (
         selectedTab !== 'All' &&
         selectedTab !== 'Favourites' &&
@@ -813,27 +820,84 @@ export default function NutritionTrackerPage() {
               </div>
             </div>
 
-            {/* Detailed Lipid & Micronutrient Breakdown */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 border-t border-[#E1E4E8] dark:border-[#2A2D35] text-xs">
-              <div className="rounded-lg bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2">
-                <span className="text-[#5A6069] dark:text-[#9CA3AF] block">Saturated Fat</span>
-                <strong className="text-sm">{summary.saturated_fat_g} g</strong>
+            {/* Detailed Lipid & Micronutrient Breakdown + Macro Calorie Chart */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-3 border-t border-[#E1E4E8] dark:border-[#2A2D35] items-center">
+              <div className="md:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="rounded-lg bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2">
+                  <span className="text-[#5A6069] dark:text-[#9CA3AF] block">Saturated Fat</span>
+                  <strong className="text-sm">{summary.saturated_fat_g} g</strong>
+                </div>
+                <div className="rounded-lg bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2">
+                  <span className="text-[#5A6069] dark:text-[#9CA3AF] block">Unsaturated Fat</span>
+                  <strong className="text-sm">{summary.unsaturated_fat_g} g</strong>
+                </div>
+                <div className="rounded-lg bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2">
+                  <span className="text-[#5A6069] dark:text-[#9CA3AF] block">Total Sugar</span>
+                  <strong className="text-sm">{summary.sugar_g} g</strong>
+                </div>
+                <div className="rounded-lg bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2">
+                  <span className="text-[#5A6069] dark:text-[#9CA3AF] block">Sodium</span>
+                  <strong className="text-sm">{summary.sodium_mg} mg</strong>
+                </div>
+                <div className="rounded-lg bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2">
+                  <span className="text-[#5A6069] dark:text-[#9CA3AF] block">Cholesterol</span>
+                  <strong className="text-sm">{summary.cholesterol_mg} mg</strong>
+                </div>
+                <div className="rounded-lg bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2">
+                  <span className="text-[#5A6069] dark:text-[#9CA3AF] block">Macro Split</span>
+                  <strong className="text-[11px]">
+                    {(() => {
+                      const pCal = (summary.protein_g || 0) * 4;
+                      const cCal = (summary.carbs_g || 0) * 4;
+                      const fCal = (summary.fat_g || 0) * 9;
+                      const tot = pCal + cCal + fCal;
+                      if (tot <= 0) return 'Target Ready';
+                      return `P ${Math.round((pCal / tot) * 100)}% • C ${Math.round((cCal / tot) * 100)}% • F ${Math.round((fCal / tot) * 100)}%`;
+                    })()}
+                  </strong>
+                </div>
               </div>
-              <div className="rounded-lg bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2">
-                <span className="text-[#5A6069] dark:text-[#9CA3AF] block">Unsaturated Fat</span>
-                <strong className="text-sm">{summary.unsaturated_fat_g} g</strong>
-              </div>
-              <div className="rounded-lg bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2">
-                <span className="text-[#5A6069] dark:text-[#9CA3AF] block">Total Sugar</span>
-                <strong className="text-sm">{summary.sugar_g} g</strong>
-              </div>
-              <div className="rounded-lg bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2">
-                <span className="text-[#5A6069] dark:text-[#9CA3AF] block">Sodium</span>
-                <strong className="text-sm">{summary.sodium_mg} mg</strong>
-              </div>
-              <div className="rounded-lg bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2">
-                <span className="text-[#5A6069] dark:text-[#9CA3AF] block">Cholesterol</span>
-                <strong className="text-sm">{summary.cholesterol_mg} mg</strong>
+
+              <div className="md:col-span-4 h-36 rounded-xl bg-[#F8F9FA] dark:bg-[#14161A] border border-[#E1E4E8] dark:border-[#2A2D35] p-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={
+                        summary.protein_g + summary.carbs_g + summary.fat_g > 0
+                          ? [
+                              { name: 'Protein (kcal)', value: Math.round(summary.protein_g * 4), color: '#f43f5e' },
+                              { name: 'Carbs (kcal)', value: Math.round(summary.carbs_g * 4), color: '#0ea5e9' },
+                              { name: 'Fat (kcal)', value: Math.round(summary.fat_g * 9), color: '#f59e0b' },
+                            ]
+                          : [
+                              { name: 'Protein Target', value: Math.round(targets.protein_g * 4), color: '#f43f5e' },
+                              { name: 'Carbs Target', value: Math.round(targets.carbs_g * 4), color: '#0ea5e9' },
+                              { name: 'Fat Target', value: Math.round(targets.fats_g * 9), color: '#f59e0b' },
+                            ]
+                      }
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={30}
+                      outerRadius={50}
+                      paddingAngle={3}
+                    >
+                      {['#f43f5e', '#0ea5e9', '#f59e0b'].map((c, idx) => (
+                        <Cell key={idx} fill={c} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1B1D22',
+                        border: '1px solid #30333A',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        color: '#fff',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </div>
@@ -1173,9 +1237,10 @@ export default function NutritionTrackerPage() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search Roti, Dal, Paneer, Chicken, Oats, ON Whey, MuscleBlaze Creatine, Fish Oil..."
-                    className="w-full rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F8F9FA] dark:bg-[#14161A] pl-10 pr-4 py-2.5 text-sm focus:border-brand focus:outline-none"
+                    placeholder="Search Roti, Dal, Paneer, ON Whey, Creatine, or enter 8-13 digit Barcode..."
+                    className="w-full rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F8F9FA] dark:bg-[#14161A] pl-10 pr-10 py-2.5 text-sm focus:border-brand focus:outline-none"
                   />
+                  <ScanBarcode className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#5A6069]" />
                 </div>
                 <label className="inline-flex items-center gap-2 rounded-xl border border-[#E1E4E8] dark:border-[#30333A] px-3 py-2 text-xs font-medium cursor-pointer select-none">
                   <input

@@ -25,6 +25,17 @@ import {
   Settings,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts';
 import { SEED_EXERCISES, ExtendedExerciseItem } from '@/lib/exercises';
 import { estimate1RM } from '@/lib/utils';
 import ThreeDotMenu from '@/components/ui/ThreeDotMenu';
@@ -1822,6 +1833,96 @@ export default function WorkoutTrackerPage() {
               <p className="text-[11px] text-[#52525B] dark:text-[#9496A1] mt-0.5">
                 Verified 1RM & Volume milestones
               </p>
+            </div>
+          </div>
+
+          {/* Strength & Volume Progression Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="rounded-2xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-5 space-y-3">
+              <h3 className="text-sm font-black text-[#111318] dark:text-white flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-[#6BA814] dark:text-[#B7F34A]" />
+                <span>Session Tonnage Progression (kg)</span>
+              </h3>
+              <div className="h-56 w-full">
+                {workoutHistory.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-xs text-[#9496A1]">
+                    Complete sessions to plot your strength &amp; tonnage progression trend.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={[...workoutHistory]
+                        .slice(0, 10)
+                        .reverse()
+                        .map((w: any, idx: number) => ({
+                          session: String(w.completed_at || w.created_at || `S${idx + 1}`).slice(5, 10),
+                          volume: Math.round(Number(w.total_volume_kg) || 0),
+                        }))}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#30333A" opacity={0.3} />
+                      <XAxis dataKey="session" stroke="#9496A1" fontSize={11} />
+                      <YAxis stroke="#9496A1" fontSize={11} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1B1D22',
+                          border: '1px solid #30333A',
+                          borderRadius: '8px',
+                          fontSize: '11px',
+                          color: '#fff',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="volume"
+                        name="Volume (kg)"
+                        stroke="#B7F34A"
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: '#B7F34A' }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-5 space-y-3">
+              <h3 className="text-sm font-black text-[#111318] dark:text-white flex items-center gap-2">
+                <Award className="h-4 w-4 text-[#6BA814] dark:text-[#B7F34A]" />
+                <span>Top Lifts — Estimated 1RM (kg)</span>
+              </h3>
+              <div className="h-56 w-full">
+                {prs.filter((p: any) => p.record_type !== 'max_volume').length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-xs text-[#9496A1]">
+                    Log sets to populate your personal record 1RM chart.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={prs
+                        .filter((p: any) => p.record_type !== 'max_volume')
+                        .slice(0, 6)
+                        .map((p: any) => ({
+                          lift: String(p.exercise_name || 'Lift').slice(0, 14),
+                          rm: Math.round(Number(p.value) || 0),
+                        }))}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#30333A" opacity={0.3} />
+                      <XAxis dataKey="lift" stroke="#9496A1" fontSize={10} />
+                      <YAxis stroke="#9496A1" fontSize={11} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1B1D22',
+                          border: '1px solid #30333A',
+                          borderRadius: '8px',
+                          fontSize: '11px',
+                          color: '#fff',
+                        }}
+                      />
+                      <Bar dataKey="rm" name="Est. 1RM (kg)" fill="#B7F34A" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </div>
           </div>
 
