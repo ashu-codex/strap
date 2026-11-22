@@ -173,8 +173,8 @@ export async function POST(req: NextRequest) {
     if (existingAccount.exists) {
       const hasEmail = existingAccount.providers.includes('email');
       const msg = hasEmail
-        ? 'This email is already registered. Please sign in to your existing account.'
-        : 'This email is already registered with Google. Please click "Continue with Google" to sign in.';
+        ? 'Registration could not be completed because an account with this email already exists. Please sign in instead.'
+        : 'Registration could not be completed because this email is already linked to Google Sign-In. Use "Continue with Google" to sign in.';
       return json(
         {
           error: msg,

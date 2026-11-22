@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   ArrowRight,
@@ -22,12 +22,10 @@ const CALLBACK_ERRORS: Record<string, string> = {
   oauth_cancelled: 'Google sign-in was cancelled. You can try again anytime.',
   oauth_failed: 'Google sign-in could not be completed. Please try again.',
   email_password_account:
-    'This email is already registered using Email & Password. Please sign in using your password.',
+    'This account uses Email & Password sign-in. Please sign in with your password below.',
   link_expired: 'That verification or recovery link has expired. Please request a new one.',
   auth_unavailable: 'Authentication service is not configured yet. Please contact the administrator.',
 };
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface AuthFormProps {
   initialMode: 'login' | 'signup';
@@ -47,15 +45,6 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const [checkingEmail, setCheckingEmail] = useState(false);
-  const [emailStatus, setEmailStatus] = useState<{
-    checkedEmail: string;
-    exists: boolean;
-    oauthOnly: boolean;
-    hasEmailPassword: boolean;
-    googleLinked: boolean;
-  } | null>(null);
-
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'google' | null>(null);
   const [resending, setResending] = useState(false);
@@ -64,8 +53,6 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
   const [verificationNotice, setVerificationNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
-
-  const lastCheckedRef = useRef<string>('');
 
   useEffect(() => {
     if (urlError) {
@@ -76,7 +63,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
     }
   }, [urlError]);
 
-  // Password strength assessment
+  // Password strength assessment (Create Account mode)
   const passwordChecks = useMemo(() => {
     const len = password.length >= 8;
     const hasLetter = /[A-Za-z]/.test(password);
@@ -93,64 +80,13 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
     };
   }, [password]);
 
-  const checkEmailRegistration = async (rawEmail: string) => {
-    const normalized = rawEmail.trim().toLowerCase();
-    if (!EMAIL_RE.test(normalized) || lastCheckedRef.current === normalized) return;
-    lastCheckedRef.current = normalized;
-    setCheckingEmail(true);
-    setSuggestSwitch(null);
-
-    try {
-      const res = await fetch('/api/auth/check-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalized }),
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      const providers: string[] = Array.isArray(data.providers) ? data.providers : [];
-      const hasEmail = Boolean(data.hasEmailPassword || providers.includes('email'));
-      const hasGoogle = providers.includes('google');
-      const googleLinked = Boolean(data.googleLinked);
-      const oauthOnly = Boolean(data.exists && !hasEmail && hasGoogle);
-
-      setEmailStatus({
-        checkedEmail: normalized,
-        exists: Boolean(data.exists),
-        oauthOnly,
-        hasEmailPassword: hasEmail,
-        googleLinked,
-      });
-      setError(null);
-
-      if (data.exists) {
-        setMode('login');
-        if (oauthOnly) {
-          setInfoMessage(
-            'This email is registered with Google. Click "Continue with Google" above to sign in.'
-          );
-        } else {
-          setInfoMessage(
-            'This email is already registered. Sign in below to access your existing STRAP account.'
-          );
-        }
-      } else {
-        setMode('signup');
-        setInfoMessage('New email detected. Create your STRAP account below.');
-      }
-    } catch {
-      // Non-blocking: submit handlers still enforce all rules server-side
-    } finally {
-      setCheckingEmail(false);
-    }
-  };
-
   const switchMode = (nextMode: 'login' | 'signup') => {
     setMode(nextMode);
     setError(null);
     setSuggestSwitch(null);
     setNeedsVerification(false);
     setInfoMessage(null);
+    setVerificationNotice(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -217,7 +153,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
       return;
     }
 
-    // Login mode
+    // Sign In mode — never triggers registration-only "already registered" notices
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -236,7 +172,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
         } else if (data.code === 'ACCOUNT_NOT_FOUND') {
           setSuggestSwitch('signup');
         }
-        throw new Error(data.error || 'Unable to sign in. Please try again.');
+        throw new Error(data.error || 'Unable to sign in. Please check your credentials and try again.');
       }
 
       window.location.href = data.redirectTo || '/dashboard';
@@ -286,28 +222,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
   const handleGoogleAuth = async () => {
     setError(null);
     setInfoMessage(null);
-
-    // Check if an email was entered and belongs to an unlinked Email & Password account
-    const normalized = email.trim().toLowerCase();
-    if (EMAIL_RE.test(normalized)) {
-      try {
-        const checkRes = await fetch('/api/auth/check-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: normalized }),
-        });
-        if (checkRes.ok) {
-          const checkData = await checkRes.json();
-          if (checkData.exists && checkData.hasEmailPassword && !checkData.googleLinked) {
-            setMode('login');
-            setError(CALLBACK_ERRORS.email_password_account);
-            return;
-          }
-        }
-      } catch {
-        // Proceed to backend callback guard
-      }
-    }
+    setSuggestSwitch(null);
 
     const supabase = createBrowserClient();
     if (!supabase) {
@@ -326,8 +241,8 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md rounded-[14px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-6 sm:p-8 shadow-glow transition-all">
+    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-10 sm:py-12">
+      <div className="w-full max-w-md rounded-[14px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-5 sm:p-8 shadow-glow transition-all">
         {/* Brand Header */}
         <div className="text-center mb-6 flex flex-col items-center">
           <BrandLogo size="lg" showTagline={false} className="mb-3" />
@@ -385,7 +300,6 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
               <PrimaryButton
                 fullWidth
                 onClick={() => {
-                  setVerificationNotice(null);
                   switchMode('login');
                 }}
               >
@@ -407,7 +321,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
             {error && (
               <div className="mb-4 rounded-[10px] border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-600 dark:text-red-400 leading-relaxed space-y-2">
                 <p>{error}</p>
-                {needsVerification && (
+                {needsVerification && mode === 'login' && (
                   <button
                     type="button"
                     disabled={resending}
@@ -418,23 +332,23 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                     <span>{resending ? 'Sending...' : 'Resend verification email'}</span>
                   </button>
                 )}
-                {suggestSwitch === 'login' && (
+                {suggestSwitch === 'login' && mode === 'signup' && (
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
                     className="inline-flex items-center gap-1.5 font-bold text-[#6BA814] dark:text-[#B7F34A] hover:underline"
                   >
-                    <span>Switch to Sign In with this email</span>
+                    <span>Switch to Sign In</span>
                     <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 )}
-                {suggestSwitch === 'signup' && (
+                {suggestSwitch === 'signup' && mode === 'login' && (
                   <button
                     type="button"
                     onClick={() => switchMode('signup')}
                     className="inline-flex items-center gap-1.5 font-bold text-[#6BA814] dark:text-[#B7F34A] hover:underline"
                   >
-                    <span>Create a new account with this email</span>
+                    <span>Create a new account</span>
                     <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 )}
@@ -517,16 +431,6 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                   <label className="block text-[11px] font-bold text-[#111318] dark:text-zinc-300">
                     Email Address
                   </label>
-                  {checkingEmail && (
-                    <span className="inline-flex items-center gap-1 text-[10px] text-[#71717A] dark:text-[#9496A1]">
-                      <Loader2 className="h-3 w-3 animate-spin" /> Checking...
-                    </span>
-                  )}
-                  {!checkingEmail && emailStatus && emailStatus.checkedEmail === email.trim().toLowerCase() && (
-                    <span className="text-[10px] font-semibold text-[#6BA814] dark:text-[#B7F34A]">
-                      {emailStatus.exists ? 'Account found' : 'New email'}
-                    </span>
-                  )}
                 </div>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A] dark:text-[#9496A1]" />
@@ -535,13 +439,7 @@ export default function AuthForm({ initialMode }: AuthFormProps) {
                     required
                     autoComplete="email"
                     value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (lastCheckedRef.current && e.target.value.trim().toLowerCase() !== lastCheckedRef.current) {
-                        lastCheckedRef.current = '';
-                      }
-                    }}
-                    onBlur={(e) => checkEmailRegistration(e.target.value)}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="athlete@example.com"
                     className="w-full rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#141519] py-2.5 pl-9 pr-3 text-xs text-[#111318] dark:text-white placeholder-[#71717A] dark:placeholder-[#9496A1] focus:border-[#B7F34A] focus:outline-none focus:ring-1 focus:ring-[#B7F34A]"
                   />
