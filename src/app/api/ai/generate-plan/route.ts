@@ -27,6 +27,8 @@ async function generateSyncedPlan(userId: string) {
     },
     profile: ctx.profile,
     trainingStyle: check.snapshot.training_style,
+    preferredSplit: check.snapshot.preferred_workout_split,
+    exercisePreferences: check.snapshot.exercise_preferences,
     actual1RMs: ctx.actual1RMs,
     recentWorkouts: ctx.workouts,
   });
@@ -77,6 +79,7 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const { user } = await requirePremium(req);
+    const autoRegenerate = new URL(req.url).searchParams.get('autoRegenerate') === '1';
     const ctx = await loadFitnessContext(user.id);
     const check = buildProfilePlanSnapshot(ctx);
 
@@ -102,11 +105,31 @@ export async function GET(req: NextRequest) {
       return json({
         plan: cached,
         cached: true,
+        outdatedPlan: false,
         profileSummary: check.snapshot,
       });
     }
 
-    // Profile changed (or no synced plan exists yet): regenerate directly from latest Profile
+    // If an older plan exists from a previous Profile configuration and caller did NOT explicitly request
+    // autoRegenerate=1, do NOT present the outdated plan as a newly generated plan—ask the user to regenerate!
+    if (cached && typeof cached === 'object' && !autoRegenerate) {
+      return json({
+        plan: null,
+        cached: false,
+        outdatedPlan: true,
+        previousPlanSummary: {
+          split_name: cached.split_name || null,
+          weekly_workout_days: Array.isArray(cached.weekly_schedule) ? cached.weekly_schedule.length : null,
+          primary_goal: cached._profile_snapshot?.primary_goal || null,
+          experience_level: cached._profile_snapshot?.experience_level || null,
+          training_style: cached._profile_snapshot?.training_style || null,
+          generated_at: cached._generated_at || null,
+        },
+        profileSummary: check.snapshot,
+      });
+    }
+
+    // No plan exists yet (or user explicitly requested autoRegenerate=1): generate directly from latest Profile
     await aiGuard(req, 'plan');
     const { plan, isAiGenerated } = await generateWorkoutPlanAI({
       metrics: ctx.metrics,
@@ -117,6 +140,8 @@ export async function GET(req: NextRequest) {
       },
       profile: ctx.profile,
       trainingStyle: check.snapshot.training_style,
+      preferredSplit: check.snapshot.preferred_workout_split,
+      exercisePreferences: check.snapshot.exercise_preferences,
       actual1RMs: ctx.actual1RMs,
       recentWorkouts: ctx.workouts,
     });
@@ -132,6 +157,7 @@ export async function GET(req: NextRequest) {
     return json({
       plan: stampedPlan,
       cached: false,
+      outdatedPlan: false,
       regeneratedForProfileChange: Boolean(cached),
       isAiGenerated,
       profileSummary: check.snapshot,

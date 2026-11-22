@@ -6,13 +6,17 @@
 export type UserRole = 'user' | 'admin';
 
 export type HeightUnit = 'cm' | 'ft_in';
+export type WeightUnit = 'kg' | 'lb';
+export type TrainingStyle = 'muscle_building' | 'powerlifting' | 'general_fitness';
 
 export interface UserProfile {
   id: string;
   email: string;
   full_name: string;
   avatar_url?: string;
+  date_of_birth?: string | null;
   height_unit?: HeightUnit;
+  weight_unit?: WeightUnit;
   role: UserRole;
   created_at: string;
   updated_at: string;
@@ -21,11 +25,25 @@ export interface UserProfile {
 export type FitnessGoalType =
   | 'fat_loss'
   | 'muscle_gain'
+  | 'weight_gain'
+  | 'weight_loss'
   | 'recomposition'
   | 'strength'
   | 'general_fitness'
   | 'endurance'
   | 'maintenance';
+
+export interface NutritionPreferences {
+  diet_preference?: DietPreference | null;
+  food_allergies?: string[];
+  food_restrictions?: string[];
+  preferred_foods?: string[];
+  foods_to_avoid?: string[];
+  meals_per_day?: number | null;
+  daily_calorie_preference?: number | null;
+  protein_target_preference_g?: number | null;
+  nutrition_goal?: string | null;
+}
 
 export interface UserGoal {
   id: string;

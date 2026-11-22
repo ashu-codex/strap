@@ -2,7 +2,11 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { handleError, HttpError, json, parseBody, requireUser } from '@/lib/api';
-import { calculateNutritionTargets } from '@/lib/nutrition-calc';
+import {
+  calculateNutritionTargets,
+  calculatePersonalizedNutritionPlan,
+  resolveEffectiveAge,
+} from '@/lib/nutrition-calc';
 import { SEED_FOODS, calculateFoodNutrition } from '@/lib/food-database';
 
 export type MealCategory = 'breakfast' | 'lunch' | 'snacks' | 'dinner';
@@ -115,18 +119,29 @@ export async function GET(req: NextRequest) {
       .slice(0, 10)
       .map(([id]) => id);
 
-    const targets = calculateNutritionTargets({
-      age: metrics?.age ?? profile?.age,
-      gender: metrics?.gender ?? profile?.gender,
-      height_cm: metrics?.height_cm ?? profile?.height,
-      weight_kg: metrics?.current_weight_kg ?? profile?.weight,
-      activity_level: metrics?.daily_activity_level ?? profile?.activity_level,
-      weekly_workout_days: goal?.weekly_workout_days ?? 4,
-      experience_level: metrics?.experience_level ?? profile?.experience_level,
-      primary_goal: goal?.primary_goal ?? profile?.fitness_goal,
+    const nutritionPrefs = (prefs.nutrition_preferences || {}) as Record<string, any>;
+    const dateOfBirth = profile?.date_of_birth || prefs.date_of_birth || null;
+    const effectiveAge = resolveEffectiveAge(metrics?.age ?? profile?.age ?? null, dateOfBirth);
+    const calcInput = {
+      age: effectiveAge,
+      date_of_birth: dateOfBirth,
+      gender: metrics?.gender ?? profile?.gender ?? null,
+      height_cm: metrics?.height_cm ?? profile?.height ?? null,
+      weight_kg: metrics?.current_weight_kg ?? profile?.weight ?? null,
+      target_weight_kg: goal?.target_weight_kg ?? null,
+      activity_level: metrics?.daily_activity_level ?? profile?.activity_level ?? null,
+      daily_steps_avg: metrics?.daily_steps_avg ?? null,
+      weekly_workout_days: goal?.weekly_workout_days ?? null,
+      experience_level: metrics?.experience_level ?? profile?.experience_level ?? null,
+      primary_goal: goal?.primary_goal ?? profile?.fitness_goal ?? null,
       training_style: prefs.training_style || 'muscle_building',
+      selected_calorie_option_id: prefs.selected_calorie_option_id || null,
+      protein_target_preference_g: nutritionPrefs.protein_target_preference_g ?? null,
       custom_overrides: prefs.custom_nutrition_targets || null,
-    });
+    };
+
+    const nutritionEngine = calculatePersonalizedNutritionPlan(calcInput);
+    const targets = calculateNutritionTargets(calcInput);
 
     const r1 = (n: number) => Math.round(n * 10) / 10;
     const summary = dayEntries.reduce(
@@ -160,9 +175,23 @@ export async function GET(req: NextRequest) {
     return json({
       date,
       targets,
+      nutritionEngine,
+      profileSummary: {
+        primary_goal: calcInput.primary_goal,
+        diet_preference:
+          nutritionPrefs.diet_preference ?? metrics?.diet_preference ?? profile?.dietary_preference ?? null,
+        meals_per_day: nutritionPrefs.meals_per_day ?? null,
+        food_allergies: Array.isArray(nutritionPrefs.food_allergies) ? nutritionPrefs.food_allergies : [],
+        foods_to_avoid: Array.isArray(nutritionPrefs.foods_to_avoid) ? nutritionPrefs.foods_to_avoid : [],
+        preferred_foods: Array.isArray(nutritionPrefs.preferred_foods) ? nutritionPrefs.preferred_foods : [],
+        weekly_workout_days: calcInput.weekly_workout_days,
+        current_weight_kg: calcInput.weight_kg,
+        target_weight_kg: calcInput.target_weight_kg,
+        weight_unit: profile?.weight_unit || prefs.weight_unit || 'kg',
+      },
       summary: {
         ...summary,
-        remaining_calories: targets.target_calories - summary.calories,
+        remaining_calories: targets.target_calories > 0 ? targets.target_calories - summary.calories : 0,
         water_ml: waterMl,
       },
       entries: dayEntries,

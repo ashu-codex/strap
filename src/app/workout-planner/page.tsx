@@ -25,6 +25,8 @@ export default function WorkoutPlannerPage() {
   const [profileSummary, setProfileSummary] = useState<any>(null);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [missingFields, setMissingFields] = useState<string[]>([]);
+  const [outdatedPlan, setOutdatedPlan] = useState(false);
+  const [previousPlanSummary, setPreviousPlanSummary] = useState<any>(null);
   const [regeneratedBanner, setRegeneratedBanner] = useState(false);
   const [activeDayIdx, setActiveDayIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -56,10 +58,20 @@ export default function WorkoutPlannerPage() {
       if (planData?.profileIncomplete) {
         setProfileIncomplete(true);
         setMissingFields(Array.isArray(planData.missingFields) ? planData.missingFields : []);
+        setOutdatedPlan(false);
+        setPreviousPlanSummary(null);
+        setPlan(null);
+      } else if (planData?.outdatedPlan) {
+        setProfileIncomplete(false);
+        setMissingFields([]);
+        setOutdatedPlan(true);
+        setPreviousPlanSummary(planData.previousPlanSummary || null);
         setPlan(null);
       } else {
         setProfileIncomplete(false);
         setMissingFields([]);
+        setOutdatedPlan(false);
+        setPreviousPlanSummary(null);
         setPlan(planData?.plan || null);
         setRegeneratedBanner(Boolean(planData?.regeneratedForProfileChange));
         setActiveDayIdx(0);
@@ -89,11 +101,14 @@ export default function WorkoutPlannerPage() {
       if (data?.profileIncomplete) {
         setProfileIncomplete(true);
         setMissingFields(Array.isArray(data.missingFields) ? data.missingFields : []);
+        setOutdatedPlan(false);
         setPlan(null);
         return;
       }
       if (!res.ok) throw new Error(data.error || 'Failed to regenerate split');
       setProfileIncomplete(false);
+      setOutdatedPlan(false);
+      setPreviousPlanSummary(null);
       setPlan(data.plan);
       setActiveDayIdx(0);
     } catch (err: any) {
@@ -225,6 +240,95 @@ export default function WorkoutPlannerPage() {
     );
   }
 
+  // Outdated plan prompt — Profile changed since previous plan was generated
+  if (outdatedPlan && !plan && profileSummary) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-brand/35 bg-card p-6 sm:p-8 space-y-5 shadow-glow">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/15 border border-brand/30 text-brand">
+              <RefreshCw className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-brand">
+                Profile Settings Updated
+              </span>
+              <h1 className="text-xl sm:text-2xl font-black text-white mt-0.5">
+                Regenerate Your Workout Plan to Match Your Updated Profile?
+              </h1>
+              <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                Your saved Profile preferences changed since your last split was created. STRAP will not present an outdated plan as newly generated.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-4 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                Previous Outdated Plan
+              </span>
+              <p className="font-bold text-zinc-300">
+                {previousPlanSummary?.weekly_workout_days
+                  ? `${previousPlanSummary.weekly_workout_days} Days/Week`
+                  : 'Previous Split'}
+                {previousPlanSummary?.primary_goal
+                  ? ` • ${String(previousPlanSummary.primary_goal).replace(/_/g, ' ')}`
+                  : ''}
+              </p>
+              {previousPlanSummary?.split_name && (
+                <p className="text-[11px] text-zinc-500">{previousPlanSummary.split_name}</p>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-brand/35 bg-brand/10 p-4 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-brand">
+                Latest Saved Profile
+              </span>
+              <p className="font-bold text-white capitalize">
+                {profileSummary.weekly_workout_days}{' '}
+                {profileSummary.weekly_workout_days === 1 ? 'Day' : 'Days'}/Week •{' '}
+                {String(profileSummary.primary_goal || '').replace(/_/g, ' ')}
+              </p>
+              <p className="text-[11px] text-zinc-300 capitalize">
+                {profileSummary.experience_level} •{' '}
+                {String(profileSummary.training_style || 'muscle_building').replace(/_/g, ' ')} •{' '}
+                {profileSummary.workout_location || 'gym'}
+              </p>
+            </div>
+          </div>
+
+          {error && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+              {error}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={generating}
+              onClick={handleRegenerate}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-xs font-extrabold text-black hover:bg-brand-400 transition-all shadow-glow disabled:opacity-50 strap-primary"
+            >
+              <RefreshCw className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
+              <span>
+                {generating
+                  ? `Generating ${profileSummary.weekly_workout_days}-Day Split...`
+                  : `Regenerate ${profileSummary.weekly_workout_days}-Day Plan Now`}
+              </span>
+            </button>
+            <Link
+              href="/profile#sec-training"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-zinc-700 bg-zinc-900 text-xs font-bold text-white hover:border-brand transition-colors"
+            >
+              <span>Edit Training Preferences</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Error with retry when no plan could be loaded
   if (error && !plan) {
     return (
@@ -301,7 +405,11 @@ export default function WorkoutPlannerPage() {
             <span className="capitalize">{syncedSnapshot.experience_level}</span>
             <span className="text-zinc-500">•</span>
             <span className="capitalize">
-              {syncedSnapshot.training_style === 'powerlifting' ? 'Powerlifting' : 'Muscle Building'}
+              {syncedSnapshot.training_style === 'powerlifting'
+                ? 'Powerlifting'
+                : syncedSnapshot.training_style === 'general_fitness'
+                ? 'General Fitness'
+                : 'Muscle Building'}
             </span>
             <span className="text-zinc-500">•</span>
             <span className="capitalize">{syncedSnapshot.workout_location || 'gym'}</span>

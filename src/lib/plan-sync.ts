@@ -1,13 +1,16 @@
 import crypto from 'crypto';
+import { resolveEffectiveAge } from '@/lib/nutrition-calc';
 
 export interface ProfilePlanSnapshot {
   weekly_workout_days: number | null;
   primary_goal: string | null;
   experience_level: string | null;
-  training_style: 'powerlifting' | 'muscle_building';
+  training_style: 'powerlifting' | 'muscle_building' | 'general_fitness';
+  preferred_workout_split: string;
   workout_location: string;
   equipment: string[];
   workout_duration_mins: number | null;
+  exercise_preferences: string;
   limitations: string;
   age: number | null;
   gender: string | null;
@@ -28,17 +31,20 @@ export interface ProfileCompletenessCheck {
  *
  * Used by AI Planner to:
  *  1. Verify required profile preferences exist (never invent fake defaults).
- *  2. Detect when Profile changed (e.g., 4 days -> 6 days/week) so stale plans are never returned.
+ *  2. Detect when Profile changed (e.g., 6 days -> 4 days/week, goal, equipment, split, style, limitations)
+ *     so outdated plans are NEVER presented as newly generated plans.
  */
 export function buildProfilePlanSnapshot(ctx: {
   profile?: Record<string, any> | null;
   metrics?: Record<string, any> | null;
   goal?: Record<string, any> | null;
-  trainingStyle?: 'powerlifting' | 'muscle_building' | null;
+  preferences?: Record<string, any> | null;
+  trainingStyle?: 'powerlifting' | 'muscle_building' | 'general_fitness' | null;
 }): ProfileCompletenessCheck {
   const profile = ctx.profile || {};
   const metrics = ctx.metrics || {};
   const goal = ctx.goal || {};
+  const prefs = ctx.preferences || {};
 
   const rawDays = goal.weekly_workout_days ?? goal.workout_days_per_week ?? null;
   const parsedDays = rawDays !== null && rawDays !== undefined ? Number(rawDays) : null;
@@ -57,8 +63,18 @@ export function buildProfilePlanSnapshot(ctx: {
     (typeof profile.experience_level === 'string' && profile.experience_level.trim()) ||
     null;
 
-  const training_style: 'powerlifting' | 'muscle_building' =
-    ctx.trainingStyle === 'powerlifting' ? 'powerlifting' : 'muscle_building';
+  const rawStyle = ctx.trainingStyle || prefs.training_style || 'muscle_building';
+  const training_style: 'powerlifting' | 'muscle_building' | 'general_fitness' =
+    rawStyle === 'powerlifting'
+      ? 'powerlifting'
+      : rawStyle === 'general_fitness'
+      ? 'general_fitness'
+      : 'muscle_building';
+
+  const preferred_workout_split =
+    typeof prefs.preferred_workout_split === 'string' && prefs.preferred_workout_split.trim()
+      ? prefs.preferred_workout_split.trim()
+      : 'auto';
 
   const workout_location =
     (typeof metrics.workout_location === 'string' && metrics.workout_location.trim()) || 'gym';
@@ -72,11 +88,13 @@ export function buildProfilePlanSnapshot(ctx: {
   const workout_duration_mins =
     durationNum !== null && Number.isFinite(durationNum) && durationNum > 0 ? durationNum : null;
 
+  const exercise_preferences =
+    typeof prefs.exercise_preferences === 'string' ? prefs.exercise_preferences.trim() : '';
+
   const limitations =
     typeof metrics.limitations === 'string' ? metrics.limitations.trim() : '';
 
-  const ageNum = metrics.age ?? profile.age ?? null;
-  const age = ageNum !== null && Number.isFinite(Number(ageNum)) && Number(ageNum) > 0 ? Number(ageNum) : null;
+  const age = resolveEffectiveAge(metrics.age ?? profile.age ?? null, prefs.date_of_birth ?? profile.date_of_birth ?? null);
 
   const gender =
     (typeof metrics.gender === 'string' && metrics.gender.trim()) ||
@@ -105,9 +123,11 @@ export function buildProfilePlanSnapshot(ctx: {
     primary_goal,
     experience_level,
     training_style,
+    preferred_workout_split,
     workout_location,
     equipment,
     workout_duration_mins,
+    exercise_preferences,
     limitations,
     age,
     gender,
@@ -115,15 +135,17 @@ export function buildProfilePlanSnapshot(ctx: {
     current_weight_kg,
   };
 
-  // Hash covers all training-plan-determining preferences
+  // Hash covers ALL training-plan-determining preferences from Profile
   const hashPayload = JSON.stringify({
     weekly_workout_days: snapshot.weekly_workout_days,
     primary_goal: snapshot.primary_goal,
     experience_level: snapshot.experience_level,
     training_style: snapshot.training_style,
+    preferred_workout_split: snapshot.preferred_workout_split,
     workout_location: snapshot.workout_location,
     equipment: snapshot.equipment,
     workout_duration_mins: snapshot.workout_duration_mins,
+    exercise_preferences: snapshot.exercise_preferences,
     limitations: snapshot.limitations,
   });
 

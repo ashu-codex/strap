@@ -70,21 +70,31 @@ export async function loadFitnessContext(userId: string) {
   ]);
 
   const prefs = (prefRow?.preferences || {}) as Record<string, any>;
-  const trainingStyle: 'powerlifting' | 'muscle_building' =
-    prefs.training_style === 'powerlifting' ? 'powerlifting' : 'muscle_building';
+  const trainingStyle: 'powerlifting' | 'muscle_building' | 'general_fitness' =
+    prefs.training_style === 'powerlifting'
+      ? 'powerlifting'
+      : prefs.training_style === 'general_fitness'
+      ? 'general_fitness'
+      : 'muscle_building';
 
   const actual1RMs = prefs.actual_1rms || {};
+  const nutritionPrefs = (prefs.nutrition_preferences || {}) as Record<string, any>;
 
   const nutritionTargets = calculateNutritionTargets({
     age: metrics?.age ?? profile?.age,
+    date_of_birth: profile?.date_of_birth ?? prefs.date_of_birth ?? null,
     gender: metrics?.gender ?? profile?.gender,
     height_cm: metrics?.height_cm ?? profile?.height,
     weight_kg: metrics?.current_weight_kg ?? profile?.weight,
+    target_weight_kg: goal?.target_weight_kg ?? null,
     activity_level: metrics?.daily_activity_level ?? profile?.activity_level,
-    weekly_workout_days: goal?.workout_days_per_week ?? goal?.weekly_workout_days ?? 4,
+    daily_steps_avg: metrics?.daily_steps_avg ?? null,
+    weekly_workout_days: goal?.workout_days_per_week ?? goal?.weekly_workout_days ?? null,
     experience_level: metrics?.fitness_level ?? metrics?.experience_level ?? profile?.experience_level,
     primary_goal: goal?.primary_goal ?? profile?.fitness_goal,
     training_style: trainingStyle,
+    selected_calorie_option_id: prefs.selected_calorie_option_id || null,
+    protein_target_preference_g: nutritionPrefs.protein_target_preference_g ?? null,
     custom_overrides: prefs.custom_nutrition_targets || null,
   });
 
@@ -111,6 +121,7 @@ export async function loadFitnessContext(userId: string) {
     profile: (profile || {}) as any,
     metrics: (metrics || {}) as any,
     goal: (goal || {}) as any,
+    preferences: prefs,
     trainingStyle,
     actual1RMs,
     nutritionTargets,

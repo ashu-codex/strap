@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { calculateConsistencyStreak } from '@/lib/fitness-analytics';
+import { WeightUnit, formatWeight, formatWeightDelta } from '@/lib/units';
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -35,12 +36,13 @@ export default function DashboardPage() {
     let active = true;
     async function loadDashboard() {
       try {
-        const [subRes, profRes, metricsRes, goalsRes, workoutsRes]: any[] = await Promise.all([
+        const [subRes, profRes, metricsRes, goalsRes, workoutsRes, measRes]: any[] = await Promise.all([
           fetch('/api/user/subscription', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
           fetch('/api/user/profile', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
           fetch('/api/user/metrics', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
           fetch('/api/user/goals', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
           fetch('/api/workouts', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
+          fetch('/api/user/measurements', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
         ]);
 
         if (!active) return;
@@ -52,17 +54,16 @@ export default function DashboardPage() {
         setGoal(goalsRes?.goal || null);
         setWorkouts(Array.isArray(workoutsRes?.workouts) ? workoutsRes.workouts : []);
         setPrs(Array.isArray(workoutsRes?.prs) ? workoutsRes.prs : []);
+        setMeasurements(Array.isArray(measRes?.measurements) ? measRes.measurements : []);
 
         if (prem) {
-          const [recRes, measRes, planRes]: any[] = await Promise.all([
+          const [recRes, planRes]: any[] = await Promise.all([
             fetch('/api/user/recovery', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-            fetch('/api/user/measurements', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
             fetch('/api/ai/generate-plan', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
           ]);
           if (!active) return;
           setRecovery(recRes || null);
-          setMeasurements(Array.isArray(measRes?.measurements) ? measRes.measurements : []);
-          if (planRes?.plan && !planRes?.profileIncomplete) {
+          if (planRes?.plan && !planRes?.profileIncomplete && !planRes?.outdatedPlan) {
             setWorkoutPlan(planRes.plan);
           }
         }
@@ -91,6 +92,8 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  const weightUnit: WeightUnit = profile?.weight_unit === 'lb' ? 'lb' : 'kg';
 
   // Real Body Weight (latest measurement OR saved metrics/profile weight — NEVER invented)
   const latestMeasurement =
@@ -244,11 +247,11 @@ export default function DashboardPage() {
           {currentWeight !== null ? (
             <>
               <div className="text-2xl font-black text-white">
-                {currentWeight} <span className="text-xs font-normal text-zinc-400">kg</span>
+                {formatWeight(currentWeight, weightUnit)}
               </div>
               <p className="text-[11px] text-zinc-400 mt-1">
                 {targetWeight !== null && weightDiff !== null
-                  ? `Target: ${targetWeight} kg (${weightDiff > 0 ? `+${weightDiff}` : weightDiff} kg)`
+                  ? `Target: ${formatWeight(targetWeight, weightUnit)} (${formatWeightDelta(weightDiff, weightUnit)})`
                   : 'Log weight check-ins to track trend'}
               </p>
             </>
@@ -535,7 +538,9 @@ export default function DashboardPage() {
                     <span className="text-xs font-normal text-zinc-400 ml-1">kcal</span>
                   </span>
                   <span className="text-[11px] text-brand font-semibold">
-                    {profile?.custom_nutrition_targets ? 'Custom Target' : 'Profile Calculated'}
+                    {profile?.custom_nutrition_targets
+                      ? 'Custom Target'
+                      : profile?.calculated_targets?.selected_option_label || 'Profile Calculated'}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">

@@ -34,14 +34,14 @@ const schema = z.object({
   strength_levels: orDefault(z.record(z.coerce.number().min(0).max(1000)).default({})),
   limitations: orDefault(z.string().max(1000).default('')),
   diet_preference: orDefault(
-    z.enum(['vegetarian', 'eggetarian', 'non_vegetarian', 'vegan', 'other']).default('non_vegetarian')
+    z.enum(['vegetarian', 'eggetarian', 'non_vegetarian', 'vegan', 'other']).optional()
   ),
-  sleep_hours_avg: orDefault(num(0, 24).default(7)),
+  sleep_hours_avg: optNum(0, 24),
   daily_activity_level: orDefault(
     z.enum(['sedentary', 'lightly_active', 'moderately_active', 'very_active']).default('moderately_active')
   ),
-  daily_steps_avg: orDefault(num(0, 100000).default(6000)),
-  rest_days_preferred: orDefault(num(0, 7).default(2)),
+  daily_steps_avg: optNum(0, 100000),
+  rest_days_preferred: optNum(0, 7),
 });
 
 export async function GET(req: NextRequest) {
@@ -91,11 +91,11 @@ export async function POST(req: NextRequest) {
       equipment: m.equipment,
       strength_levels: m.strength_levels,
       limitations: m.limitations,
-      diet_preference: m.diet_preference,
-      sleep_hours_avg: m.sleep_hours_avg,
+      diet_preference: m.diet_preference ?? null,
+      sleep_hours_avg: m.sleep_hours_avg ?? null,
       daily_activity_level: m.daily_activity_level,
-      daily_steps_avg: m.daily_steps_avg,
-      rest_days_preferred: m.rest_days_preferred,
+      daily_steps_avg: m.daily_steps_avg ?? null,
+      rest_days_preferred: m.rest_days_preferred ?? null,
     };
 
     let saved;

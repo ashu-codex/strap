@@ -28,6 +28,8 @@ import {
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import ThreeDotMenu from '@/components/ui/ThreeDotMenu';
 import NumericInput from '@/components/ui/NumericInput';
+import CalorieCalculatorPanel from '@/components/profile/CalorieCalculatorPanel';
+import type { CustomNutritionTargets, PersonalizedNutritionPlan } from '@/lib/nutrition-calc';
 import {
   FoodItem,
   FoodCategory,
@@ -158,6 +160,8 @@ export default function NutritionTrackerPage() {
 
   // Water custom input
   const [customWaterMl, setCustomWaterMl] = useState<string>('250');
+  const [calculatorOpen, setCalculatorOpen] = useState<boolean>(false);
+  const [savingTargets, setSavingTargets] = useState<boolean>(false);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToast({ text, type });
@@ -166,7 +170,7 @@ export default function NutritionTrackerPage() {
 
   const fetchDiary = useCallback(async (targetDate: string) => {
     try {
-      const res = await fetch(`/api/nutrition/diary?date=${targetDate}`);
+      const res = await fetch(`/api/nutrition/diary?date=${targetDate}`, { cache: 'no-store' });
       const data = await res.json();
       if (res.ok) {
         setDiaryData(data);
@@ -175,6 +179,52 @@ export default function NutritionTrackerPage() {
       console.error('Failed to load nutrition diary', err);
     }
   }, []);
+
+  const handleSelectCalorieOption = async (optionId: string, clearCustom = false) => {
+    setSavingTargets(true);
+    try {
+      const payload: Record<string, any> = { selected_calorie_option_id: optionId };
+      if (clearCustom) payload.custom_nutrition_targets = null;
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Could not update calorie pace.');
+      await fetchDiary(date);
+      showToast(
+        clearCustom
+          ? 'Switched to calculated calorie & macro targets (food history preserved).'
+          : 'Calorie option updated and nutrition targets recalculated (food history preserved).'
+      );
+    } catch (e: any) {
+      showToast(e?.message || 'Failed to update calorie option.', 'error');
+    } finally {
+      setSavingTargets(false);
+    }
+  };
+
+  const handleSaveCustomTargets = async (custom: CustomNutritionTargets | null) => {
+    setSavingTargets(true);
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ custom_nutrition_targets: custom }),
+      });
+      if (!res.ok) throw new Error('Could not save nutrition targets.');
+      await fetchDiary(date);
+      showToast(
+        custom
+          ? 'Custom nutrition targets saved and synced with your Profile.'
+          : 'Reset to system-calculated nutrition targets.'
+      );
+    } catch (e: any) {
+      showToast(e?.message || 'Failed to save nutrition targets.', 'error');
+    } finally {
+      setSavingTargets(false);
+    }
+  };
 
   useEffect(() => {
     fetchDiary(date);
@@ -620,23 +670,31 @@ export default function NutritionTrackerPage() {
     setDate(d.toISOString().split('T')[0]);
   };
 
+  const nutritionEngine: PersonalizedNutritionPlan | null = diaryData?.nutritionEngine || null;
+  const profileSummary = diaryData?.profileSummary || null;
+  const hasRealTargets = Boolean(
+    diaryData?.targets && Number(diaryData.targets.target_calories) > 0
+  );
+
   const targets = diaryData?.targets || {
-    bmr: 1750,
-    tdee: 2450,
-    target_calories: 2300,
-    goal_label: 'General Fitness',
-    protein_g: 150,
-    carbs_g: 250,
-    fats_g: 70,
-    fiber_g: 32,
-    water_ml: 3000,
+    bmr: 0,
+    tdee: 0,
+    target_calories: 0,
+    goal_label: 'Not Configured',
+    protein_g: 0,
+    carbs_g: 0,
+    fats_g: 0,
+    fiber_g: 0,
+    water_ml: 0,
+    target_source: 'calculated',
+    selected_option_label: null,
     disclaimer:
-      'Nutritional values and targets are calculated from your biometrics (Mifflin-St Jeor equation) for general fitness and educational guidance, not medical diagnosis.',
+      'Complete your Profile biometrics to calculate Mifflin-St Jeor calorie and macronutrient estimates.',
   };
 
   const summary = diaryData?.summary || {
     calories: 0,
-    remaining_calories: targets.target_calories,
+    remaining_calories: 0,
     protein_g: 0,
     carbs_g: 0,
     fat_g: 0,
@@ -668,15 +726,30 @@ export default function NutritionTrackerPage() {
     return searchResults;
   }, [selectedTab, allCatalogFoods, searchResults, favoriteIds, recentIds, frequentIds]);
 
-  const caloriePct = Math.min(
-    100,
-    Math.round((summary.calories / Math.max(1, targets.target_calories)) * 100)
-  );
-  const proteinPct = Math.min(100, Math.round((summary.protein_g / Math.max(1, targets.protein_g)) * 100));
-  const carbsPct = Math.min(100, Math.round((summary.carbs_g / Math.max(1, targets.carbs_g)) * 100));
-  const fatPct = Math.min(100, Math.round((summary.fat_g / Math.max(1, targets.fats_g)) * 100));
-  const fiberPct = Math.min(100, Math.round((summary.fiber_g / Math.max(1, targets.fiber_g)) * 100));
-  const waterPct = Math.min(100, Math.round((summary.water_ml / Math.max(1, targets.water_ml)) * 100));
+  const caloriePct =
+    targets.target_calories > 0
+      ? Math.min(100, Math.round((summary.calories / targets.target_calories) * 100))
+      : 0;
+  const proteinPct =
+    targets.protein_g > 0
+      ? Math.min(100, Math.round((summary.protein_g / targets.protein_g) * 100))
+      : 0;
+  const carbsPct =
+    targets.carbs_g > 0
+      ? Math.min(100, Math.round((summary.carbs_g / targets.carbs_g) * 100))
+      : 0;
+  const fatPct =
+    targets.fats_g > 0
+      ? Math.min(100, Math.round((summary.fat_g / targets.fats_g) * 100))
+      : 0;
+  const fiberPct =
+    targets.fiber_g > 0
+      ? Math.min(100, Math.round((summary.fiber_g / targets.fiber_g) * 100))
+      : 0;
+  const waterPct =
+    targets.water_ml > 0
+      ? Math.min(100, Math.round((summary.water_ml / targets.water_ml) * 100))
+      : 0;
 
   return (
     <div className="min-h-screen bg-[#F5F6F8] dark:bg-[#111318] text-[#111318] dark:text-[#F3F4F6] py-8 px-4 sm:px-6 lg:px-8">
@@ -766,15 +839,108 @@ export default function NutritionTrackerPage() {
               <span>Log Supplement</span>
             </button>
 
+            <button
+              type="button"
+              onClick={() => setCalculatorOpen((v) => !v)}
+              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                calculatorOpen
+                  ? 'border-brand bg-brand/15 text-brand'
+                  : 'border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#22252C] hover:border-brand/50'
+              }`}
+            >
+              <Sliders className="h-3.5 w-3.5 text-brand" />
+              <span>{calculatorOpen ? 'Hide Calorie Options' : 'Calorie Pace & Targets'}</span>
+            </button>
+
             <Link
               href="/profile"
               className="inline-flex items-center gap-1.5 rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#22252C] px-3 py-2 text-xs font-semibold hover:border-brand/50 transition"
             >
-              <Sliders className="h-3.5 w-3.5 text-brand" />
-              <span>Adjust Targets</span>
+              <span>Edit Profile</span>
             </Link>
           </div>
         </div>
+
+        {/* Profile-Synchronized Goal, Diet & Calorie Pace Strip */}
+        {diaryData && (
+          <div className="rounded-2xl border border-[#E1E4E8] dark:border-brand/25 bg-white dark:bg-[#1B1D22] p-4 sm:p-5 space-y-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
+                <span className="font-bold uppercase tracking-wider text-brand">Profile Synced:</span>
+                <span className="font-bold text-[#111318] dark:text-white">
+                  {targets.goal_label || 'Goal Not Set'}
+                </span>
+                {targets.selected_option_label && (
+                  <>
+                    <span className="text-zinc-500">•</span>
+                    <span className="font-semibold text-brand">{targets.selected_option_label}</span>
+                  </>
+                )}
+                {profileSummary?.diet_preference && (
+                  <>
+                    <span className="text-zinc-500">•</span>
+                    <span className="capitalize text-[#5A6069] dark:text-zinc-300">
+                      Diet: {String(profileSummary.diet_preference).replace(/_/g, ' ')}
+                    </span>
+                  </>
+                )}
+                {profileSummary?.meals_per_day && (
+                  <>
+                    <span className="text-zinc-500">•</span>
+                    <span className="text-[#5A6069] dark:text-zinc-300">
+                      {profileSummary.meals_per_day} meals/day
+                    </span>
+                  </>
+                )}
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    targets.target_source === 'custom'
+                      ? 'bg-amber-500/15 border border-amber-500/40 text-amber-400'
+                      : 'bg-brand/15 border border-brand/30 text-brand'
+                  }`}
+                >
+                  {targets.target_source === 'custom' ? 'Custom Target Active' : 'Calculated from Profile'}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCalculatorOpen((v) => !v)}
+                  className="text-xs font-bold text-brand hover:underline"
+                >
+                  {calculatorOpen ? 'Collapse Calculator ▲' : 'Change Pace / Customize Targets ▼'}
+                </button>
+              </div>
+            </div>
+
+            {!hasRealTargets && nutritionEngine && !nutritionEngine.isComplete && (
+              <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="text-amber-900 dark:text-amber-200">
+                  <strong>Complete your Profile to calculate personalized calories:</strong>{' '}
+                  Missing {nutritionEngine.missingFields.join(', ')}. STRAP never displays fabricated targets.
+                </div>
+                <Link
+                  href="/profile#sec-personal"
+                  className="inline-flex items-center justify-center px-3.5 py-2 rounded-xl bg-brand text-xs font-extrabold text-black shrink-0 strap-primary"
+                >
+                  Complete Profile →
+                </Link>
+              </div>
+            )}
+
+            {calculatorOpen && nutritionEngine && (
+              <div className="pt-2 border-t border-[#E1E4E8] dark:border-[#2A2D35]">
+                <CalorieCalculatorPanel
+                  plan={nutritionEngine}
+                  saving={savingTargets}
+                  onSelectOption={handleSelectCalorieOption}
+                  onSaveCustomTargets={handleSaveCustomTargets}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Personalized Daily Energy & Macro Summary Dashboard */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -789,46 +955,62 @@ export default function NutritionTrackerPage() {
                   Calories &amp; Macronutrients ({targets.goal_label || 'Personalized Goal'})
                 </h2>
               </div>
-              <div className="flex items-center gap-2 text-xs font-mono">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
                 <span className="rounded-lg bg-[#F3F4F6] dark:bg-[#252830] px-2.5 py-1">
-                  BMR: <strong>{targets.bmr}</strong> kcal
+                  BMR: <strong>{targets.bmr > 0 ? targets.bmr : '—'}</strong>{targets.bmr > 0 ? ' kcal' : ''}
                 </span>
                 <span className="rounded-lg bg-[#F3F4F6] dark:bg-[#252830] px-2.5 py-1">
-                  TDEE: <strong>{targets.tdee}</strong> kcal
+                  TDEE: <strong>{targets.tdee > 0 ? targets.tdee : '—'}</strong>{targets.tdee > 0 ? ' kcal' : ''}
                 </span>
               </div>
             </div>
 
             {/* Calorie Equation Row (Goal - Food = Remaining) */}
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="rounded-xl bg-[#F8F9FA] dark:bg-[#14161A] p-4 border border-[#E1E4E8] dark:border-[#2A2D35]">
-                <div className="text-xs text-[#5A6069] dark:text-[#9CA3AF] uppercase font-semibold">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
+              <div className="rounded-xl bg-[#F8F9FA] dark:bg-[#14161A] p-3 sm:p-4 border border-[#E1E4E8] dark:border-[#2A2D35]">
+                <div className="text-[10px] sm:text-xs text-[#5A6069] dark:text-[#9CA3AF] uppercase font-semibold">
                   Daily Target
                 </div>
-                <div className="mt-1 text-2xl sm:text-3xl font-extrabold">{targets.target_calories}</div>
-                <div className="text-[11px] text-[#5A6069] dark:text-[#9CA3AF]">kcal goal</div>
+                <div className="mt-1 text-xl sm:text-3xl font-extrabold">
+                  {hasRealTargets ? targets.target_calories : '—'}
+                </div>
+                <div className="text-[11px] text-[#5A6069] dark:text-[#9CA3AF]">
+                  {hasRealTargets ? 'kcal goal' : 'Set in Profile'}
+                </div>
               </div>
 
-              <div className="rounded-xl bg-[#F8F9FA] dark:bg-[#14161A] p-4 border border-[#E1E4E8] dark:border-[#2A2D35]">
-                <div className="text-xs text-[#5A6069] dark:text-[#9CA3AF] uppercase font-semibold">
+              <div className="rounded-xl bg-[#F8F9FA] dark:bg-[#14161A] p-3 sm:p-4 border border-[#E1E4E8] dark:border-[#2A2D35]">
+                <div className="text-[10px] sm:text-xs text-[#5A6069] dark:text-[#9CA3AF] uppercase font-semibold">
                   Consumed
                 </div>
-                <div className="mt-1 text-2xl sm:text-3xl font-extrabold text-brand">
+                <div className="mt-1 text-xl sm:text-3xl font-extrabold text-brand">
                   {Math.round(summary.calories)}
                 </div>
-                <div className="text-[11px] text-[#5A6069] dark:text-[#9CA3AF]">{caloriePct}% of target</div>
+                <div className="text-[11px] text-[#5A6069] dark:text-[#9CA3AF]">
+                  {hasRealTargets ? `${caloriePct}% of target` : 'kcal logged'}
+                </div>
               </div>
 
-              <div className="rounded-xl bg-[#F8F9FA] dark:bg-[#14161A] p-4 border border-[#E1E4E8] dark:border-[#2A2D35]">
-                <div className="text-xs text-[#5A6069] dark:text-[#9CA3AF] uppercase font-semibold">
-                  {summary.calories <= targets.target_calories ? 'Remaining' : 'Over Target'}
+              <div className="rounded-xl bg-[#F8F9FA] dark:bg-[#14161A] p-3 sm:p-4 border border-[#E1E4E8] dark:border-[#2A2D35]">
+                <div className="text-[10px] sm:text-xs text-[#5A6069] dark:text-[#9CA3AF] uppercase font-semibold">
+                  {!hasRealTargets
+                    ? 'Remaining'
+                    : summary.calories <= targets.target_calories
+                    ? 'Remaining'
+                    : 'Over Target'}
                 </div>
                 <div
-                  className={`mt-1 text-2xl sm:text-3xl font-extrabold ${
-                    summary.calories <= targets.target_calories ? 'text-emerald-500' : 'text-amber-500'
+                  className={`mt-1 text-xl sm:text-3xl font-extrabold ${
+                    !hasRealTargets
+                      ? 'text-zinc-400'
+                      : summary.calories <= targets.target_calories
+                      ? 'text-emerald-500'
+                      : 'text-amber-500'
                   }`}
                 >
-                  {Math.abs(Math.round(targets.target_calories - summary.calories))}
+                  {hasRealTargets
+                    ? Math.abs(Math.round(targets.target_calories - summary.calories))
+                    : '—'}
                 </div>
                 <div className="text-[11px] text-[#5A6069] dark:text-[#9CA3AF]">kcal</div>
               </div>

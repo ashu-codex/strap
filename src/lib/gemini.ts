@@ -68,11 +68,21 @@ export async function generateWorkoutPlanAI(params: {
   metrics: Partial<FitnessMetrics>;
   goal: Partial<UserGoal>;
   profile?: Record<string, any>;
-  trainingStyle?: 'powerlifting' | 'muscle_building';
+  trainingStyle?: 'powerlifting' | 'muscle_building' | 'general_fitness';
+  preferredSplit?: string;
+  exercisePreferences?: string;
   actual1RMs?: Record<string, any>;
   recentWorkouts?: any[];
 }): Promise<{ plan: GeneratedWorkoutPlan; isAiGenerated: boolean }> {
-  const { metrics, goal, profile, trainingStyle = 'muscle_building', actual1RMs } = params;
+  const {
+    metrics,
+    goal,
+    profile,
+    trainingStyle = 'muscle_building',
+    preferredSplit = 'auto',
+    exercisePreferences = '',
+    actual1RMs,
+  } = params;
 
   const requestedDays = Math.min(
     7,
@@ -87,6 +97,13 @@ export async function generateWorkoutPlanAI(params: {
       : workoutLocation === "home"
       ? ["dumbbells", "bodyweight", "resistance bands"]
       : ["barbell", "dumbbell", "cables", "machines"];
+
+  const styleDescription =
+    trainingStyle === "powerlifting"
+      ? "Powerlifting (Squat, Bench, Deadlift focus)"
+      : trainingStyle === "general_fitness"
+      ? "General Fitness (Balanced strength, conditioning & mobility)"
+      : "Muscle Building / Hypertrophy";
 
   if (canAttemptLiveModel()) {
     try {
@@ -104,7 +121,8 @@ export async function generateWorkoutPlanAI(params: {
 Generate a comprehensive, scientifically-backed personalized workout plan in JSON format based strictly on this athlete's saved Profile:
 - Training Days per Week (EXACT — MUST GENERATE EXACTLY ${requestedDays} DISTINCT TRAINING DAYS): ${requestedDays}
 - Primary Goal: ${primaryGoal}
-- Training Style: ${trainingStyle === "powerlifting" ? "Powerlifting (Squat, Bench, Deadlift focus)" : "Muscle Building / Hypertrophy"}
+- Training Style: ${styleDescription}
+- Preferred Workout Split: ${preferredSplit && preferredSplit !== "auto" ? preferredSplit : "Best optimal split for frequency"}
 - Experience Level: ${experienceLevel}
 - Workout Location: ${workoutLocation}
 - Available Equipment: ${equipmentList.join(", ")}
@@ -114,6 +132,7 @@ Generate a comprehensive, scientifically-backed personalized workout plan in JSO
 - Height: ${metrics.height_cm || profile?.height || "Not specified"} cm
 - Weight: ${metrics.current_weight_kg || profile?.weight || "Not specified"} kg
 - Target Weight: ${goal.target_weight_kg || "Not specified"} kg
+- Exercise Preferences: ${exercisePreferences || "None specified"}
 - Limitations/Injuries: ${metrics.limitations || "None reported"}
 - Reference 1RMs / Strength levels: ${JSON.stringify(actual1RMs || metrics.strength_levels || {})}
 
@@ -524,7 +543,7 @@ export interface CoachUserContext {
   weight?: number;
   goal?: string;
   experienceLevel?: string;
-  trainingStyle?: 'powerlifting' | 'muscle_building';
+  trainingStyle?: 'powerlifting' | 'muscle_building' | 'general_fitness';
   weeklyDays?: number;
   actual1RMs?: { squat?: number; bench?: number; deadlift?: number };
   nutritionTargets?: {
@@ -570,7 +589,11 @@ export async function chatWithAIAssistant(
   const age = Number(ctx.age) || 26;
   const gender = ctx.gender || "male";
   const trainingStyleLabel =
-    ctx.trainingStyle === "powerlifting" ? "Powerlifting (Squat / Bench / Deadlift)" : "Muscle Building (Hypertrophy)";
+    ctx.trainingStyle === "powerlifting"
+      ? "Powerlifting (Squat / Bench / Deadlift)"
+      : ctx.trainingStyle === "general_fitness"
+      ? "General Fitness (Balanced Strength & Conditioning)"
+      : "Muscle Building (Hypertrophy)";
   const experience = ctx.experienceLevel || "intermediate";
   const goalLabel = ctx.nutritionTargets?.goal_label || ctx.goal || "Strength & Hypertrophy";
   const weeklyDays = Number(ctx.weeklyDays) || 4;
@@ -723,7 +746,7 @@ function buildPersonalizedCoachReply(
     gender: string;
     heightCm: number;
     weightKg: number;
-    trainingStyle: "powerlifting" | "muscle_building";
+    trainingStyle: "powerlifting" | "muscle_building" | "general_fitness";
     trainingStyleLabel: string;
     experience: string;
     goalLabel: string;
@@ -1299,7 +1322,7 @@ function buildFallbackWorkoutPlan(
   metrics: Partial<FitnessMetrics>,
   goal: Partial<UserGoal>,
   opts?: {
-    trainingStyle?: 'powerlifting' | 'muscle_building';
+    trainingStyle?: 'powerlifting' | 'muscle_building' | 'general_fitness';
     primaryGoal?: string;
     experienceLevel?: string;
     workoutLocation?: string;
@@ -1320,7 +1343,11 @@ function buildFallbackWorkoutPlan(
     location === "home" &&
     !(opts?.equipment || metrics.equipment || []).some((e) => /barbell|cable|machine/i.test(e));
 
-  const mainReps = isStrength ? "3-5" : primaryGoal === "fat_loss" || primaryGoal === "endurance" ? "10-12" : "6-8";
+  const mainReps = isStrength
+    ? "3-5"
+    : primaryGoal === "fat_loss" || primaryGoal === "weight_loss" || primaryGoal === "endurance" || trainingStyle === "general_fitness"
+    ? "10-12"
+    : "6-8";
   const mainSets = exp === "beginner" ? 3 : 4;
   const mainRest = isStrength ? 180 : 120;
   const secReps = isStrength ? "6-8" : "8-12";

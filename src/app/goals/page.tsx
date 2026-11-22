@@ -59,13 +59,14 @@ export default function GoalsPage() {
   }
 
   const goalOptions = [
+    { id: 'muscle_gain', name: 'Muscle Gain', desc: 'Hypertrophy & lean mass building with modest surplus options' },
     { id: 'fat_loss', name: 'Fat Loss', desc: 'Accelerate fat reduction while protecting lean muscle mass' },
-    { id: 'muscle_gain', name: 'Muscle Gain (Hypertrophy)', desc: 'Maximal muscle protein synthesis and size' },
-    { id: 'recomposition', name: 'Body Recomposition', desc: 'Simultaneous fat reduction and muscle development' },
-    { id: 'strength', name: 'Strength Gain', desc: 'Heavy neuromuscular 1RM optimization' },
-    { id: 'general_fitness', name: 'General Fitness', desc: 'Cardiovascular endurance, stamina, and mobility' },
-    { id: 'endurance', name: 'Muscular Endurance', desc: 'High-rep stamina, work capacity, and conditioning' },
-    { id: 'maintenance', name: 'Weight Maintenance', desc: 'Preserve physical conditioning and baseline strength' },
+    { id: 'weight_gain', name: 'Weight Gain', desc: 'Structured total body-weight increase calculated from TDEE' },
+    { id: 'weight_loss', name: 'Weight Loss', desc: 'Individualized calorie deficit pace options from TDEE' },
+    { id: 'recomposition', name: 'Body Recomposition', desc: 'Conservative target near maintenance with prioritized protein' },
+    { id: 'maintenance', name: 'Maintain Weight', desc: 'Preserve physical conditioning and energy balance' },
+    { id: 'strength', name: 'Strength Development', desc: 'Heavy neuromuscular 1RM optimization & recovery fueling' },
+    { id: 'general_fitness', name: 'General Fitness', desc: 'Cardiovascular stamina, mobility, and balanced maintenance' },
   ];
 
   return (
