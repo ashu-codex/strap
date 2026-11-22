@@ -1,16 +1,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Target, CheckCircle2, Save, Sparkles } from 'lucide-react';
+import { Target, CheckCircle2, Save } from 'lucide-react';
+import NumericInput from '@/components/ui/NumericInput';
 
 export default function GoalsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const [goal, setGoal] = useState({
+  const [goal, setGoal] = useState<{
+    primary_goal: string;
+    target_weight_kg: number | null;
+    weekly_workout_days: number;
+    target_date: string;
+  }>({
     primary_goal: 'muscle_gain',
-    target_weight_kg: 80,
+    target_weight_kg: null,
     weekly_workout_days: 4,
     target_date: '',
   });
@@ -118,29 +124,33 @@ export default function GoalsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Target Weight (kg)</label>
-              <input
-                type="number"
-                step="0.5"
-                value={goal.target_weight_kg || ''}
-                onChange={(e) => setGoal({ ...goal, target_weight_kg: Number(e.target.value) })}
+              <NumericInput
+                min={20}
+                max={500}
+                allowDecimal
+                placeholder="e.g. 75"
+                value={goal.target_weight_kg}
+                onValueChange={(v) => setGoal({ ...goal, target_weight_kg: v })}
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
               />
             </div>
 
             <div>
               <label className="block text-[11px] font-semibold text-zinc-300 mb-1">
-                Workout Days per Week ({goal.weekly_workout_days} Days)
+                Workout Days per Week ({goal.weekly_workout_days} {goal.weekly_workout_days === 1 ? 'Day' : 'Days'})
               </label>
               <select
                 value={goal.weekly_workout_days}
                 onChange={(e) => setGoal({ ...goal, weekly_workout_days: Number(e.target.value) })}
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
               >
+                <option value={1}>1 Day / Week (Full Body Essential)</option>
                 <option value={2}>2 Days / Week (Full Body Maintenance)</option>
                 <option value={3}>3 Days / Week (Full Body Power)</option>
                 <option value={4}>4 Days / Week (Upper / Lower Split)</option>
-                <option value={5}>5 Days / Week (Upper / Lower / PPL)</option>
+                <option value={5}>5 Days / Week (Upper / Lower + PPL)</option>
                 <option value={6}>6 Days / Week (Push Pull Legs 2x)</option>
+                <option value={7}>7 Days / Week (PPL + Active Recovery)</option>
               </select>
             </div>
 

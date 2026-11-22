@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import ThreeDotMenu from '@/components/ui/ThreeDotMenu';
+import NumericInput from '@/components/ui/NumericInput';
 import {
   FoodItem,
   FoodCategory,
@@ -1070,13 +1071,12 @@ export default function NutritionTrackerPage() {
 
               {/* Custom water amount */}
               <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="50"
-                  max="5000"
-                  step="50"
-                  value={customWaterMl}
-                  onChange={(e) => setCustomWaterMl(e.target.value)}
+                <NumericInput
+                  min={50}
+                  max={5000}
+                  allowDecimal={false}
+                  value={customWaterMl === '' ? null : Number(customWaterMl)}
+                  onValueChange={(v) => setCustomWaterMl(v === null ? '' : String(v))}
                   placeholder="Custom ml"
                   className="w-full rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2 text-xs focus:border-sky-500 focus:outline-none"
                 />
@@ -1531,12 +1531,13 @@ export default function NutritionTrackerPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-semibold mb-1">Quantity</label>
-                        <input
-                          type="number"
-                          min="0.1"
-                          step="0.25"
+                        <NumericInput
+                          min={0.1}
+                          max={5000}
+                          allowDecimal
+                          defaultOnBlur={1}
                           value={quantity}
-                          onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
+                          onValueChange={(v) => setQuantity(v ?? 0)}
                           className="w-full rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#1B1D22] px-3 py-2 text-sm font-bold focus:border-brand focus:outline-none"
                         />
                       </div>
@@ -1705,12 +1706,13 @@ export default function NutritionTrackerPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold mb-1">Quantity</label>
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="0.25"
+                  <NumericInput
+                    min={0.1}
+                    max={5000}
+                    allowDecimal
+                    defaultOnBlur={1}
                     value={editQuantity}
-                    onChange={(e) => setEditQuantity(parseFloat(e.target.value) || 0)}
+                    onValueChange={(v) => setEditQuantity(v ?? 0)}
                     className="w-full rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2 text-sm"
                   />
                 </div>
@@ -1884,12 +1886,13 @@ export default function NutritionTrackerPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1">Serving Grams (g)</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={customFoodForm.serving_grams}
-                  onChange={(e) =>
-                    setCustomFoodForm({ ...customFoodForm, serving_grams: e.target.value })
+                <NumericInput
+                  min={1}
+                  max={5000}
+                  allowDecimal
+                  value={customFoodForm.serving_grams === '' ? null : Number(customFoodForm.serving_grams)}
+                  onValueChange={(v) =>
+                    setCustomFoodForm({ ...customFoodForm, serving_grams: v === null ? '' : String(v) })
                   }
                   className="w-full rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F8F9FA] dark:bg-[#14161A] px-3 py-2 text-xs"
                 />
@@ -1899,52 +1902,67 @@ export default function NutritionTrackerPage() {
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
               <div>
                 <label className="block text-[11px] font-semibold mb-1">Calories (kcal)*</label>
-                <input
-                  type="number"
-                  step="0.1"
+                <NumericInput
+                  min={0}
+                  max={5000}
+                  allowDecimal
                   required
-                  value={customFoodForm.calories}
-                  onChange={(e) => setCustomFoodForm({ ...customFoodForm, calories: e.target.value })}
+                  value={customFoodForm.calories === '' ? null : Number(customFoodForm.calories)}
+                  onValueChange={(v) =>
+                    setCustomFoodForm({ ...customFoodForm, calories: v === null ? '' : String(v) })
+                  }
                   className="w-full rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F8F9FA] dark:bg-[#14161A] px-2.5 py-1.5 text-xs"
                 />
               </div>
               <div>
                 <label className="block text-[11px] font-semibold mb-1">Protein (g)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={customFoodForm.protein_g}
-                  onChange={(e) => setCustomFoodForm({ ...customFoodForm, protein_g: e.target.value })}
+                <NumericInput
+                  min={0}
+                  max={500}
+                  allowDecimal
+                  value={customFoodForm.protein_g === '' ? null : Number(customFoodForm.protein_g)}
+                  onValueChange={(v) =>
+                    setCustomFoodForm({ ...customFoodForm, protein_g: v === null ? '' : String(v) })
+                  }
                   className="w-full rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F8F9FA] dark:bg-[#14161A] px-2.5 py-1.5 text-xs"
                 />
               </div>
               <div>
                 <label className="block text-[11px] font-semibold mb-1">Carbs (g)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={customFoodForm.carbs_g}
-                  onChange={(e) => setCustomFoodForm({ ...customFoodForm, carbs_g: e.target.value })}
+                <NumericInput
+                  min={0}
+                  max={1000}
+                  allowDecimal
+                  value={customFoodForm.carbs_g === '' ? null : Number(customFoodForm.carbs_g)}
+                  onValueChange={(v) =>
+                    setCustomFoodForm({ ...customFoodForm, carbs_g: v === null ? '' : String(v) })
+                  }
                   className="w-full rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F8F9FA] dark:bg-[#14161A] px-2.5 py-1.5 text-xs"
                 />
               </div>
               <div>
                 <label className="block text-[11px] font-semibold mb-1">Fat (g)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={customFoodForm.fat_g}
-                  onChange={(e) => setCustomFoodForm({ ...customFoodForm, fat_g: e.target.value })}
+                <NumericInput
+                  min={0}
+                  max={500}
+                  allowDecimal
+                  value={customFoodForm.fat_g === '' ? null : Number(customFoodForm.fat_g)}
+                  onValueChange={(v) =>
+                    setCustomFoodForm({ ...customFoodForm, fat_g: v === null ? '' : String(v) })
+                  }
                   className="w-full rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F8F9FA] dark:bg-[#14161A] px-2.5 py-1.5 text-xs"
                 />
               </div>
               <div>
                 <label className="block text-[11px] font-semibold mb-1">Fibre (g)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={customFoodForm.fiber_g}
-                  onChange={(e) => setCustomFoodForm({ ...customFoodForm, fiber_g: e.target.value })}
+                <NumericInput
+                  min={0}
+                  max={200}
+                  allowDecimal
+                  value={customFoodForm.fiber_g === '' ? null : Number(customFoodForm.fiber_g)}
+                  onValueChange={(v) =>
+                    setCustomFoodForm({ ...customFoodForm, fiber_g: v === null ? '' : String(v) })
+                  }
                   className="w-full rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F8F9FA] dark:bg-[#14161A] px-2.5 py-1.5 text-xs"
                 />
               </div>

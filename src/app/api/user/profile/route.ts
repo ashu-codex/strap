@@ -2,12 +2,15 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { handleError, json, parseBody, requireUser } from '@/lib/api';
+import { invalidateAuthCache } from '@/lib/auth-helpers';
 import { MAX_HEIGHT_CM, MIN_HEIGHT_CM } from '@/lib/height';
 import { calculateNutritionTargets } from '@/lib/nutrition-calc';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
-    const { user } = await requireUser(req);
+    const { user } = await requireUser(req, { bypassCache: true });
     const [row, prefs, metrics, goal] = await Promise.all([
       db.selectOne('user_profiles', { eq: { id: user.id } }),
       db.selectOne('user_preferences', { eq: { user_id: user.id } }).catch(() => null),
@@ -19,18 +22,25 @@ export async function GET(req: NextRequest) {
     const trainingStyle = p.training_style || 'muscle_building';
     const customTargets = p.custom_nutrition_targets || null;
 
-    const calculatedTargets = calculateNutritionTargets({
-      age: metrics?.age ?? row?.age,
-      gender: metrics?.gender ?? row?.gender,
-      height_cm: metrics?.height_cm ?? row?.height,
-      weight_kg: metrics?.current_weight_kg ?? row?.weight,
-      activity_level: metrics?.daily_activity_level ?? row?.activity_level,
-      weekly_workout_days: goal?.weekly_workout_days ?? 4,
-      experience_level: metrics?.experience_level ?? row?.experience_level,
-      primary_goal: goal?.primary_goal ?? row?.fitness_goal,
-      training_style: trainingStyle,
-      custom_overrides: customTargets,
-    });
+    const realAge = metrics?.age ?? row?.age ?? null;
+    const realHeight = metrics?.height_cm ?? row?.height ?? null;
+    const realWeight = metrics?.current_weight_kg ?? row?.weight ?? null;
+    const hasBiometrics = Boolean(realWeight && realHeight && realAge);
+
+    const calculatedTargets = hasBiometrics
+      ? calculateNutritionTargets({
+          age: realAge,
+          gender: metrics?.gender ?? row?.gender,
+          height_cm: realHeight,
+          weight_kg: realWeight,
+          activity_level: metrics?.daily_activity_level ?? row?.activity_level,
+          weekly_workout_days: goal?.weekly_workout_days ?? 4,
+          experience_level: metrics?.experience_level ?? row?.experience_level,
+          primary_goal: goal?.primary_goal ?? row?.fitness_goal,
+          training_style: trainingStyle,
+          custom_overrides: customTargets,
+        })
+      : null;
 
     return json({
       profile: {
@@ -41,16 +51,20 @@ export async function GET(req: NextRequest) {
         google_linked: Boolean(p.google_linked),
         custom_nutrition_targets: customTargets,
         calculated_targets: calculatedTargets,
-        primary_goal: goal?.primary_goal || row?.fitness_goal || 'muscle_gain',
-        weekly_workout_days: goal?.weekly_workout_days || 4,
+        has_biometrics: hasBiometrics,
+        primary_goal: goal?.primary_goal || row?.fitness_goal || null,
+        weekly_workout_days: goal?.weekly_workout_days ?? null,
+        workout_location: metrics?.workout_location || null,
+        equipment: Array.isArray(metrics?.equipment) ? metrics.equipment : [],
+        limitations: metrics?.limitations || '',
         ...(row
           ? {
-              age: row.age,
-              gender: row.gender,
-              height: row.height,
-              weight: row.weight,
-              experience_level: row.experience_level,
-              activity_level: row.activity_level,
+              age: row.age ?? null,
+              gender: row.gender ?? null,
+              height: row.height ?? null,
+              weight: row.weight ?? null,
+              experience_level: row.experience_level ?? null,
+              activity_level: row.activity_level ?? null,
             }
           : {}),
       },
@@ -127,7 +141,7 @@ export async function PUT(req: NextRequest) {
       // Non-fatal
     }
 
-    if (clean.fitness_goal || weekly_workout_days) {
+    if (clean.fitness_goal || weekly_workout_days !== undefined) {
       try {
         const existingGoal = await db.selectOne('fitness_goals', { eq: { user_id: user.id } });
         await db.upsert(
@@ -136,7 +150,10 @@ export async function PUT(req: NextRequest) {
             user_id: user.id,
             primary_goal: (clean.fitness_goal as string) || existingGoal?.primary_goal || 'muscle_gain',
             target_weight_kg: existingGoal?.target_weight_kg ?? null,
-            weekly_workout_days: weekly_workout_days || existingGoal?.weekly_workout_days || 4,
+            weekly_workout_days:
+              weekly_workout_days !== undefined
+                ? weekly_workout_days
+                : existingGoal?.weekly_workout_days || 4,
             target_date: existingGoal?.target_date ?? null,
           },
           'user_id'
@@ -157,6 +174,8 @@ export async function PUT(req: NextRequest) {
       }
     }
 
+    invalidateAuthCache(user.id);
+
     const row = await db.selectOne('user_profiles', { eq: { id: user.id } });
     return json({
       success: true,
@@ -166,6 +185,7 @@ export async function PUT(req: NextRequest) {
         avatar_url: row?.avatar_url ?? user.avatar_url,
         height_unit: clean.height_unit || row?.height_unit || 'cm',
         training_style: training_style || 'muscle_building',
+        weekly_workout_days: weekly_workout_days ?? undefined,
       },
     });
   } catch (e) {

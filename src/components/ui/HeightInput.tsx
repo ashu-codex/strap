@@ -129,9 +129,13 @@ export default function HeightInput({
     }
   };
 
-  const handleCmChange = (raw: string) => {
+  const handleCmChange = (rawInput: string) => {
+    let raw = rawInput.replace(/,/g, '.');
+    if (raw !== '' && !/^\d*\.?\d*$/.test(raw)) return;
+    if (/^0\d+/.test(raw)) raw = raw.replace(/^0+/, '') || '0';
+
     setCmStr(raw);
-    if (raw.trim() === '') {
+    if (raw.trim() === '' || raw.trim() === '.') {
       const err = 'Height must be greater than 0.';
       setError(err);
       lastEmittedRef.current = { cm: 0, unit: 'cm' };
@@ -157,7 +161,14 @@ export default function HeightInput({
     }
   };
 
-  const handleFtInChange = (nextFeetStr: string, nextInchesStr: string) => {
+  const handleFtInChange = (rawFeet: string, rawInches: string) => {
+    let nextFeetStr = rawFeet;
+    let nextInchesStr = rawInches;
+    if (nextFeetStr !== '' && !/^\d*$/.test(nextFeetStr)) return;
+    if (nextInchesStr !== '' && !/^\d*$/.test(nextInchesStr)) return;
+    if (/^0\d+/.test(nextFeetStr)) nextFeetStr = nextFeetStr.replace(/^0+/, '') || '0';
+    if (/^0\d+/.test(nextInchesStr)) nextInchesStr = nextInchesStr.replace(/^0+/, '') || '0';
+
     setFeetStr(nextFeetStr);
     setInchesStr(nextInchesStr);
     ftInDirtyRef.current = true;
@@ -241,10 +252,9 @@ export default function HeightInput({
       {unit === 'cm' ? (
         <div className="relative">
           <input
-            type="number"
-            step="0.1"
-            min={1}
-            max={300}
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
             aria-label="Height in centimeters"
             placeholder="178"
             value={cmStr}
@@ -263,10 +273,9 @@ export default function HeightInput({
         <div className="grid grid-cols-2 gap-2">
           <div className="relative">
             <input
-              type="number"
-              step="1"
-              min={1}
-              max={9}
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
               aria-label="Height in feet"
               placeholder="5"
               value={feetStr}
@@ -284,10 +293,9 @@ export default function HeightInput({
 
           <div className="relative">
             <input
-              type="number"
-              step="1"
-              min={0}
-              max={11}
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
               aria-label="Height in inches"
               placeholder="10"
               value={inchesStr}

@@ -17,6 +17,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import HeightInput from '@/components/ui/HeightInput';
+import NumericInput from '@/components/ui/NumericInput';
 import { HeightUnit } from '@/lib/height';
 import { calculateNutritionTargets } from '@/lib/nutrition-calc';
 import { createClient as createBrowserClient } from '@/lib/supabase/client';
@@ -40,16 +41,16 @@ export default function ProfilePage() {
   });
 
   const [metrics, setMetrics] = useState<any>({
-    age: 26,
+    age: null,
     gender: 'male',
-    height_cm: 175,
+    height_cm: 0,
     height_unit: 'cm' as HeightUnit,
-    current_weight_kg: 72,
-    body_fat_pct: 16,
-    chest_cm: 98,
-    waist_cm: 80,
-    hips_cm: 94,
-    arms_cm: 35,
+    current_weight_kg: null,
+    body_fat_pct: null,
+    chest_cm: null,
+    waist_cm: null,
+    hips_cm: null,
+    arms_cm: null,
     workout_location: 'gym',
     experience_level: 'intermediate',
     daily_activity_level: 'moderately_active',
@@ -57,10 +58,10 @@ export default function ProfilePage() {
 
   const [customTargets, setCustomTargets] = useState<{
     enabled: boolean;
-    target_calories: number;
-    protein_g: number;
-    carbs_g: number;
-    fats_g: number;
+    target_calories: number | null;
+    protein_g: number | null;
+    carbs_g: number | null;
+    fats_g: number | null;
   }>({
     enabled: false,
     target_calories: 2500,
@@ -85,15 +86,20 @@ export default function ProfilePage() {
         ]);
 
         if (profRes.profile) {
-          setProfile((prev: any) => ({ ...prev, ...profRes.profile }));
+          setProfile((prev: any) => ({
+            ...prev,
+            ...profRes.profile,
+            primary_goal: profRes.profile.primary_goal || prev.primary_goal,
+            weekly_workout_days: profRes.profile.weekly_workout_days ?? prev.weekly_workout_days,
+          }));
           if (profRes.profile.custom_nutrition_targets) {
             const ct = profRes.profile.custom_nutrition_targets;
             setCustomTargets({
               enabled: true,
-              target_calories: ct.target_calories || 2500,
-              protein_g: ct.protein_g || 150,
-              carbs_g: ct.carbs_g || 280,
-              fats_g: ct.fats_g || 75,
+              target_calories: ct.target_calories ?? 2500,
+              protein_g: ct.protein_g ?? 150,
+              carbs_g: ct.carbs_g ?? 280,
+              fats_g: ct.fats_g ?? 75,
             });
           } else if (profRes.profile.calculated_targets) {
             const cal = profRes.profile.calculated_targets;
@@ -119,12 +125,13 @@ export default function ProfilePage() {
         } else if (profRes.profile) {
           setMetrics((prev: any) => ({
             ...prev,
-            height_cm: profRes.profile.height ?? prev.height_cm,
-            current_weight_kg: profRes.profile.weight ?? prev.current_weight_kg,
-            age: profRes.profile.age ?? prev.age,
+            height_cm: profRes.profile.height ?? 0,
+            current_weight_kg: profRes.profile.weight ?? null,
+            age: profRes.profile.age ?? null,
             gender: profRes.profile.gender ?? prev.gender,
             experience_level: profRes.profile.experience_level ?? prev.experience_level,
             daily_activity_level: profRes.profile.activity_level ?? prev.daily_activity_level,
+            workout_location: profRes.profile.workout_location ?? prev.workout_location,
             height_unit: metRes.height_unit || profRes.profile.height_unit || 'cm',
           }));
         }
@@ -166,7 +173,13 @@ export default function ProfilePage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!heightValid) {
+    const hasCompleteBiometrics = Boolean(
+      metrics.age && Number(metrics.age) >= 10 &&
+      metrics.height_cm && Number(metrics.height_cm) >= 90 &&
+      metrics.current_weight_kg && Number(metrics.current_weight_kg) >= 20
+    );
+
+    if (metrics.height_cm > 0 && !heightValid) {
       setMessage(null);
       setErrorMsg('Please enter a valid height before saving.');
       return;
@@ -177,49 +190,75 @@ export default function ProfilePage() {
     setErrorMsg(null);
 
     try {
-      const [pRes, mRes] = await Promise.all([
+      const profilePayload: Record<string, any> = {
+        full_name: profile.full_name,
+        height_unit: metrics.height_unit || 'cm',
+        training_style: profile.training_style || 'muscle_building',
+        fitness_goal: profile.primary_goal || 'muscle_gain',
+        weekly_workout_days: Number(profile.weekly_workout_days) || 4,
+        activity_level: metrics.daily_activity_level || 'moderately_active',
+        experience_level: metrics.experience_level || 'intermediate',
+        custom_nutrition_targets: customTargets.enabled
+          ? {
+              target_calories: Number(customTargets.target_calories) || autoCalculated.target_calories,
+              protein_g: Number(customTargets.protein_g) || autoCalculated.protein_g,
+              carbs_g: Number(customTargets.carbs_g) || autoCalculated.carbs_g,
+              fats_g: Number(customTargets.fats_g) || autoCalculated.fats_g,
+            }
+          : null,
+      };
+      if (metrics.current_weight_kg) profilePayload.weight = Number(metrics.current_weight_kg);
+      if (metrics.age) profilePayload.age = Math.round(Number(metrics.age));
+      if (metrics.height_cm && heightValid) profilePayload.height = Number(metrics.height_cm);
+      if (metrics.gender) profilePayload.gender = metrics.gender;
+
+      const requests: Promise<Response>[] = [
         fetch('/api/user/profile', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            full_name: profile.full_name,
-            height_unit: metrics.height_unit || 'cm',
-            training_style: profile.training_style || 'muscle_building',
-            fitness_goal: profile.primary_goal || 'muscle_gain',
-            weekly_workout_days: Number(profile.weekly_workout_days) || 4,
-            activity_level: metrics.daily_activity_level || 'moderately_active',
-            experience_level: metrics.experience_level || 'intermediate',
-            custom_nutrition_targets: customTargets.enabled
-              ? {
-                  target_calories: Number(customTargets.target_calories),
-                  protein_g: Number(customTargets.protein_g),
-                  carbs_g: Number(customTargets.carbs_g),
-                  fats_g: Number(customTargets.fats_g),
-                }
-              : null,
-          }),
+          body: JSON.stringify(profilePayload),
         }),
-        fetch('/api/user/metrics', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...metrics,
-            height_unit: metrics.height_unit || 'cm',
-          }),
-        }),
-      ]);
+      ];
 
-      if (!pRes.ok || !mRes.ok) {
-        const errBody = await (!mRes.ok ? mRes : pRes).json().catch(() => null);
+      if (hasCompleteBiometrics) {
+        requests.push(
+          fetch('/api/user/metrics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...metrics,
+              age: Math.round(Number(metrics.age)),
+              height_cm: Number(metrics.height_cm),
+              current_weight_kg: Number(metrics.current_weight_kg),
+              body_fat_pct: metrics.body_fat_pct ?? '',
+              chest_cm: metrics.chest_cm ?? '',
+              waist_cm: metrics.waist_cm ?? '',
+              hips_cm: metrics.hips_cm ?? '',
+              arms_cm: metrics.arms_cm ?? '',
+              height_unit: metrics.height_unit || 'cm',
+            }),
+          })
+        );
+      }
+
+      const [pRes, mRes] = await Promise.all(requests);
+
+      if (!pRes.ok || (mRes && !mRes.ok)) {
+        const failed = mRes && !mRes.ok ? mRes : pRes;
+        const errBody = await failed.json().catch(() => null);
         throw new Error(errBody?.error || 'Failed to update profile.');
       }
 
-      const savedMet = await mRes.json();
-      if (savedMet?.metrics) {
-        setMetrics((prev: any) => ({ ...prev, ...savedMet.metrics }));
+      if (mRes) {
+        const savedMet = await mRes.json();
+        if (savedMet?.metrics) {
+          setMetrics((prev: any) => ({ ...prev, ...savedMet.metrics }));
+        }
       }
       window.dispatchEvent(new Event('strap-auth-refresh'));
-      setMessage('Profile, training mode, biometrics, and nutrition targets updated.');
+      setMessage(
+        'Profile, training schedule, biometrics, and targets saved. Your AI Planner will automatically sync with these settings.'
+      );
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to update profile.');
     } finally {
@@ -538,17 +577,19 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
             <div>
               <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Current Weight (kg)</label>
-              <input
-                type="number"
-                step="0.1"
-                value={metrics.current_weight_kg || ''}
-                onChange={(e) => setMetrics({ ...metrics, current_weight_kg: Number(e.target.value) })}
+              <NumericInput
+                min={20}
+                max={500}
+                allowDecimal
+                placeholder="e.g. 75"
+                value={metrics.current_weight_kg}
+                onValueChange={(v) => setMetrics({ ...metrics, current_weight_kg: v })}
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
               />
             </div>
 
             <HeightInput
-              heightCm={metrics.height_cm ?? 175}
+              heightCm={metrics.height_cm ?? 0}
               unit={(metrics.height_unit as HeightUnit) || 'cm'}
               onChange={(nextHeightCm, nextUnit, isValid) => {
                 setHeightValid(isValid);
@@ -563,21 +604,26 @@ export default function ProfilePage() {
 
             <div>
               <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Age</label>
-              <input
-                type="number"
-                value={metrics.age || ''}
-                onChange={(e) => setMetrics({ ...metrics, age: Number(e.target.value) })}
+              <NumericInput
+                min={10}
+                max={100}
+                allowDecimal={false}
+                placeholder="e.g. 25"
+                value={metrics.age}
+                onValueChange={(v) => setMetrics({ ...metrics, age: v })}
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
               />
             </div>
 
             <div>
               <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Body Fat %</label>
-              <input
-                type="number"
-                step="0.1"
-                value={metrics.body_fat_pct || ''}
-                onChange={(e) => setMetrics({ ...metrics, body_fat_pct: Number(e.target.value) })}
+              <NumericInput
+                min={2}
+                max={70}
+                allowDecimal
+                placeholder="Optional"
+                value={metrics.body_fat_pct}
+                onValueChange={(v) => setMetrics({ ...metrics, body_fat_pct: v })}
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
               />
             </div>
@@ -585,42 +631,54 @@ export default function ProfilePage() {
 
           <div className="pt-2">
             <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2">
-              Body Circumferences (cm)
+              Body Circumferences (cm, optional)
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <label className="text-[10px] text-zinc-400">Chest</label>
-                <input
-                  type="number"
-                  value={metrics.chest_cm || ''}
-                  onChange={(e) => setMetrics({ ...metrics, chest_cm: Number(e.target.value) })}
+                <NumericInput
+                  min={30}
+                  max={250}
+                  allowDecimal
+                  placeholder="cm"
+                  value={metrics.chest_cm}
+                  onValueChange={(v) => setMetrics({ ...metrics, chest_cm: v })}
                   className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-2 text-xs text-white"
                 />
               </div>
               <div>
                 <label className="text-[10px] text-zinc-400">Waist</label>
-                <input
-                  type="number"
-                  value={metrics.waist_cm || ''}
-                  onChange={(e) => setMetrics({ ...metrics, waist_cm: Number(e.target.value) })}
+                <NumericInput
+                  min={30}
+                  max={250}
+                  allowDecimal
+                  placeholder="cm"
+                  value={metrics.waist_cm}
+                  onValueChange={(v) => setMetrics({ ...metrics, waist_cm: v })}
                   className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-2 text-xs text-white"
                 />
               </div>
               <div>
                 <label className="text-[10px] text-zinc-400">Hips</label>
-                <input
-                  type="number"
-                  value={metrics.hips_cm || ''}
-                  onChange={(e) => setMetrics({ ...metrics, hips_cm: Number(e.target.value) })}
+                <NumericInput
+                  min={30}
+                  max={250}
+                  allowDecimal
+                  placeholder="cm"
+                  value={metrics.hips_cm}
+                  onValueChange={(v) => setMetrics({ ...metrics, hips_cm: v })}
                   className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-2 text-xs text-white"
                 />
               </div>
               <div>
                 <label className="text-[10px] text-zinc-400">Arms</label>
-                <input
-                  type="number"
-                  value={metrics.arms_cm || ''}
-                  onChange={(e) => setMetrics({ ...metrics, arms_cm: Number(e.target.value) })}
+                <NumericInput
+                  min={10}
+                  max={100}
+                  allowDecimal
+                  placeholder="cm"
+                  value={metrics.arms_cm}
+                  onValueChange={(v) => setMetrics({ ...metrics, arms_cm: v })}
                   className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-2 text-xs text-white"
                 />
               </div>
@@ -688,13 +746,13 @@ export default function ProfilePage() {
               <label className="block text-[10px] font-bold uppercase text-zinc-400 mb-1">
                 Daily Calories (kcal)
               </label>
-              <input
-                type="number"
+              <NumericInput
+                min={800}
+                max={10000}
+                allowDecimal={false}
                 disabled={!customTargets.enabled}
                 value={customTargets.enabled ? customTargets.target_calories : autoCalculated.target_calories}
-                onChange={(e) =>
-                  setCustomTargets({ ...customTargets, target_calories: Number(e.target.value) })
-                }
+                onValueChange={(v) => setCustomTargets({ ...customTargets, target_calories: v })}
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs font-bold text-white disabled:opacity-70"
               />
             </div>
@@ -702,13 +760,13 @@ export default function ProfilePage() {
               <label className="block text-[10px] font-bold uppercase text-blue-400 mb-1">
                 Protein Target (g)
               </label>
-              <input
-                type="number"
+              <NumericInput
+                min={20}
+                max={600}
+                allowDecimal={false}
                 disabled={!customTargets.enabled}
                 value={customTargets.enabled ? customTargets.protein_g : autoCalculated.protein_g}
-                onChange={(e) =>
-                  setCustomTargets({ ...customTargets, protein_g: Number(e.target.value) })
-                }
+                onValueChange={(v) => setCustomTargets({ ...customTargets, protein_g: v })}
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs font-bold text-white disabled:opacity-70"
               />
             </div>
@@ -716,13 +774,13 @@ export default function ProfilePage() {
               <label className="block text-[10px] font-bold uppercase text-amber-400 mb-1">
                 Carbs Target (g)
               </label>
-              <input
-                type="number"
+              <NumericInput
+                min={20}
+                max={1500}
+                allowDecimal={false}
                 disabled={!customTargets.enabled}
                 value={customTargets.enabled ? customTargets.carbs_g : autoCalculated.carbs_g}
-                onChange={(e) =>
-                  setCustomTargets({ ...customTargets, carbs_g: Number(e.target.value) })
-                }
+                onValueChange={(v) => setCustomTargets({ ...customTargets, carbs_g: v })}
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs font-bold text-white disabled:opacity-70"
               />
             </div>
@@ -730,13 +788,13 @@ export default function ProfilePage() {
               <label className="block text-[10px] font-bold uppercase text-rose-400 mb-1">
                 Fat Target (g)
               </label>
-              <input
-                type="number"
+              <NumericInput
+                min={15}
+                max={400}
+                allowDecimal={false}
                 disabled={!customTargets.enabled}
                 value={customTargets.enabled ? customTargets.fats_g : autoCalculated.fats_g}
-                onChange={(e) =>
-                  setCustomTargets({ ...customTargets, fats_g: Number(e.target.value) })
-                }
+                onValueChange={(v) => setCustomTargets({ ...customTargets, fats_g: v })}
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs font-bold text-white disabled:opacity-70"
               />
             </div>

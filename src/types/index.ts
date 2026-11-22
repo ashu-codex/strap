@@ -173,7 +173,14 @@ export interface WorkoutPlanDay {
 
 export interface GeneratedWorkoutPlan {
   split_name: string;
-  split_type: 'Full Body' | 'Upper / Lower' | 'Push Pull Legs' | 'Bro Split' | 'Custom';
+  split_type:
+    | 'Full Body'
+    | 'Upper / Lower'
+    | 'Push Pull Legs'
+    | 'Upper/Lower + PPL'
+    | 'Powerlifting SBD'
+    | 'Bro Split'
+    | 'Custom';
   rationale: string;
   weekly_schedule: WorkoutPlanDay[];
   progressive_overload_rules: string[];

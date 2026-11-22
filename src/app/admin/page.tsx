@@ -28,6 +28,8 @@ import {
   X,
 } from 'lucide-react';
 
+import NumericInput from '@/components/ui/NumericInput';
+
 type AdminTab = 'overview' | 'users' | 'payments' | 'content' | 'ai' | 'system';
 
 export default function AdminDashboardPage() {
@@ -922,20 +924,24 @@ export default function AdminDashboardPage() {
                           placeholder="Brand"
                           className="rounded-xl border border-[#E1E4E8] dark:border-[#2E323D] bg-white dark:bg-[#14171C] px-3 py-2 text-xs"
                         />
-                        <input
-                          type="number"
-                          value={newContentForm.calories}
-                          onChange={(e) =>
-                            setNewContentForm({ ...newContentForm, calories: e.target.value })
+                        <NumericInput
+                          min={0}
+                          max={5000}
+                          allowDecimal
+                          value={newContentForm.calories === '' ? null : Number(newContentForm.calories)}
+                          onValueChange={(v) =>
+                            setNewContentForm({ ...newContentForm, calories: v === null ? '' : String(v) })
                           }
                           placeholder="Calories"
                           className="rounded-xl border border-[#E1E4E8] dark:border-[#2E323D] bg-white dark:bg-[#14171C] px-3 py-2 text-xs"
                         />
-                        <input
-                          type="number"
-                          value={newContentForm.protein_g}
-                          onChange={(e) =>
-                            setNewContentForm({ ...newContentForm, protein_g: e.target.value })
+                        <NumericInput
+                          min={0}
+                          max={500}
+                          allowDecimal
+                          value={newContentForm.protein_g === '' ? null : Number(newContentForm.protein_g)}
+                          onValueChange={(v) =>
+                            setNewContentForm({ ...newContentForm, protein_g: v === null ? '' : String(v) })
                           }
                           placeholder="Protein (g)"
                           className="rounded-xl border border-[#E1E4E8] dark:border-[#2E323D] bg-white dark:bg-[#14171C] px-3 py-2 text-xs"
@@ -1141,10 +1147,13 @@ export default function AdminDashboardPage() {
                       </div>
                       <div>
                         <label className="block font-semibold mb-1">Monthly Price (INR)</label>
-                        <input
-                          type="number"
+                        <NumericInput
+                          min={1}
+                          max={100000}
+                          allowDecimal={false}
+                          defaultOnBlur={100}
                           value={priceInput}
-                          onChange={(e) => setPriceInput(Number(e.target.value))}
+                          onValueChange={(v) => setPriceInput(v ?? 0)}
                           className="w-full rounded-xl border border-[#E1E4E8] dark:border-[#2E323D] bg-[#F8F9FA] dark:bg-[#0D0F12] px-3 py-2"
                         />
                       </div>

@@ -62,13 +62,31 @@ function extractJsonFromText<T>(text: string): T {
 
 /**
  * GENERATE PERSONALIZED WORKOUT PLAN
+ * Strictly enforces exact day count matching the user's saved Profile preferences.
  */
 export async function generateWorkoutPlanAI(params: {
   metrics: Partial<FitnessMetrics>;
   goal: Partial<UserGoal>;
+  profile?: Record<string, any>;
+  trainingStyle?: 'powerlifting' | 'muscle_building';
+  actual1RMs?: Record<string, any>;
   recentWorkouts?: any[];
 }): Promise<{ plan: GeneratedWorkoutPlan; isAiGenerated: boolean }> {
-  const { metrics, goal } = params;
+  const { metrics, goal, profile, trainingStyle = 'muscle_building', actual1RMs } = params;
+
+  const requestedDays = Math.min(
+    7,
+    Math.max(1, Number(goal.weekly_workout_days ?? (goal as any).workout_days_per_week) || 4)
+  );
+  const primaryGoal = goal.primary_goal || profile?.fitness_goal || "muscle_gain";
+  const experienceLevel = metrics.experience_level || profile?.experience_level || "intermediate";
+  const workoutLocation = metrics.workout_location || "gym";
+  const equipmentList =
+    Array.isArray(metrics.equipment) && metrics.equipment.length > 0
+      ? metrics.equipment
+      : workoutLocation === "home"
+      ? ["dumbbells", "bodyweight", "resistance bands"]
+      : ["barbell", "dumbbell", "cables", "machines"];
 
   if (canAttemptLiveModel()) {
     try {
@@ -76,38 +94,44 @@ export async function generateWorkoutPlanAI(params: {
         model: modelName,
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 6144,
           responseMimeType: "application/json",
           thinkingConfig: { thinkingBudget: 0 },
         } as any,
       });
 
       const prompt = `You are the lead exercise physiologist for STRAP Fitness.
-Generate a comprehensive, scientifically-backed personalized workout plan in JSON format based on:
-- Age: ${metrics.age || 26}
-- Gender: ${metrics.gender || "male"}
-- Height: ${metrics.height_cm || 175} cm
-- Weight: ${metrics.current_weight_kg || 75} kg
-- Target Weight: ${goal.target_weight_kg || metrics.current_weight_kg || 75} kg
-- Primary Goal: ${goal.primary_goal || "muscle_gain"}
-- Experience Level: ${metrics.experience_level || "intermediate"}
-- Workout Days/Week: ${goal.weekly_workout_days || 4}
-- Location: ${metrics.workout_location || "gym"}
-- Workout Duration: ${metrics.workout_duration_mins || 60} minutes
-- Equipment: ${(metrics.equipment || ["barbell", "dumbbell", "cables", "machines"]).join(", ")}
+Generate a comprehensive, scientifically-backed personalized workout plan in JSON format based strictly on this athlete's saved Profile:
+- Training Days per Week (EXACT — MUST GENERATE EXACTLY ${requestedDays} DISTINCT TRAINING DAYS): ${requestedDays}
+- Primary Goal: ${primaryGoal}
+- Training Style: ${trainingStyle === "powerlifting" ? "Powerlifting (Squat, Bench, Deadlift focus)" : "Muscle Building / Hypertrophy"}
+- Experience Level: ${experienceLevel}
+- Workout Location: ${workoutLocation}
+- Available Equipment: ${equipmentList.join(", ")}
+- Session Duration: ${metrics.workout_duration_mins || 60} minutes
+- Age: ${metrics.age || profile?.age || "Not specified"}
+- Gender: ${metrics.gender || profile?.gender || "Not specified"}
+- Height: ${metrics.height_cm || profile?.height || "Not specified"} cm
+- Weight: ${metrics.current_weight_kg || profile?.weight || "Not specified"} kg
+- Target Weight: ${goal.target_weight_kg || "Not specified"} kg
 - Limitations/Injuries: ${metrics.limitations || "None reported"}
-- Strength levels: ${JSON.stringify(metrics.strength_levels || {})}
+- Reference 1RMs / Strength levels: ${JSON.stringify(actual1RMs || metrics.strength_levels || {})}
+
+CRITICAL CONSTRAINTS:
+1. "weekly_schedule" MUST contain EXACTLY ${requestedDays} items (day_number 1 through ${requestedDays}). Never return 4 days if ${requestedDays} days were requested.
+2. Every day must have a unique, non-contradictory focus and 4 to 6 exercises matching the athlete's available equipment (${equipmentList.join(", ")}).
+3. Include realistic sets, rep ranges, and rest_seconds aligned to ${primaryGoal} and ${experienceLevel} level.
 
 Return valid JSON strictly adhering to this structure:
 {
-  "split_name": "string (e.g. 4-Day Upper / Lower Hypertrophy)",
-  "split_type": "Full Body" | "Upper / Lower" | "Push Pull Legs" | "Bro Split" | "Custom",
-  "rationale": "Detailed scientific explanation why this split fits their experience, recovery capacity and schedule.",
+  "split_name": "string (e.g. ${requestedDays}-Day ...)",
+  "split_type": "Full Body" | "Upper / Lower" | "Push Pull Legs" | "Upper/Lower + PPL" | "Powerlifting SBD" | "Custom",
+  "rationale": "Detailed scientific explanation why this ${requestedDays}-day split fits their goal (${primaryGoal}), experience (${experienceLevel}), equipment, and recovery capacity.",
   "weekly_schedule": [
     {
       "day_number": 1,
-      "day_title": "string (e.g. Day 1: Upper Power & Hypertrophy)",
-      "focus": "string (e.g. Chest, Back & Triceps)",
+      "day_title": "string",
+      "focus": "string",
       "warmup": ["5 min dynamic shoulder drills", "Scapular pullups"],
       "exercises": [
         {
@@ -131,18 +155,40 @@ Return valid JSON strictly adhering to this structure:
   ]
 }`;
 
-      const result = await withFastTimeout(model.generateContent(prompt), 3500);
+      const result = await withFastTimeout(model.generateContent(prompt), 5000);
       const text = result.response.text();
       const plan = extractJsonFromText<GeneratedWorkoutPlan>(text);
-      return { plan, isAiGenerated: true };
+      const scheduleValid =
+        Array.isArray(plan?.weekly_schedule) &&
+        plan.weekly_schedule.length === requestedDays &&
+        plan.weekly_schedule.every(
+          (d: any) => d && typeof d.day_title === "string" && Array.isArray(d.exercises) && d.exercises.length >= 3
+        );
+      if (scheduleValid) {
+        plan.weekly_schedule = plan.weekly_schedule.map((d: any, idx: number) => ({
+          ...d,
+          day_number: idx + 1,
+        }));
+        return { plan, isAiGenerated: true };
+      }
+      console.warn(
+        `Gemini returned ${plan?.weekly_schedule?.length ?? 0} days instead of ${requestedDays}; using exact deterministic ${requestedDays}-day engine.`
+      );
     } catch (error) {
       tripLiveModelCooldown();
       console.warn("Gemini API call failed, utilizing high-precision fallback engine:", (error as any)?.message || error);
     }
   }
 
-  // Deterministic Exercise Science Engine Fallback
-  const fallbackPlan = buildFallbackWorkoutPlan(metrics, goal);
+  // Deterministic Exercise Science Engine Fallback (exact 1-7 day splits)
+  const fallbackPlan = buildFallbackWorkoutPlan(metrics, goal, {
+    trainingStyle,
+    primaryGoal,
+    experienceLevel,
+    workoutLocation,
+    equipment: equipmentList,
+    requestedDays,
+  });
   return { plan: fallbackPlan, isAiGenerated: false };
 }
 
@@ -1246,408 +1292,384 @@ Regarding your question: **"${userMessage}"**
 }
 
 /**
- * HELPER: Build high-quality fallback workout plan
+ * HELPER: Build high-precision deterministic workout plan matching EXACT training days (1-7),
+ * goal, experience level, training style (Powerlifting vs Muscle Building), and equipment.
  */
 function buildFallbackWorkoutPlan(
   metrics: Partial<FitnessMetrics>,
-  goal: Partial<UserGoal>
+  goal: Partial<UserGoal>,
+  opts?: {
+    trainingStyle?: 'powerlifting' | 'muscle_building';
+    primaryGoal?: string;
+    experienceLevel?: string;
+    workoutLocation?: string;
+    equipment?: string[];
+    requestedDays?: number;
+  }
 ): GeneratedWorkoutPlan {
-  const days = goal.weekly_workout_days || 4;
-  const exp = metrics.experience_level || "intermediate";
+  const days = Math.min(
+    7,
+    Math.max(1, opts?.requestedDays ?? Number(goal.weekly_workout_days) ?? 4)
+  );
+  const exp = opts?.experienceLevel || metrics.experience_level || "intermediate";
+  const primaryGoal = opts?.primaryGoal || goal.primary_goal || "muscle_gain";
+  const trainingStyle = opts?.trainingStyle || "muscle_building";
+  const location = opts?.workoutLocation || metrics.workout_location || "gym";
+  const isStrength = trainingStyle === "powerlifting" || primaryGoal === "strength";
+  const isHomeOnly =
+    location === "home" &&
+    !(opts?.equipment || metrics.equipment || []).some((e) => /barbell|cable|machine/i.test(e));
 
-  if (days <= 3) {
+  const mainReps = isStrength ? "3-5" : primaryGoal === "fat_loss" || primaryGoal === "endurance" ? "10-12" : "6-8";
+  const mainSets = exp === "beginner" ? 3 : 4;
+  const mainRest = isStrength ? 180 : 120;
+  const secReps = isStrength ? "6-8" : "8-12";
+  const isoReps = "12-15";
+  const goalLabel = primaryGoal.replace(/_/g, " ");
+  const styleLabel = trainingStyle === "powerlifting" ? "Powerlifting SBD" : "Hypertrophy";
+
+  const ex = (
+    gymName: string,
+    homeName: string,
+    target_muscle: string,
+    sets: number,
+    reps: string,
+    rest_seconds: number,
+    notes: string,
+    alternatives: string[],
+    recommended_weight_kg?: string
+  ) => ({
+    exercise_name: isHomeOnly ? homeName : gymName,
+    target_muscle,
+    sets,
+    reps,
+    rest_seconds,
+    ...(recommended_weight_kg ? { recommended_weight_kg } : {}),
+    notes,
+    alternatives,
+  });
+
+  const overloadRules = isStrength
+    ? [
+        "Add +2.5kg to upper-body compounds and +5kg to squats/deadlifts once all working sets are completed at RPE <= 8.",
+        "Maintain crisp bar speed and strict competition-standard range of motion on every primary lift.",
+        "Schedule a deload week (65% 1RM, half volume) every 5–6 weeks or if RPE drifts above 9.5 on working sets.",
+      ]
+    : [
+        "Double Progression: Keep load steady until you hit the top of the prescribed rep range on all working sets with clean form, then add +2.5kg.",
+        "Train working sets to 1–2 reps in reserve (RPE 8–9) on compounds and 0–1 RIR on safe isolations.",
+        "Log every completed session in STRAP Tracker so volume and 1RM progression stay verifiable.",
+      ];
+
+  // Reusable building-block day templates (unique focus per day, zero duplicates)
+  const fullBodyA = {
+    day_number: 1,
+    day_title: "Full Body A — Squat & Horizontal Push/Pull",
+    focus: "Quads, Chest & Upper Back",
+    warmup: ["5 min brisk incline walk", "Leg swings & hip openers", "Band pull-aparts"],
+    exercises: [
+      ex("Barbell Back Squat", "Goblet / Dumbbell Squat", "Quadriceps & Glutes", mainSets, mainReps, mainRest, "Brace core hard, hit parallel depth, drive through mid-foot.", ["Front Squat", "Leg Press"], isStrength ? "80% 1RM (RPE 8)" : "RPE 7.5–8"),
+      ex("Barbell Bench Press", "Dumbbell Floor / Bench Press", "Chest & Triceps", mainSets, mainReps, mainRest, "Retract shoulder blades, controlled descent, full lockout.", ["Dumbbell Bench Press", "Push-Ups"], isStrength ? "78% 1RM (RPE 8)" : "RPE 8"),
+      ex("Barbell Bent-Over Row", "Single-Arm Dumbbell Row", "Lats & Rhomboids", mainSets, secReps, 90, "Hinge at hips, pull elbows toward waist without jerking.", ["Chest-Supported Row", "Seated Cable Row"]),
+      ex("Dumbbell Lateral Raise", "Dumbbell / Band Lateral Raise", "Side Delts", 3, isoReps, 60, "Lead with elbows, control the lowering phase.", ["Cable Lateral Raise"]),
+      ex("Standing Calf Raise", "Single-Leg Bodyweight Calf Raise", "Calves", 3, "12-15", 60, "Pause 2 seconds at the bottom stretch.", ["Seated Calf Raise"]),
+    ],
+    cooldown: ["Quad stretch", "Doorway chest stretch", "Child's pose"],
+  };
+
+  const fullBodyB = {
+    day_number: 2,
+    day_title: "Full Body B — Hinge & Vertical Push/Pull",
+    focus: "Posterior Chain, Shoulders & Lats",
+    warmup: ["World's greatest stretch", "Glute bridges", "Shoulder dislocates"],
+    exercises: [
+      ex("Conventional Deadlift", "Dumbbell Romanian Deadlift", "Hamstrings, Glutes & Back", mainSets, isStrength ? "3-5" : "6-8", mainRest, "Pack lats tight, push the floor away, lock out with glutes.", ["Trap Bar Deadlift", "Romanian Deadlift"], isStrength ? "80% 1RM" : "RPE 8"),
+      ex("Overhead Barbell Press", "Dumbbell Overhead Press", "Shoulders & Triceps", mainSets, secReps, 90, "Squeeze glutes and brace abs; press vertically overhead.", ["Seated Dumbbell Press", "Landmine Press"]),
+      ex("Lat Pulldown", "Pull-Ups / Resistance Band Pulldown", "Lats & Biceps", 3, "8-12", 75, "Drive elbows down to ribs and pause briefly at chest.", ["Weighted Pull-Ups", "Chin-Ups"]),
+      ex("Bulgarian Split Squat", "Bulgarian Split Squat", "Quads & Glutes", 3, "8-12 / leg", 90, "Descend vertically with front foot planted firmly.", ["Walking Lunges", "Step-Ups"]),
+      ex("Hanging Leg Raise", "Dead Bug / Plank Hold", "Core & Abs", 3, "12-15", 60, "Curl pelvis upward under full control without swinging.", ["Cable Crunch", "Ab Wheel"]),
+    ],
+    cooldown: ["Hamstring stretch", "Pigeon stretch", "Lat stretch"],
+  };
+
+  const fullBodyC = {
+    day_number: 3,
+    day_title: "Full Body C — Hypertrophy & Accessories",
+    focus: "Upper Chest, Glutes & Arms",
+    warmup: ["5 min light cardio", "Dynamic lunges", "Arm circles"],
+    exercises: [
+      ex("Incline Dumbbell Press", "Incline / Decline Push-Up or DB Press", "Upper Chest", mainSets, secReps, 90, "30-degree incline, 3-second controlled eccentric.", ["Incline Barbell Press", "Machine Chest Press"]),
+      ex("Romanian Deadlift (RDL)", "Dumbbell RDL", "Hamstrings & Glutes", 3, "8-10", 90, "Soft knees, push hips back until deep hamstring stretch.", ["Lying Leg Curl", "Hip Thrust"]),
+      ex("Seated Cable Row", "Chest-Supported / Bent Dumbbell Row", "Mid Back", 3, "10-12", 75, "Squeeze shoulder blades together at peak contraction.", ["T-Bar Row", "Inverted Row"]),
+      ex("Barbell Bicep Curl", "Dumbbell Bicep Curl", "Biceps", 3, "10-12", 60, "Keep elbows pinned at sides with zero torso swing.", ["Hammer Curl", "Incline DB Curl"]),
+      ex("Tricep Rope Pushdown", "Overhead Dumbbell Tricep Extension", "Triceps", 3, isoReps, 60, "Full extension at bottom, controlled stretch on return.", ["Skull Crushers", "Close-Grip Push-Ups"]),
+    ],
+    cooldown: ["Upper body stretch", "Hip flexor stretch"],
+  };
+
+  const upperA = {
+    day_number: 1,
+    day_title: "Upper Day 1 — Heavy Horizontal Push & Pull",
+    focus: "Chest, Back & Shoulders Strength",
+    warmup: ["Band pull-aparts", "Shoulder circles", "2 ramp-up sets on first lift"],
+    exercises: [
+      ex("Barbell Bench Press", "Dumbbell Bench / Floor Press", "Chest", mainSets, mainReps, mainRest, "Keep upper back tight and feet anchored.", ["Dumbbell Bench Press", "Machine Chest Press"], isStrength ? "80% 1RM" : "RPE 8"),
+      ex("Barbell Bent-Over Row", "Single-Arm Dumbbell Row", "Upper Back & Lats", mainSets, secReps, 90, "Pull smoothly to lower sternum, pause at top.", ["Chest-Supported Row", "Seated Cable Row"]),
+      ex("Overhead Barbell Press", "Dumbbell Shoulder Press", "Shoulders", 3, secReps, 90, "Strict lockout overhead without lumbar hyperextension.", ["Arnold Press", "Machine Shoulder Press"]),
+      ex("Lat Pulldown", "Pull-Ups / Band Pulldown", "Lats", 3, "10-12", 75, "Full overhead stretch, pull elbows down cleanly.", ["Pull-Ups", "Straight-Arm Pulldown"]),
+      ex("Tricep Rope Pushdown", "Overhead Dumbbell Tricep Extension", "Triceps", 3, isoReps, 60, "Lock out elbows without shoulder drift.", ["Skull Crushers", "Bench Dips"]),
+    ],
+    cooldown: ["Doorway chest stretch", "Dead hang lat stretch"],
+  };
+
+  const lowerA = {
+    day_number: 2,
+    day_title: "Lower Day 1 — Quad Dominant & Core",
+    focus: "Squat, Quads, Calves & Abs",
+    warmup: ["Leg swings", "Bodyweight squats", "Ankle & hip mobility"],
+    exercises: [
+      ex("Barbell Back Squat", "Goblet / Dumbbell Squat", "Quadriceps & Glutes", mainSets, mainReps, mainRest, "Hit full depth with neutral spine and controlled tempo.", ["Front Squat", "Hack Squat"], isStrength ? "80% 1RM" : "RPE 8"),
+      ex("Romanian Deadlift (RDL)", "Dumbbell RDL", "Hamstrings", 3, "8-10", 90, "Hinge back until hamstrings load, keep bar close to legs.", ["Lying Leg Curl", "Good Mornings"]),
+      ex("Bulgarian Split Squat", "Bulgarian Split Squat", "Quads & Glutes", 3, "10-12 / leg", 90, "Stay balanced over front foot, drive smoothly up.", ["Walking Lunges", "Leg Press"]),
+      ex("Standing Calf Raise", "Single-Leg Calf Raise", "Calves", 4, "12-15", 60, "Full stretch at bottom, 1-second squeeze at top.", ["Seated Calf Raise"]),
+      ex("Hanging Leg Raise", "Weighted Plank / Leg Raise", "Abs & Core", 3, "12-15", 60, "Posterior pelvic tilt at top, slow lowering.", ["Cable Crunch", "Plank Hold"]),
+    ],
+    cooldown: ["Quad stretch", "Hamstring stretch"],
+  };
+
+  const upperB = {
+    day_number: 3,
+    day_title: "Upper Day 2 — Vertical Pull & Hypertrophy Volume",
+    focus: "Upper Chest, Lats, Delts & Arms",
+    warmup: ["Arm circles", "Scapular push-ups", "Light warm-up sets"],
+    exercises: [
+      ex("Incline Dumbbell Press", "Incline Dumbbell / Deficit Push-Up", "Upper Chest", mainSets, secReps, 90, "30-degree angle, pause lightly at bottom stretch.", ["Incline Barbell Press", "Low-to-High Cable Fly"]),
+      ex("Seated Cable Row", "Dumbbell Chest-Supported Row", "Mid-Back & Rhomboids", 4, "8-12", 75, "Retract scapulae fully at each rep.", ["T-Bar Row", "Barbell Row"]),
+      ex("Dumbbell Lateral Raise", "Dumbbell / Band Lateral Raise", "Lateral Delts", 4, isoReps, 60, "Raise slightly in front of torso in scapular plane.", ["Cable Lateral Raise"]),
+      ex("Cable Chest Flye", "Dumbbell Floor Flye", "Chest", 3, isoReps, 60, "Soft elbow bend, squeeze pecs together for 1 second.", ["Pec Deck", "Push-Ups"]),
+      ex("Barbell Bicep Curl", "Incline Dumbbell Curl", "Biceps", 3, "10-12", 60, "Full stretch at bottom, controlled curl without swing.", ["Hammer Curl", "EZ-Bar Curl"]),
+    ],
+    cooldown: ["Chest & bicep wall stretch", "Shoulder cross-body stretch"],
+  };
+
+  const lowerB = {
+    day_number: 4,
+    day_title: "Lower Day 2 — Posterior Chain & Glutes",
+    focus: "Deadlift, Hamstrings & Glutes",
+    warmup: ["Glute bridges", "Hip hinges with dowel/band", "Warm-up pulls"],
+    exercises: [
+      ex("Conventional Deadlift", "Heavy Dumbbell RDL", "Posterior Chain", mainSets, isStrength ? "3-5" : "5-6", mainRest, "Brace hard before pulling slack out of the bar.", ["Sumo Deadlift", "Trap Bar Deadlift"], isStrength ? "82% 1RM" : "RPE 8"),
+      ex("Barbell Hip Thrust", "Dumbbell Hip Thrust / Glute Bridge", "Glutes", 4, "8-12", 90, "Chin tucked, 1-second peak glute contraction at lockout.", ["Bulgarian Split Squat", "Cable Pull-Through"]),
+      ex("Leg Extension", "Reverse Lunge / Sissy Squat", "Quadriceps", 3, isoReps, 60, "Squeeze quads cleanly at full knee extension.", ["Step-Ups", "Goblet Squat"]),
+      ex("Lying Leg Curl", "Slider / Swiss Ball Hamstring Curl", "Hamstrings", 3, isoReps, 60, "Keep hips pressed into pad throughout every rep.", ["Seated Leg Curl", "Nordic Curl"]),
+      ex("Cable Woodchoppers", "Russian Twists / Side Plank", "Obliques & Core", 3, "12 / side", 60, "Rotate through thoracic spine with braced core.", ["Pallof Press", "Hanging Knee Raise"]),
+    ],
+    cooldown: ["Glute pigeon stretch", "Seated hamstring stretch"],
+  };
+
+  const pushA = {
+    day_number: 1,
+    day_title: "Push A — Heavy Chest, Shoulders & Triceps",
+    focus: "Horizontal & Vertical Pressing Strength",
+    warmup: ["Band pull-aparts", "Shoulder external rotations", "Warm-up bench sets"],
+    exercises: [
+      ex("Barbell Bench Press", "Dumbbell Bench / Floor Press", "Chest", mainSets, mainReps, mainRest, "Arch upper back, pause cleanly at chest, drive up.", ["Dumbbell Bench Press", "Machine Chest Press"], isStrength ? "80% 1RM" : "RPE 8"),
+      ex("Overhead Barbell Press", "Seated Dumbbell Overhead Press", "Anterior Delts", mainSets, secReps, 90, "Brace core and glutes, press smoothly overhead.", ["Arnold Press", "Machine Shoulder Press"]),
+      ex("Incline Dumbbell Press", "Feet-Elevated Push-Up / Incline DB", "Upper Chest", 3, "8-12", 90, "3-second controlled lowering for maximal stretch.", ["Incline Barbell Press", "Cable Flye"]),
+      ex("Dumbbell Lateral Raise", "Dumbbell / Band Lateral Raise", "Side Delts", 4, isoReps, 60, "Smooth arc to shoulder height without shrugging.", ["Cable Lateral Raise"]),
+      ex("Tricep Rope Pushdown", "Overhead Dumbbell Tricep Extension", "Triceps", 3, "10-15", 60, "Keep elbows locked by ribs, squeeze hard at bottom.", ["Skull Crushers", "Close-Grip Bench Press"]),
+    ],
+    cooldown: ["Doorway pec stretch", "Overhead tricep stretch"],
+  };
+
+  const pullA = {
+    day_number: 2,
+    day_title: "Pull A — Back Thickness, Width & Biceps",
+    focus: "Lats, Upper Back, Rear Delts & Biceps",
+    warmup: ["Scapular pull-ups / hangs", "Band face pulls", "Thoracic rotations"],
+    exercises: [
+      ex("Weighted Pull-Ups / Lat Pulldown", "Pull-Ups / Resistance Band Pulldown", "Lats", mainSets, secReps, 90, "Initiate pull by depressing shoulder blades.", ["Chin-Ups", "Single-Arm Lat Pulldown"]),
+      ex("Barbell Bent-Over Row", "Single-Arm Dumbbell Row", "Mid Back & Lats", mainSets, mainReps === "3-5" ? "6-8" : secReps, 90, "Keep torso rigid, pull elbows back to hips.", ["Chest-Supported Row", "T-Bar Row"]),
+      ex("Seated Cable Row", "Dumbbell Seal / Prone Row", "Rhomboids & Traps", 3, "10-12", 75, "Pause 1 second with shoulder blades squeezed.", ["Machine Row", "Inverted Row"]),
+      ex("Cable Face Pull", "Rear Delt Dumbbell Flye", "Rear Delts & Rotator Cuff", 4, isoReps, 60, "Pull rope toward forehead with external rotation.", ["Reverse Pec Deck", "Band Pull-Aparts"]),
+      ex("Barbell Bicep Curl", "Dumbbell Bicep Curl", "Biceps", 3, "10-12", 60, "Supinate wrist at top, lower under full control.", ["Incline Dumbbell Curl", "Hammer Curl"]),
+    ],
+    cooldown: ["Lat wall stretch", "Bicep forearm stretch"],
+  };
+
+  const legsA = {
+    day_number: 3,
+    day_title: "Legs A — Quad-Dominant Squat & Calves",
+    focus: "Squat Strength, Quads & Core",
+    warmup: ["5 min bike/walk", "Hip 90/90 drills", "Bodyweight squats"],
+    exercises: [
+      ex("Barbell Back Squat", "Goblet / Dumbbell Front Squat", "Quadriceps & Glutes", mainSets, mainReps, mainRest, "Consistent depth, controlled eccentric, powerful drive.", ["Hack Squat", "Leg Press"], isStrength ? "80% 1RM" : "RPE 8"),
+      ex("Romanian Deadlift (RDL)", "Dumbbell RDL", "Hamstrings & Glutes", 3, "8-10", 90, "Push hips back, maintain flat lumbar spine.", ["Lying Leg Curl", "Good Mornings"]),
+      ex("Bulgarian Split Squat", "Bulgarian Split Squat", "Quads & Glutes", 3, "10-12 / leg", 90, "Controlled descent, drive cleanly through front heel.", ["Walking Lunges", "Leg Press"]),
+      ex("Leg Extension", "Sissy Squat / Wall Sit", "Quadriceps", 3, isoReps, 60, "Pause at top contraction for 1 second.", ["Step-Ups"]),
+      ex("Standing Calf Raise", "Single-Leg Calf Raise", "Calves", 4, "12-15", 60, "Deep stretch at bottom, full plantar flexion at top.", ["Seated Calf Raise"]),
+    ],
+    cooldown: ["Quad stretch", "Calf wall stretch"],
+  };
+
+  const pushB = {
+    day_number: 4,
+    day_title: "Push B — Incline Hypertrophy, Delts & Triceps",
+    focus: "Upper Chest, Side Delts & Arm Lockout",
+    warmup: ["Shoulder circles", "Band dislocates", "2 light incline sets"],
+    exercises: [
+      ex("Incline Barbell / Dumbbell Press", "Incline Dumbbell / Pike Push-Up", "Upper Chest", mainSets, secReps, 90, "Control bar to upper chest, drive explosively.", ["Machine Incline Press", "Paused Bench Press"]),
+      ex("Dumbbell Flat Bench Press", "Deficit Push-Up / DB Floor Press", "Chest", 3, "8-12", 90, "Deep stretch at bottom without shoulder roll.", ["Cable Chest Press", "Dips"]),
+      ex("Cable Lateral Raise", "Dumbbell Lateral Raise", "Side Delts", 4, isoReps, 60, "Constant tension throughout the entire range.", ["Machine Lateral Raise"]),
+      ex("Cable Chest Flye / Pec Deck", "Dumbbell Chest Flye", "Chest Isolation", 3, isoReps, 60, "Controlled stretch and 1-second peak squeeze.", ["Resistance Band Flye"]),
+      ex("EZ-Bar Skull Crushers", "Overhead Dumbbell Tricep Extension", "Triceps Long Head", 3, "10-12", 60, "Lower behind head for full long-head stretch.", ["Cable Overhead Extension", "Close-Grip Push-Up"]),
+    ],
+    cooldown: ["Pec wall stretch", "Shoulder capsule stretch"],
+  };
+
+  const pullB = {
+    day_number: 5,
+    day_title: "Pull B — Deadlift / Hinge, Lats & Arms",
+    focus: "Posterior Chain, Lat Width & Biceps",
+    warmup: ["Glute bridges", "Cat-cow mobility", "Light warm-up hinge sets"],
+    exercises: [
+      ex("Conventional / Romanian Deadlift", "Heavy Dumbbell RDL", "Posterior Chain & Back", mainSets, isStrength ? "3-5" : "6-8", mainRest, "Tight lats, neutral spine, wedge hips cleanly.", ["Trap Bar Deadlift", "Rack Pull"], isStrength ? "82% 1RM" : "RPE 8"),
+      ex("Neutral-Grip Lat Pulldown", "Chin-Ups / Band Pulldown", "Lats", 4, "8-12", 75, "Drive elbows straight down toward hips.", ["Wide-Grip Pulldown", "Pull-Ups"]),
+      ex("Chest-Supported Row", "Incline Dumbbell Row", "Upper Back", 3, "10-12", 75, "Eliminate momentum, squeeze mid-traps hard.", ["Meadows Row", "Seated Cable Row"]),
+      ex("Reverse Pec Deck / Rear Delt Flye", "Bent-Over Dumbbell Rear Delt Flye", "Rear Delts", 3, isoReps, 60, "Sweep arms wide without shrugging traps.", ["Cable Face Pull"]),
+      ex("Dumbbell Hammer Curl", "Dumbbell Hammer Curl", "Brachialis & Forearms", 3, "10-12", 60, "Neutral grip, strict elbow position.", ["Preacher Curl", "Cable Curl"]),
+    ],
+    cooldown: ["Lower back child's pose", "Lat hang stretch"],
+  };
+
+  const legsB = {
+    day_number: 6,
+    day_title: "Legs B — Posterior Chain, Glutes & Core",
+    focus: "Hamstrings, Glutes, Quads & Abs",
+    warmup: ["5 min warm-up", "Hip openers", "Banded lateral walks"],
+    exercises: [
+      ex("Leg Press / Front Squat", "Dumbbell Sumo Squat", "Quads & Glutes", mainSets, secReps, 120, "Full knee flexion without lower back rounding.", ["Hack Squat", "Goblet Squat"]),
+      ex("Barbell Hip Thrust", "Dumbbell Hip Thrust", "Glutes", 4, "8-12", 90, "Full hip lockout with 1-second squeeze.", ["Bulgarian Split Squat", "Glute Bridge"]),
+      ex("Seated / Lying Leg Curl", "Hamstring Slider Curl", "Hamstrings", 4, "10-15", 60, "Slow 3-second eccentric on every rep.", ["Dumbbell RDL"]),
+      ex("Walking Dumbbell Lunges", "Reverse Dumbbell Lunges", "Quads & Glutes", 3, "10-12 / leg", 75, "Keep torso tall and knee tracking over toes.", ["Step-Ups", "Split Squats"]),
+      ex("Hanging Leg Raise / Cable Crunch", "Weighted Plank / Dead Bug", "Abs & Core", 3, "12-15", 60, "Flex spine cleanly with exhaled ribs.", ["Ab Wheel", "Pallof Press"]),
+    ],
+    cooldown: ["Pigeon stretch", "Hamstring stretch", "Hip flexor stretch"],
+  };
+
+  const activeRecoveryDay7 = {
+    day_number: 7,
+    day_title: "Day 7 — Active Recovery, Core & Conditioning",
+    focus: "Mobility, Aerobic Base & Core Stability",
+    warmup: ["5 min easy zone-2 walk or bike", "Full-body joint circles"],
+    exercises: [
+      ex("Zone 2 Incline Treadmill / Bike", "Brisk Outdoor Walk / Jump Rope", "Cardiovascular Base", 1, "25-30 mins", 60, "Conversational pace (60–70% max HR) to aid recovery.", ["Rowing Ergometer", "Elliptical"]),
+      ex("Pallof Press (Anti-Rotation)", "Band Pallof Press / Side Plank", "Core Stability", 3, "12 / side", 45, "Resist rotational pull with braced midsection.", ["Dead Bug"]),
+      ex("Face Pulls & External Rotations", "Band Pull-Aparts & Rotations", "Shoulder Health", 3, "15-20", 45, "Light restorative load for scapular control.", ["Wall Slides"]),
+      ex("Thoracic & Hip Mobility Circuit", "90/90 Hip & Thoracic Mobility Flow", "Joint Mobility", 3, "8-10 / side", 45, "Slow controlled end-range breathing.", ["World's Greatest Stretch"]),
+    ],
+    cooldown: ["Deep nasal breathing (3 mins)", "Full-body static stretch"],
+  };
+
+  if (days === 1) {
     return {
-      split_name: "3-Day Full Body Power & Hypertrophy",
+      split_name: `1-Day Full Body ${styleLabel} Plan`,
       split_type: "Full Body",
-      rationale:
-        "Full-body splits maximize muscle protein synthesis frequency by stimulating every major muscle group 3 times weekly, optimal for a 3-day training schedule.",
-      weekly_schedule: [
-        {
-          day_number: 1,
-          day_title: "Full Body A (Chest, Quads, Back Focus)",
-          focus: "Squat & Horizontal Push/Pull",
-          warmup: ["5 min treadmill incline walk", "Leg swings", "Shoulder dislocates"],
-          exercises: [
-            {
-              exercise_name: "Barbell Back Squat",
-              target_muscle: "Quadriceps & Glutes",
-              sets: 4,
-              reps: "6-8",
-              rest_seconds: 120,
-              recommended_weight_kg: "75% 1RM",
-              notes: "Maintain neutral spine, push knees out over toes.",
-              alternatives: ["Goblet Squat", "Leg Press"],
-            },
-            {
-              exercise_name: "Barbell Bench Press",
-              target_muscle: "Chest",
-              sets: 4,
-              reps: "6-8",
-              rest_seconds: 120,
-              recommended_weight_kg: "75% 1RM",
-              notes: "Pause 1 sec at sternum, drive heels into floor.",
-              alternatives: ["Dumbbell Bench Press", "Push-ups"],
-            },
-            {
-              exercise_name: "Barbell Bent-Over Row",
-              target_muscle: "Lats & Rhomboids",
-              sets: 3,
-              reps: "8-10",
-              rest_seconds: 90,
-              recommended_weight_kg: "65-70% 1RM",
-              notes: "Hinge at hips, pull through elbows.",
-              alternatives: ["Seated Cable Row", "Dumbbell Row"],
-            },
-            {
-              exercise_name: "Standing Calf Raise",
-              target_muscle: "Calves",
-              sets: 3,
-              reps: "15",
-              rest_seconds: 60,
-              notes: "Full stretch at bottom, squeeze at peak.",
-              alternatives: ["Seated Calf Raise"],
-            },
-          ],
-          cooldown: ["Pigeon stretch", "Cobra stretch", "Doorway chest stretch"],
-        },
-        {
-          day_number: 2,
-          day_title: "Full Body B (Hips, Vertical Push/Pull)",
-          focus: "Deadlift & Vertical Push/Pull",
-          warmup: ["World's greatest stretch", "Band pull-aparts", "Glute bridges"],
-          exercises: [
-            {
-              exercise_name: "Romanian Deadlift (RDL)",
-              target_muscle: "Hamstrings & Glutes",
-              sets: 3,
-              reps: "8-10",
-              rest_seconds: 120,
-              notes: "Soft knees, push hips backward to wall.",
-              alternatives: ["Lying Leg Curl", "Dumbbell RDL"],
-            },
-            {
-              exercise_name: "Overhead Barbell Press",
-              target_muscle: "Shoulders",
-              sets: 4,
-              reps: "6-8",
-              rest_seconds: 90,
-              notes: "Brace glutes and abs, lock out directly overhead.",
-              alternatives: ["Dumbbell Shoulder Press"],
-            },
-            {
-              exercise_name: "Lat Pulldown",
-              target_muscle: "Lats",
-              sets: 3,
-              reps: "10-12",
-              rest_seconds: 75,
-              notes: "Drive elbows down to waist.",
-              alternatives: ["Pull-ups", "Assisted Pull-ups"],
-            },
-            {
-              exercise_name: "Plank Hold",
-              target_muscle: "Abs & Core",
-              sets: 3,
-              reps: "45-60 sec",
-              rest_seconds: 60,
-              notes: "Squeeze glutes and brace core.",
-              alternatives: ["Hanging Leg Raise"],
-            },
-          ],
-          cooldown: ["Hamstring stretch", "Child's pose", "Lats foam rolling"],
-        },
-        {
-          day_number: 3,
-          day_title: "Full Body C (Hypertrophy & Pump)",
-          focus: "Volume & Accessories",
-          warmup: ["Light stationary bike 5 mins", "Dynamic lunges"],
-          exercises: [
-            {
-              exercise_name: "Incline Dumbbell Press",
-              target_muscle: "Upper Chest",
-              sets: 3,
-              reps: "10-12",
-              rest_seconds: 75,
-              notes: "30-degree incline, 3 second lowering tempo.",
-              alternatives: ["Incline Barbell Press"],
-            },
-            {
-              exercise_name: "Bulgarian Split Squat",
-              target_muscle: "Quads & Glutes",
-              sets: 3,
-              reps: "10-12 / leg",
-              rest_seconds: 90,
-              notes: "Front foot planted firmly, descend vertically.",
-              alternatives: ["Walking Lunges"],
-            },
-            {
-              exercise_name: "Dumbbell Lateral Raise",
-              target_muscle: "Side Delts",
-              sets: 4,
-              reps: "12-15",
-              rest_seconds: 60,
-              notes: "Lead with elbows, pause 1s at top.",
-              alternatives: ["Cable Lateral Raise"],
-            },
-            {
-              exercise_name: "Barbell Bicep Curl",
-              target_muscle: "Biceps",
-              sets: 3,
-              reps: "10-12",
-              rest_seconds: 60,
-              notes: "Keep elbows fixed at sides.",
-              alternatives: ["Dumbbell Hammer Curl"],
-            },
-            {
-              exercise_name: "Tricep Rope Pushdown",
-              target_muscle: "Triceps",
-              sets: 3,
-              reps: "12-15",
-              rest_seconds: 60,
-              notes: "Flare rope at bottom contraction.",
-              alternatives: ["Dips"],
-            },
-          ],
-          cooldown: ["Upper body stretches", "Quad stretch"],
-        },
-      ],
-      progressive_overload_rules: [
-        "Increase load by 2.5kg whenever you hit the maximum prescribed reps on all working sets with clean form.",
-        "If you fall 2 reps short of the target, keep the same load for the next session and focus on rep recovery.",
-      ],
+      rationale: `Engineered for a 1-day/week schedule targeting ${goalLabel} (${exp} level). Prioritizes multi-joint compound patterns to stimulate every major muscle group in one high-efficiency session.`,
+      weekly_schedule: [{ ...fullBodyA, day_number: 1 }],
+      progressive_overload_rules: overloadRules,
     };
   }
 
-  // 4-6 Days: Upper / Lower or Push Pull Legs
+  if (days === 2) {
+    return {
+      split_name: `2-Day Full Body ${styleLabel} Split`,
+      split_type: "Full Body",
+      rationale: `Designed for 2 training days/week targeting ${goalLabel} (${exp} level). Splitting full-body work into A/B sessions hits all major muscle groups twice weekly while allowing ample recovery between days.`,
+      weekly_schedule: [
+        { ...fullBodyA, day_number: 1 },
+        { ...fullBodyB, day_number: 2 },
+      ],
+      progressive_overload_rules: overloadRules,
+    };
+  }
+
+  if (days === 3) {
+    return {
+      split_name: `3-Day Full Body ${styleLabel} Split`,
+      split_type: "Full Body",
+      rationale: `Tailored to your 3-day/week schedule for ${goalLabel} (${exp} level). Full-body A/B/C training maximizes muscle protein synthesis frequency (3×/week) while leaving 4 recovery days.`,
+      weekly_schedule: [
+        { ...fullBodyA, day_number: 1 },
+        { ...fullBodyB, day_number: 2 },
+        { ...fullBodyC, day_number: 3 },
+      ],
+      progressive_overload_rules: overloadRules,
+    };
+  }
+
+  if (days === 4) {
+    return {
+      split_name: `4-Day Upper / Lower ${styleLabel} Split`,
+      split_type: "Upper / Lower",
+      rationale: `Built for your 4-day/week schedule targeting ${goalLabel} (${exp} level). Upper/Lower hits every muscle group twice weekly with optimal balance between strength compounds and hypertrophy accessories.`,
+      weekly_schedule: [
+        { ...upperA, day_number: 1 },
+        { ...lowerA, day_number: 2 },
+        { ...upperB, day_number: 3 },
+        { ...lowerB, day_number: 4 },
+      ],
+      progressive_overload_rules: overloadRules,
+    };
+  }
+
+  if (days === 5) {
+    return {
+      split_name: `5-Day Upper / Lower + PPL ${styleLabel} Split`,
+      split_type: "Upper/Lower + PPL",
+      rationale: `Built specifically for your 5-day/week schedule targeting ${goalLabel} (${exp} level). Combines heavy Upper/Lower sessions early in the week with dedicated Push, Pull, and Legs hypertrophy sessions for 2× weekly frequency without excessive session length.`,
+      weekly_schedule: [
+        { ...upperA, day_number: 1 },
+        { ...lowerA, day_number: 2 },
+        { ...pushB, day_number: 3, day_title: "Day 3: Push — Chest, Shoulders & Triceps" },
+        { ...pullB, day_number: 4, day_title: "Day 4: Pull — Posterior Chain, Back & Biceps" },
+        { ...legsB, day_number: 5, day_title: "Day 5: Legs — Glutes, Hamstrings & Core" },
+      ],
+      progressive_overload_rules: overloadRules,
+    };
+  }
+
+  if (days === 6) {
+    return {
+      split_name: `6-Day Push / Pull / Legs ${styleLabel} Split`,
+      split_type: "Push Pull Legs",
+      rationale: `Engineered specifically for your 6-day/week schedule targeting ${goalLabel} (${exp} level). High-frequency Push/Pull/Legs (2×/week) separates pushing, pulling, and lower-body fatigue across 6 focused days for maximal weekly volume and progression.`,
+      weekly_schedule: [
+        { ...pushA, day_number: 1 },
+        { ...pullA, day_number: 2 },
+        { ...legsA, day_number: 3 },
+        { ...pushB, day_number: 4 },
+        { ...pullB, day_number: 5 },
+        { ...legsB, day_number: 6 },
+      ],
+      progressive_overload_rules: overloadRules,
+    };
+  }
+
+  // 7 Days / Week: 6-Day PPL + Day 7 Active Recovery & Conditioning
   return {
-    split_name: "4-Day Upper / Lower Hypertrophy Split",
-    split_type: "Upper / Lower",
-    rationale:
-      "The 4-Day Upper/Lower split provides the premier balance between progressive overload frequency (each muscle group hit 2x/week) and systemic recovery (3 full rest days).",
+    split_name: `7-Day PPL + Active Recovery ${styleLabel} System`,
+    split_type: "Push Pull Legs",
+    rationale: `Built for your 7-day/week schedule targeting ${goalLabel} (${exp} level). Pairs 6 structured Push/Pull/Legs resistance sessions with a dedicated Day 7 aerobic recovery, mobility, and core session to prevent overtraining.`,
     weekly_schedule: [
-      {
-        day_number: 1,
-        day_title: "Upper Day 1: Heavy Push & Pull",
-        focus: "Chest, Back, Shoulders Power",
-        warmup: ["Band pull-aparts", "Shoulder circles", "Warm-up bench sets"],
-        exercises: [
-          {
-            exercise_name: "Barbell Bench Press",
-            target_muscle: "Chest",
-            sets: 4,
-            reps: "6-8",
-            rest_seconds: 120,
-            recommended_weight_kg: "75-80% 1RM",
-            notes: "Keep shoulder blades pinned to bench.",
-            alternatives: ["Dumbbell Bench Press"],
-          },
-          {
-            exercise_name: "Barbell Bent-Over Row",
-            target_muscle: "Lats & Upper Back",
-            sets: 4,
-            reps: "6-8",
-            rest_seconds: 90,
-            recommended_weight_kg: "70% 1RM",
-            notes: "Hinge at 45 degrees, pull through elbows.",
-            alternatives: ["Single-Arm Dumbbell Row"],
-          },
-          {
-            exercise_name: "Overhead Barbell Press",
-            target_muscle: "Shoulders",
-            sets: 3,
-            reps: "8-10",
-            rest_seconds: 90,
-            notes: "Strict form, no leg drive.",
-            alternatives: ["Dumbbell Arnold Press"],
-          },
-          {
-            exercise_name: "Lat Pulldown",
-            target_muscle: "Lats",
-            sets: 3,
-            reps: "10-12",
-            rest_seconds: 75,
-            notes: "Control the eccentric return.",
-            alternatives: ["Pull-ups"],
-          },
-          {
-            exercise_name: "Tricep Rope Pushdown",
-            target_muscle: "Triceps",
-            sets: 3,
-            reps: "12-15",
-            rest_seconds: 60,
-            notes: "Lock out elbows at bottom.",
-            alternatives: ["Skull Crushers"],
-          },
-        ],
-        cooldown: ["Doorway chest stretch", "Lats hang"],
-      },
-      {
-        day_number: 2,
-        day_title: "Lower Day 1: Quad Dominant & Core",
-        focus: "Squat, Quads, Calves & Abs",
-        warmup: ["Leg swings", "Bodyweight squats", "Hip openers"],
-        exercises: [
-          {
-            exercise_name: "Barbell Back Squat",
-            target_muscle: "Quadriceps",
-            sets: 4,
-            reps: "6-8",
-            rest_seconds: 150,
-            recommended_weight_kg: "75-80% 1RM",
-            notes: "Hit parallel depth, push through whole foot.",
-            alternatives: ["Goblet Squat", "Leg Press"],
-          },
-          {
-            exercise_name: "Romanian Deadlift (RDL)",
-            target_muscle: "Hamstrings",
-            sets: 3,
-            reps: "8-10",
-            rest_seconds: 90,
-            notes: "Feel the hamstring stretch at bottom.",
-            alternatives: ["Lying Leg Curl"],
-          },
-          {
-            exercise_name: "Bulgarian Split Squat",
-            target_muscle: "Quadriceps & Glutes",
-            sets: 3,
-            reps: "10-12",
-            rest_seconds: 90,
-            notes: "Torso slightly leaned forward.",
-            alternatives: ["Walking Lunges"],
-          },
-          {
-            exercise_name: "Standing Calf Raise",
-            target_muscle: "Calves",
-            sets: 4,
-            reps: "15",
-            rest_seconds: 60,
-            notes: "2 second pause at the bottom stretch.",
-            alternatives: ["Seated Calf Raise"],
-          },
-          {
-            exercise_name: "Hanging Leg Raise",
-            target_muscle: "Abs",
-            sets: 3,
-            reps: "12-15",
-            rest_seconds: 60,
-            notes: "Avoid swinging, curl pelvis upward.",
-            alternatives: ["Plank Hold"],
-          },
-        ],
-        cooldown: ["Hamstring stretch", "Quad foam rolling"],
-      },
-      {
-        day_number: 3,
-        day_title: "Upper Day 2: Hypertrophy & Volume",
-        focus: "Chest, Back & Arm Hypertrophy",
-        warmup: ["Arm circles", "Push-ups 10 reps"],
-        exercises: [
-          {
-            exercise_name: "Incline Dumbbell Press",
-            target_muscle: "Upper Chest",
-            sets: 4,
-            reps: "8-12",
-            rest_seconds: 90,
-            notes: "Controlled 3-second descent.",
-            alternatives: ["Incline Barbell Press"],
-          },
-          {
-            exercise_name: "Seated Cable Row",
-            target_muscle: "Rhomboids & Lats",
-            sets: 3,
-            reps: "10-12",
-            rest_seconds: 75,
-            notes: "Squeeze shoulder blades together.",
-            alternatives: ["Chest-Supported Row"],
-          },
-          {
-            exercise_name: "Dumbbell Lateral Raise",
-            target_muscle: "Lateral Deltoids",
-            sets: 4,
-            reps: "12-15",
-            rest_seconds: 60,
-            notes: "Lead with elbows.",
-            alternatives: ["Cable Lateral Raise"],
-          },
-          {
-            exercise_name: "Cable Chest Flye",
-            target_muscle: "Chest",
-            sets: 3,
-            reps: "12-15",
-            rest_seconds: 60,
-            notes: "Hug an imaginary tree, 1s peak squeeze.",
-            alternatives: ["Pec Deck"],
-          },
-          {
-            exercise_name: "Barbell Bicep Curl",
-            target_muscle: "Biceps",
-            sets: 3,
-            reps: "10-12",
-            rest_seconds: 60,
-            notes: "No hip swing.",
-            alternatives: ["Incline Dumbbell Curl"],
-          },
-        ],
-        cooldown: ["Chest & Bicep wall stretch"],
-      },
-      {
-        day_number: 4,
-        day_title: "Lower Day 2: Posterior Chain & Hamstrings",
-        focus: "Deadlift & Glute Focus",
-        warmup: ["Glute bridges", "Good mornings with band"],
-        exercises: [
-          {
-            exercise_name: "Conventional Deadlift",
-            target_muscle: "Posterior Chain",
-            sets: 4,
-            reps: "5",
-            rest_seconds: 180,
-            recommended_weight_kg: "80% 1RM",
-            notes: "Tight lats, drive floor away.",
-            alternatives: ["Trap Bar Deadlift"],
-          },
-          {
-            exercise_name: "Barbell Hip Thrust",
-            target_muscle: "Glutes",
-            sets: 4,
-            reps: "10-12",
-            rest_seconds: 90,
-            notes: "Full lockout at top, 2s pause.",
-            alternatives: ["Dumbbell Hip Thrust"],
-          },
-          {
-            exercise_name: "Leg Extension",
-            target_muscle: "Quads",
-            sets: 3,
-            reps: "12-15",
-            rest_seconds: 60,
-            notes: "Squeeze quads hard at the top.",
-            alternatives: ["Sissy Squats"],
-          },
-          {
-            exercise_name: "Lying Leg Curl",
-            target_muscle: "Hamstrings",
-            sets: 3,
-            reps: "12-15",
-            rest_seconds: 60,
-            notes: "Don't let hips rise off pad.",
-            alternatives: ["Seated Leg Curl"],
-          },
-          {
-            exercise_name: "Cable Woodchoppers",
-            target_muscle: "Obliques",
-            sets: 3,
-            reps: "12 / side",
-            rest_seconds: 60,
-            notes: "Controlled rotational power.",
-            alternatives: ["Russian Twists"],
-          },
-        ],
-        cooldown: ["Glute pigeon stretch", "Hamstring towel stretch"],
-      },
+      { ...pushA, day_number: 1 },
+      { ...pullA, day_number: 2 },
+      { ...legsA, day_number: 3 },
+      { ...pushB, day_number: 4 },
+      { ...pullB, day_number: 5 },
+      { ...legsB, day_number: 6 },
+      { ...activeRecoveryDay7, day_number: 7 },
     ],
-    progressive_overload_rules: [
-      "Add +2.5kg to upper body compounds and +5kg to lower body compounds once you hit the top rep ceiling on all working sets.",
-      "Track RPE: If RPE is 9-10 on set 1, keep the weight static until all sets stay <= RPE 8.",
-    ],
+    progressive_overload_rules: overloadRules,
   };
 }

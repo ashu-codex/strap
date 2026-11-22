@@ -16,6 +16,7 @@ import {
   Activity,
 } from 'lucide-react';
 import HeightInput from '@/components/ui/HeightInput';
+import NumericInput from '@/components/ui/NumericInput';
 import { HeightUnit } from '@/lib/height';
 
 export default function OnboardingPage() {
@@ -248,12 +249,13 @@ export default function OnboardingPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Age</label>
-                <input
-                  type="number"
+                <NumericInput
                   min={12}
                   max={90}
+                  allowDecimal={false}
+                  defaultOnBlur={26}
                   value={formData.age}
-                  onChange={(e) => setFormData({ ...formData, age: Number(e.target.value) })}
+                  onValueChange={(v) => setFormData({ ...formData, age: v ?? ('' as any) })}
                   className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 />
               </div>
@@ -290,33 +292,36 @@ export default function OnboardingPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Current Weight (kg)</label>
-                <input
-                  type="number"
-                  step="0.1"
+                <NumericInput
+                  min={20}
+                  max={500}
+                  allowDecimal
                   value={formData.current_weight_kg}
-                  onChange={(e) => setFormData({ ...formData, current_weight_kg: Number(e.target.value) })}
+                  onValueChange={(v) => setFormData({ ...formData, current_weight_kg: v ?? ('' as any) })}
                   className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Target Weight (kg)</label>
-                <input
-                  type="number"
-                  step="0.1"
+                <NumericInput
+                  min={20}
+                  max={500}
+                  allowDecimal
                   value={formData.target_weight_kg}
-                  onChange={(e) => setFormData({ ...formData, target_weight_kg: Number(e.target.value) })}
+                  onValueChange={(v) => setFormData({ ...formData, target_weight_kg: v ?? ('' as any) })}
                   className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Body Fat % (optional)</label>
-                <input
-                  type="number"
-                  step="0.5"
+                <NumericInput
+                  min={2}
+                  max={70}
+                  allowDecimal
                   value={formData.body_fat_pct}
-                  onChange={(e) => setFormData({ ...formData, body_fat_pct: Number(e.target.value) })}
+                  onValueChange={(v) => setFormData({ ...formData, body_fat_pct: v ?? ('' as any) })}
                   className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 />
               </div>
@@ -330,37 +335,45 @@ export default function OnboardingPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="text-[10px] text-zinc-400">Chest</label>
-                  <input
-                    type="number"
+                  <NumericInput
+                    min={30}
+                    max={250}
+                    allowDecimal
                     value={formData.chest_cm}
-                    onChange={(e) => setFormData({ ...formData, chest_cm: Number(e.target.value) })}
+                    onValueChange={(v) => setFormData({ ...formData, chest_cm: v ?? ('' as any) })}
                     className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-2 text-xs text-white"
                   />
                 </div>
                 <div>
                   <label className="text-[10px] text-zinc-400">Waist</label>
-                  <input
-                    type="number"
+                  <NumericInput
+                    min={30}
+                    max={250}
+                    allowDecimal
                     value={formData.waist_cm}
-                    onChange={(e) => setFormData({ ...formData, waist_cm: Number(e.target.value) })}
+                    onValueChange={(v) => setFormData({ ...formData, waist_cm: v ?? ('' as any) })}
                     className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-2 text-xs text-white"
                   />
                 </div>
                 <div>
                   <label className="text-[10px] text-zinc-400">Hips</label>
-                  <input
-                    type="number"
+                  <NumericInput
+                    min={30}
+                    max={250}
+                    allowDecimal
                     value={formData.hips_cm}
-                    onChange={(e) => setFormData({ ...formData, hips_cm: Number(e.target.value) })}
+                    onValueChange={(v) => setFormData({ ...formData, hips_cm: v ?? ('' as any) })}
                     className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-2 text-xs text-white"
                   />
                 </div>
                 <div>
                   <label className="text-[10px] text-zinc-400">Arms</label>
-                  <input
-                    type="number"
+                  <NumericInput
+                    min={10}
+                    max={100}
+                    allowDecimal
                     value={formData.arms_cm}
-                    onChange={(e) => setFormData({ ...formData, arms_cm: Number(e.target.value) })}
+                    onValueChange={(v) => setFormData({ ...formData, arms_cm: v ?? ('' as any) })}
                     className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-2 text-xs text-white"
                   />
                 </div>
@@ -664,11 +677,13 @@ export default function OnboardingPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Average Daily Steps</label>
-                <input
-                  type="number"
-                  step={500}
+                <NumericInput
+                  min={0}
+                  max={100000}
+                  allowDecimal={false}
+                  defaultOnBlur={6000}
                   value={formData.daily_steps_avg}
-                  onChange={(e) => setFormData({ ...formData, daily_steps_avg: Number(e.target.value) })}
+                  onValueChange={(v) => setFormData({ ...formData, daily_steps_avg: v ?? ('' as any) })}
                   className="w-full rounded-xl border border-zinc-800 bg-zinc-950 p-2.5 text-xs text-white focus:border-brand focus:outline-none"
                 />
               </div>

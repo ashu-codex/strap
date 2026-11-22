@@ -17,11 +17,25 @@ export async function GET(req: NextRequest) {
     const prefs = prefRow?.preferences || {};
     const trainingStyle = prefs.training_style || null;
     const customTemplates = Array.isArray(prefs.workout_templates) ? prefs.workout_templates : [];
-    const actual1RMs = prefs.actual_1rms || {
-      squat: metricsRow?.strength_levels?.squat_kg || 120,
-      bench: metricsRow?.strength_levels?.bench_press_kg || 85,
-      deadlift: metricsRow?.strength_levels?.deadlift_kg || 150,
-    };
+
+    // Real user 1RMs only — never invent fake 120/85/150 defaults
+    const stored1RMs = prefs.actual_1rms;
+    const metricsStrength = metricsRow?.strength_levels;
+    const actual1RMs =
+      stored1RMs && (stored1RMs.squat || stored1RMs.bench || stored1RMs.deadlift)
+        ? {
+            squat: Number(stored1RMs.squat) || null,
+            bench: Number(stored1RMs.bench) || null,
+            deadlift: Number(stored1RMs.deadlift) || null,
+          }
+        : metricsStrength &&
+          (metricsStrength.squat_kg || metricsStrength.bench_press_kg || metricsStrength.deadlift_kg)
+        ? {
+            squat: Number(metricsStrength.squat_kg) || null,
+            bench: Number(metricsStrength.bench_press_kg) || null,
+            deadlift: Number(metricsStrength.deadlift_kg) || null,
+          }
+        : null;
 
     return json({
       workouts,
@@ -29,7 +43,7 @@ export async function GET(req: NextRequest) {
       isPremium,
       trainingStyle,
       hasSelectedTrainingStyle: Boolean(prefs.training_style),
-      experienceLevel: metricsRow?.experience_level || 'intermediate',
+      experienceLevel: metricsRow?.experience_level || null,
       customTemplates,
       actual1RMs,
     });
@@ -57,9 +71,9 @@ const putSchema = z.object({
   template_id: z.string().optional(),
   actual_1rms: z
     .object({
-      squat: z.coerce.number().min(20).max(600),
-      bench: z.coerce.number().min(15).max(500),
-      deadlift: z.coerce.number().min(20).max(600),
+      squat: z.preprocess((v) => (v === '' || v == null ? null : v), z.coerce.number().min(0).max(600).nullable()),
+      bench: z.preprocess((v) => (v === '' || v == null ? null : v), z.coerce.number().min(0).max(500).nullable()),
+      deadlift: z.preprocess((v) => (v === '' || v == null ? null : v), z.coerce.number().min(0).max(600).nullable()),
     })
     .optional(),
   workout_id: z.string().optional(),

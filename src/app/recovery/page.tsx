@@ -14,6 +14,7 @@ import {
   BatteryCharging,
 } from 'lucide-react';
 import PremiumModal from '@/components/PremiumModal';
+import NumericInput from '@/components/ui/NumericInput';
 
 export default function RecoveryPage() {
   const [loading, setLoading] = useState(true);
@@ -124,12 +125,10 @@ export default function RecoveryPage() {
     );
   }
 
-  const latestRec = recoveryLogs[0] || {
-    recovery_score_pct: 82,
-    readiness_status: 'ready',
-    fatigue_level: 2,
-    muscle_soreness_score: 2,
-  };
+  const latestRec =
+    recoveryLogs.length > 0 && Number.isFinite(Number(recoveryLogs[0]?.recovery_score_pct))
+      ? recoveryLogs[0]
+      : null;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -171,20 +170,33 @@ export default function RecoveryPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="rounded-2xl border border-card-border bg-card p-6 flex flex-col justify-between shadow-glow">
           <div>
-            <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Today's Readiness Score</span>
-            <div className="text-4xl font-black text-white mt-1 flex items-baseline gap-2">
-              {latestRec.recovery_score_pct}%
-              <span className={`text-xs uppercase font-bold px-2 py-0.5 rounded-full border ${getStatusColor(latestRec.readiness_status)}`}>
-                {latestRec.readiness_status?.replace('_', ' ')}
-              </span>
-            </div>
-            <p className="text-xs text-zinc-300 mt-2 leading-relaxed">
-              {latestRec.readiness_status === 'ready'
-                ? 'Your central nervous system has replenished substrate reserves. You are cleared for maximal progressive overload and PR attempts.'
-                : latestRec.readiness_status === 'recovering'
-                ? 'Moderate muscular fatigue detected. Adhere strictly to prescribed RPE 7-8 and maintain adequate intra-set rest.'
-                : 'Elevated systemic fatigue. A light active recovery session or complete rest day is strongly advised.'}
-            </p>
+            <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Today&apos;s Readiness Score</span>
+            {latestRec ? (
+              <>
+                <div className="text-4xl font-black text-white mt-1 flex flex-wrap items-baseline gap-2">
+                  {latestRec.recovery_score_pct}%
+                  <span className={`text-xs uppercase font-bold px-2 py-0.5 rounded-full border ${getStatusColor(latestRec.readiness_status)}`}>
+                    {latestRec.readiness_status?.replace('_', ' ')}
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-300 mt-2 leading-relaxed">
+                  {latestRec.readiness_status === 'ready'
+                    ? 'Your central nervous system has replenished substrate reserves. You are cleared for maximal progressive overload and PR attempts.'
+                    : latestRec.readiness_status === 'recovering'
+                    ? 'Moderate muscular fatigue detected. Adhere strictly to prescribed RPE 7-8 and maintain adequate intra-set rest.'
+                    : 'Elevated systemic fatigue. A light active recovery session or complete rest day is strongly advised.'}
+                </p>
+              </>
+            ) : (
+              <div className="mt-3 space-y-2">
+                <p className="text-sm font-bold text-zinc-200">
+                  Not enough data to calculate readiness.
+                </p>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Log your sleep duration, quality, fatigue, and soreness using the form to generate your real readiness score.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -198,15 +210,29 @@ export default function RecoveryPage() {
           <form onSubmit={handleLogRecovery} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11px] font-semibold text-zinc-300 mb-1">
-                  Sleep Duration: {sleepHours} Hours
-                </label>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <label className="block text-[11px] font-semibold text-zinc-300">
+                    Sleep Duration (Hours)
+                  </label>
+                  <NumericInput
+                    min={0}
+                    max={24}
+                    allowDecimal
+                    defaultOnBlur={7.5}
+                    value={sleepHours}
+                    onValueChange={(v) => {
+                      if (v !== null) setSleepHours(v);
+                    }}
+                    aria-label="Sleep duration in hours"
+                    className="w-16 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1 text-right text-xs font-bold text-white focus:border-brand focus:outline-none"
+                  />
+                </div>
                 <input
                   type="range"
                   min={4}
                   max={11}
                   step={0.5}
-                  value={sleepHours}
+                  value={Math.min(11, Math.max(4, sleepHours))}
                   onChange={(e) => setSleepHours(Number(e.target.value))}
                   className="w-full accent-brand cursor-pointer"
                 />

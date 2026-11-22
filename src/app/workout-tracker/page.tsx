@@ -2,14 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Play,
-  Pause,
-  RotateCcw,
   Plus,
   Trash2,
   Check,
   Dumbbell,
-  Clock,
   Flame,
   Award,
   Save,
@@ -39,14 +35,15 @@ import {
 import { SEED_EXERCISES, ExtendedExerciseItem } from '@/lib/exercises';
 import { estimate1RM } from '@/lib/utils';
 import ThreeDotMenu from '@/components/ui/ThreeDotMenu';
+import NumericInput from '@/components/ui/NumericInput';
 
 interface WorkoutSet {
   set_number: number;
-  weight_kg: number;
-  reps: number;
+  weight_kg: number | null;
+  reps: number | null;
   is_completed: boolean;
-  rpe?: number;
-  rir?: number;
+  rpe?: number | null;
+  rir?: number | null;
   pct_1rm?: number;
 }
 
@@ -446,8 +443,12 @@ export default function WorkoutTrackerPage() {
   const [experienceLevel, setExperienceLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
   const [periodizationPhase, setPeriodizationPhase] = useState('Heavy Strength (1–5 reps)');
 
-  // Powerlifting Competition 1RMs
-  const [actual1RMs, setActual1RMs] = useState({ squat: 140, bench: 100, deadlift: 180 });
+  // Powerlifting Competition 1RMs (real user values only — null until user enters them)
+  const [actual1RMs, setActual1RMs] = useState<{
+    squat: number | null;
+    bench: number | null;
+    deadlift: number | null;
+  }>({ squat: null, bench: null, deadlift: null });
   const [editing1RMs, setEditing1RMs] = useState(false);
 
   // Active Workout Session State
@@ -477,10 +478,6 @@ export default function WorkoutTrackerPage() {
   });
   const [historyModalExercise, setHistoryModalExercise] = useState<string | null>(null);
 
-  // Rest Timer State
-  const [timerSeconds, setTimerSeconds] = useState(90);
-  const [timerActive, setTimerActive] = useState(false);
-
   // Completion & Feedback
   const [finishing, setFinishing] = useState(false);
   const [completedSummary, setCompletedSummary] = useState<any | null>(null);
@@ -495,19 +492,75 @@ export default function WorkoutTrackerPage() {
       if (Array.isArray(wRes.workouts)) setWorkoutHistory(wRes.workouts);
       if (Array.isArray(wRes.prs)) setPrs(wRes.prs);
       if (Array.isArray(wRes.customTemplates)) setCustomTemplates(wRes.customTemplates);
-      if (wRes.actual1RMs) setActual1RMs(wRes.actual1RMs);
+      if (wRes.actual1RMs) {
+        setActual1RMs({
+          squat: wRes.actual1RMs.squat ?? null,
+          bench: wRes.actual1RMs.bench ?? null,
+          deadlift: wRes.actual1RMs.deadlift ?? null,
+        });
+      } else {
+        setActual1RMs({ squat: null, bench: null, deadlift: null });
+      }
       if (wRes.experienceLevel) setExperienceLevel(wRes.experienceLevel);
       if (Array.isArray(exRes.exercises) && exRes.exercises.length) {
         setCatalogExercises(exRes.exercises);
       }
 
-      if (!wRes.hasSelectedTrainingStyle) {
-        setShowStylePrompt(true);
+      // Check if user launched directly from AI Planner ("Start This Workout in Tracker")
+      let loadedFromPlan = false;
+      if (typeof window !== 'undefined' && window.location.search.includes('fromPlan=1')) {
+        try {
+          const raw = sessionStorage.getItem('strap-active-plan-day');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            const day = parsed?.day;
+            if (day && Array.isArray(day.exercises) && day.exercises.length > 0) {
+              setWorkoutName(day.day_title || `Day ${day.day_number}: ${day.focus}`);
+              setSplitType(parsed.split_type || 'AI Split');
+              setExercises(
+                day.exercises.map((ex: any) => {
+                  const setCount = Math.max(1, Math.min(8, Number(ex.sets) || 3));
+                  const firstRep = parseInt(String(ex.reps || '8').split('-')[0], 10) || 8;
+                  return {
+                    exercise_name: ex.exercise_name,
+                    target_muscle: ex.target_muscle || 'Full Body',
+                    category: ex.target_muscle || 'Full Body',
+                    recommended_reps: `${ex.reps || '8-10'} reps`,
+                    rest_seconds: Number(ex.rest_seconds) || 90,
+                    notes: ex.notes || '',
+                    alternatives: Array.isArray(ex.alternatives) ? ex.alternatives : [],
+                    sets: Array.from({ length: setCount }, (_, i) => ({
+                      set_number: i + 1,
+                      weight_kg: null,
+                      reps: firstRep,
+                      is_completed: false,
+                      rpe: 8,
+                      rir: 2,
+                    })),
+                  };
+                })
+              );
+              setStatusNotice(`Loaded planned session "${day.day_title}" from AI Planner.`);
+              sessionStorage.removeItem('strap-active-plan-day');
+              loadedFromPlan = true;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!loadedFromPlan) {
+        if (!wRes.hasSelectedTrainingStyle) {
+          setShowStylePrompt(true);
+        } else if (wRes.trainingStyle === 'powerlifting' || wRes.trainingStyle === 'muscle_building') {
+          applyTrainingStyleTemplate(wRes.trainingStyle, false);
+        }
       } else if (wRes.trainingStyle === 'powerlifting' || wRes.trainingStyle === 'muscle_building') {
-        applyTrainingStyleTemplate(wRes.trainingStyle, false);
+        setTrainingStyle(wRes.trainingStyle);
       }
     } catch {
-      // fallback to defaults
+      // ignore
     } finally {
       setLoading(false);
     }
@@ -516,19 +569,6 @@ export default function WorkoutTrackerPage() {
   useEffect(() => {
     loadWorkoutsData();
   }, []);
-
-  // Timer Tick
-  useEffect(() => {
-    let interval: any = null;
-    if (timerActive && timerSeconds > 0) {
-      interval = setInterval(() => {
-        setTimerSeconds((prev) => prev - 1);
-      }, 1000);
-    } else if (timerSeconds === 0) {
-      setTimerActive(false);
-    }
-    return () => clearInterval(interval);
-  }, [timerActive, timerSeconds]);
 
   const applyTrainingStyleTemplate = (style: 'powerlifting' | 'muscle_building', persist = true) => {
     setTrainingStyle(style);
@@ -571,11 +611,6 @@ export default function WorkoutTrackerPage() {
     setStatusNotice(`Loaded template: ${tpl.name}`);
   };
 
-  const startTimer = (seconds: number) => {
-    setTimerSeconds(seconds);
-    setTimerActive(true);
-  };
-
   // Previous workout performance lookup for each exercise
   const previousPerformanceByExercise = useMemo(() => {
     const map = new Map<string, { weight_kg: number; reps: number; date: string; setsCount: number }>();
@@ -603,19 +638,19 @@ export default function WorkoutTrackerPage() {
     return map;
   }, [workoutHistory]);
 
-  // Helper to get reference 1RM for %1RM calculation in Powerlifting mode
+  // Helper to get reference 1RM for %1RM calculation in Powerlifting mode (real user 1RMs only)
   const getReference1RM = (ex: WorkoutExercise): number => {
     const name = ex.exercise_name.toLowerCase();
-    if (ex.competition_lift === 'squat' || name.includes('squat')) return actual1RMs.squat || 140;
+    if (ex.competition_lift === 'squat' || name.includes('squat')) return Number(actual1RMs.squat) || 0;
     if (ex.competition_lift === 'bench' || name.includes('bench') || name.includes('spoto') || name.includes('larsen'))
-      return actual1RMs.bench || 100;
+      return Number(actual1RMs.bench) || 0;
     if (
       ex.competition_lift === 'deadlift' ||
       name.includes('deadlift') ||
       name.includes('block pull') ||
       name.includes('rack pull')
     )
-      return actual1RMs.deadlift || 180;
+      return Number(actual1RMs.deadlift) || 0;
     const pr = prs.find((p) => String(p.exercise_name).toLowerCase() === name && p.record_type === '1rm');
     return pr ? Number(pr.value) : 0;
   };
@@ -640,9 +675,7 @@ export default function WorkoutTrackerPage() {
         if (i !== exIdx) return ex;
         const nextSets = ex.sets.map((s, j) => {
           if (j !== setIdx) return s;
-          const nextCompleted = !s.is_completed;
-          if (nextCompleted) startTimer(ex.rest_seconds || 90);
-          return { ...s, is_completed: nextCompleted };
+          return { ...s, is_completed: !s.is_completed };
         });
         return { ...ex, sets: nextSets };
       })
@@ -653,7 +686,7 @@ export default function WorkoutTrackerPage() {
     exIdx: number,
     setIdx: number,
     field: 'weight_kg' | 'reps' | 'rpe' | 'rir',
-    val: number
+    val: number | null
   ) => {
     setExercises((prev) =>
       prev.map((ex, i) => {
@@ -661,9 +694,9 @@ export default function WorkoutTrackerPage() {
         const nextSets = ex.sets.map((s, j) => {
           if (j !== setIdx) return s;
           const updated: WorkoutSet = { ...s, [field]: val };
-          if (field === 'rpe') {
+          if (field === 'rpe' && val !== null) {
             updated.rir = Math.max(0, Math.round((10 - val) * 10) / 10);
-          } else if (field === 'rir') {
+          } else if (field === 'rir' && val !== null) {
             updated.rpe = Math.min(10, Math.max(5, Math.round((10 - val) * 10) / 10));
           }
           return updated;
@@ -891,6 +924,17 @@ export default function WorkoutTrackerPage() {
     setFinishing(true);
     setStatusNotice(null);
     try {
+      const sanitizedExercises = exercises.map((ex) => ({
+        ...ex,
+        sets: ex.sets.map((s) => ({
+          ...s,
+          weight_kg: Number(s.weight_kg) || 0,
+          reps: Number(s.reps) || 0,
+          rpe: s.rpe != null ? Number(s.rpe) : undefined,
+          rir: s.rir != null ? Number(s.rir) : undefined,
+        })),
+      }));
+
       const res = await fetch('/api/workouts/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -901,7 +945,7 @@ export default function WorkoutTrackerPage() {
           program_level: experienceLevel,
           periodization_phase: periodizationPhase,
           notes: sessionNotes,
-          exercises,
+          exercises: sanitizedExercises,
         }),
       });
 
@@ -952,8 +996,14 @@ export default function WorkoutTrackerPage() {
     );
   }
 
+  const sbdTotal =
+    (Number(actual1RMs.squat) || 0) +
+    (Number(actual1RMs.bench) || 0) +
+    (Number(actual1RMs.deadlift) || 0);
+  const hasAny1RM = Boolean(actual1RMs.squat || actual1RMs.bench || actual1RMs.deadlift);
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+    <div className="mx-auto w-full max-w-6xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8 space-y-6 overflow-x-clip">
       {/* First-Time Training Style Selection Modal (Requirement 4) */}
       {showStylePrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
@@ -1007,29 +1057,29 @@ export default function WorkoutTrackerPage() {
         </div>
       )}
 
-      {/* Top Header & Mode Switcher */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#E1E4E8] dark:border-[#30333A] pb-6">
-        <div>
+      {/* Top Header & Mode Switcher (Time displays removed for focused workout logging) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#E1E4E8] dark:border-[#30333A] pb-6 min-w-0">
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
             <span className="text-xs font-bold uppercase tracking-wider text-[#6BA814] dark:text-[#B7F34A] bg-[#B7F34A]/15 border border-[#B7F34A]/30 px-2.5 py-0.5 rounded-full">
               {trainingStyle === 'powerlifting' ? 'Powerlifting SBD System' : 'Muscle Building Hypertrophy System'}
             </span>
-            <span className="text-xs font-mono text-[#52525B] dark:text-[#9496A1] capitalize">
+            <span className="text-xs font-mono text-[#52525B] dark:text-[#9496A1] capitalize break-words">
               Level: {experienceLevel} • {periodizationPhase}
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-[#111318] dark:text-white">
-            STRAP Advanced Workout Tracker
+          <h1 className="text-xl sm:text-3xl font-black text-[#111318] dark:text-white break-words">
+            STRAP Workout Tracker
           </h1>
         </div>
 
-        {/* Mode Segmented Toggle + Rest Timer */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] p-1">
+        {/* Mode Segmented Toggle */}
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="inline-flex w-full sm:w-auto rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] p-1">
             <button
               type="button"
               onClick={() => applyTrainingStyleTemplate('powerlifting', true)}
-              className={`px-3 py-1.5 rounded-[8px] text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-[8px] text-xs font-bold transition-all ${
                 trainingStyle === 'powerlifting'
                   ? 'bg-[#B7F34A] text-[#111318] shadow-glow'
                   : 'text-[#52525B] dark:text-[#9496A1] hover:text-[#111318] dark:hover:text-white'
@@ -1040,7 +1090,7 @@ export default function WorkoutTrackerPage() {
             <button
               type="button"
               onClick={() => applyTrainingStyleTemplate('muscle_building', true)}
-              className={`px-3 py-1.5 rounded-[8px] text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-[8px] text-xs font-bold transition-all ${
                 trainingStyle === 'muscle_building'
                   ? 'bg-[#B7F34A] text-[#111318] shadow-glow'
                   : 'text-[#52525B] dark:text-[#9496A1] hover:text-[#111318] dark:hover:text-white'
@@ -1049,40 +1099,13 @@ export default function WorkoutTrackerPage() {
               Muscle Building
             </button>
           </div>
-
-          {/* Live Rest Timer Pill */}
-          <div className="flex items-center gap-2 rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] px-3 py-1.5">
-            <Clock className={`h-4 w-4 ${timerActive ? 'text-[#B7F34A] animate-spin' : 'text-[#9496A1]'}`} />
-            <span className="font-mono text-sm font-black text-[#111318] dark:text-white">
-              {Math.floor(timerSeconds / 60)}:{(timerSeconds % 60).toString().padStart(2, '0')}
-            </span>
-            <button
-              type="button"
-              onClick={() => setTimerActive(!timerActive)}
-              className="p-1 rounded bg-[#F5F6F8] dark:bg-[#141519] text-[#111318] dark:text-white"
-              title={timerActive ? 'Pause Rest Timer' : 'Start Rest Timer'}
-            >
-              {timerActive ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTimerActive(false);
-                setTimerSeconds(trainingStyle === 'powerlifting' ? 180 : 90);
-              }}
-              className="p-1 rounded bg-[#F5F6F8] dark:bg-[#141519] text-[#52525B] dark:text-[#9496A1]"
-              title="Reset Rest Timer"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-            </button>
-          </div>
         </div>
       </div>
 
       {statusNotice && (
-        <div className="rounded-xl border border-[#B7F34A]/40 bg-[#B7F34A]/10 p-3 text-xs text-[#4d7c0f] dark:text-[#B7F34A] flex items-center justify-between">
-          <span>{statusNotice}</span>
-          <button type="button" onClick={() => setStatusNotice(null)} className="text-xs font-bold">
+        <div className="rounded-xl border border-[#B7F34A]/40 bg-[#B7F34A]/10 p-3 text-xs text-[#4d7c0f] dark:text-[#B7F34A] flex items-center justify-between gap-2">
+          <span className="break-words min-w-0">{statusNotice}</span>
+          <button type="button" onClick={() => setStatusNotice(null)} className="text-xs font-bold shrink-0">
             ✕
           </button>
         </div>
@@ -1090,83 +1113,84 @@ export default function WorkoutTrackerPage() {
 
       {/* Navigation Sub-Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           <button
             type="button"
             onClick={() => setActiveTab('logger')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-[10px] text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] text-xs font-bold transition-all ${
               activeTab === 'logger'
                 ? 'bg-[#B7F34A] text-[#111318] shadow-glow'
                 : 'bg-[#FFFFFF] dark:bg-[#1B1D22] border border-[#E1E4E8] dark:border-[#30333A] text-[#52525B] dark:text-[#D1D5DB]'
             }`}
           >
-            <Dumbbell className="h-3.5 w-3.5" />
+            <Dumbbell className="h-3.5 w-3.5 shrink-0" />
             <span>Active Session Logger</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('history')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-[10px] text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] text-xs font-bold transition-all ${
               activeTab === 'history'
                 ? 'bg-[#B7F34A] text-[#111318] shadow-glow'
                 : 'bg-[#FFFFFF] dark:bg-[#1B1D22] border border-[#E1E4E8] dark:border-[#30333A] text-[#52525B] dark:text-[#D1D5DB]'
             }`}
           >
-            <Calendar className="h-3.5 w-3.5" />
-            <span>Workout History & Calendar ({workoutHistory.length})</span>
+            <Calendar className="h-3.5 w-3.5 shrink-0" />
+            <span>Workout History ({workoutHistory.length})</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('analytics')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-[10px] text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] text-xs font-bold transition-all ${
               activeTab === 'analytics'
                 ? 'bg-[#B7F34A] text-[#111318] shadow-glow'
                 : 'bg-[#FFFFFF] dark:bg-[#1B1D22] border border-[#E1E4E8] dark:border-[#30333A] text-[#52525B] dark:text-[#D1D5DB]'
             }`}
           >
-            <TrendingUp className="h-3.5 w-3.5" />
-            <span>PRs, 1RM & Volume Reports</span>
+            <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+            <span>PRs &amp; Volume</span>
           </button>
         </div>
 
         <a
           href="/profile"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#52525B] dark:text-[#9496A1] hover:text-[#111318] dark:hover:text-white"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#52525B] dark:text-[#9496A1] hover:text-[#111318] dark:hover:text-white shrink-0"
         >
           <Settings className="h-3.5 w-3.5" />
           <span>Training Settings</span>
         </a>
       </div>
 
-      {/* Powerlifting Competition 1RM Bar (Shown in Powerlifting Mode) */}
+      {/* Powerlifting Competition 1RM Bar — Fully Responsive, Zero Mobile Overflow */}
       {trainingStyle === 'powerlifting' && (
-        <div className="rounded-2xl border border-[#B7F34A]/35 bg-[#FFFFFF] dark:bg-[#1B1D22] p-4 sm:p-5 shadow-glow space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#6BA814] dark:text-[#B7F34A]">
-                Competition SBD 1RM Reference & Periodization
+        <div className="rounded-2xl border border-[#B7F34A]/35 bg-[#FFFFFF] dark:bg-[#1B1D22] p-4 sm:p-5 shadow-glow space-y-3 overflow-hidden min-w-0">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 min-w-0">
+            <div className="min-w-0">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#6BA814] dark:text-[#B7F34A] block break-words">
+                Competition SBD 1RM Reference &amp; Periodization
               </span>
-              <h3 className="text-sm font-black text-[#111318] dark:text-white">
-                SBD Total: {actual1RMs.squat + actual1RMs.bench + actual1RMs.deadlift} kg
+              <h3 className="text-sm sm:text-base font-black text-[#111318] dark:text-white break-words mt-0.5">
+                {hasAny1RM ? `SBD Total: ${sbdTotal} kg` : 'Set Your Squat, Bench & Deadlift 1RMs'}
               </h3>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto min-w-0">
               <select
                 value={periodizationPhase}
                 onChange={(e) => setPeriodizationPhase(e.target.value)}
-                className="rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] px-2.5 py-1.5 text-xs font-semibold text-[#111318] dark:text-white"
+                aria-label="Training block phase"
+                className="w-full sm:w-auto max-w-full min-w-0 rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] px-2.5 py-2 text-xs font-semibold text-[#111318] dark:text-white truncate"
               >
                 <option value="Heavy Strength (1–5 reps)">Heavy Strength Work (1–5 reps)</option>
                 <option value="Moderate Strength (3–6 reps)">Moderate Strength Work (3–6 reps)</option>
                 <option value="Accessory Hypertrophy (6–15 reps)">Accessory Hypertrophy (6–15 reps)</option>
-                <option value="Peaking & Singlet Prep (1–3 reps)">Peaking & Overreaching (1–3 reps)</option>
-                <option value="Deload Week (60–70% 1RM)">Deload Week (60–70% 1RM @ RPE 5–6)</option>
+                <option value="Peaking & Singlet Prep (1–3 reps)">Peaking &amp; Overreaching (1–3 reps)</option>
+                <option value="Deload Week (60–70% 1RM)">Deload Week (60–70% 1RM)</option>
               </select>
               {editing1RMs ? (
                 <button
                   type="button"
                   onClick={handleSave1RMs}
-                  className="px-3 py-1.5 rounded-lg bg-[#B7F34A] text-[#111318] text-xs font-extrabold"
+                  className="w-full sm:w-auto shrink-0 px-3.5 py-2 rounded-lg bg-[#B7F34A] text-[#111318] text-xs font-extrabold"
                 >
                   Save 1RMs
                 </button>
@@ -1174,33 +1198,42 @@ export default function WorkoutTrackerPage() {
                 <button
                   type="button"
                   onClick={() => setEditing1RMs(true)}
-                  className="px-3 py-1.5 rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] text-xs font-bold text-[#111318] dark:text-white"
+                  className="w-full sm:w-auto shrink-0 px-3.5 py-2 rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] text-xs font-bold text-[#111318] dark:text-white hover:border-[#B7F34A]"
                 >
-                  Edit Actual 1RMs
+                  {hasAny1RM ? 'Edit Actual 1RMs' : 'Enter 1RMs'}
                 </button>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {(['squat', 'bench', 'deadlift'] as const).map((lift) => (
               <div
                 key={lift}
-                className="rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] p-3"
+                className="rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] p-3 min-w-0"
               >
-                <span className="text-[10px] font-bold uppercase text-[#52525B] dark:text-[#9496A1] block">
+                <span className="text-[11px] font-bold uppercase text-[#52525B] dark:text-[#9496A1] block break-words">
                   {lift === 'squat' ? '1. Squat 1RM' : lift === 'bench' ? '2. Bench Press 1RM' : '3. Deadlift 1RM'}
                 </span>
                 {editing1RMs ? (
-                  <input
-                    type="number"
+                  <NumericInput
+                    min={0}
+                    max={600}
+                    allowDecimal
+                    placeholder="kg"
                     value={actual1RMs[lift]}
-                    onChange={(e) => setActual1RMs({ ...actual1RMs, [lift]: Number(e.target.value) })}
-                    className="mt-1 w-full rounded border border-[#B7F34A] bg-white dark:bg-[#1B1D22] px-2 py-1 text-sm font-black text-[#111318] dark:text-white"
+                    onValueChange={(v) => setActual1RMs({ ...actual1RMs, [lift]: v })}
+                    className="mt-1.5 w-full rounded-lg border border-[#B7F34A] bg-white dark:bg-[#1B1D22] px-2.5 py-1.5 text-sm font-black text-[#111318] dark:text-white focus:outline-none"
                   />
                 ) : (
                   <div className="text-lg font-black text-[#111318] dark:text-white mt-0.5">
-                    {actual1RMs[lift]} <span className="text-xs font-normal text-[#9496A1]">kg</span>
+                    {actual1RMs[lift] ? (
+                      <>
+                        {actual1RMs[lift]} <span className="text-xs font-normal text-[#9496A1]">kg</span>
+                      </>
+                    ) : (
+                      <span className="text-xs font-semibold text-[#9496A1]">Not set</span>
+                    )}
                   </div>
                 )}
               </div>
@@ -1379,7 +1412,7 @@ export default function WorkoutTrackerPage() {
                 <label className="text-[10px] font-bold uppercase text-[#52525B] dark:text-[#9496A1] block mb-1">
                   Live Session Telemetry
                 </label>
-                <div className="rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] p-2.5 text-xs font-mono text-[#111318] dark:text-white flex items-center justify-between">
+                <div className="rounded-xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] p-2.5 text-xs font-mono text-[#111318] dark:text-white flex flex-wrap items-center justify-between gap-2">
                   <span>Vol: {liveSessionMetrics.totalVol.toLocaleString()} kg</span>
                   <span>Sets: {liveSessionMetrics.completedSets}</span>
                   <span>Peak 1RM: {liveSessionMetrics.peakEst1RM} kg</span>
@@ -1393,10 +1426,12 @@ export default function WorkoutTrackerPage() {
             {exercises.map((ex, exIdx) => {
               const prevPerf = previousPerformanceByExercise.get(ex.exercise_name.toLowerCase());
               const ref1RM = getReference1RM(ex);
-              const bestSet = ex.sets.reduce(
+              const bestSet = ex.sets.reduce<{ rm: number; weight: number; reps: number }>(
                 (best, cur) => {
-                  const rm = estimate1RM(Number(cur.weight_kg) || 0, Number(cur.reps) || 0);
-                  return rm > best.rm ? { rm, weight: cur.weight_kg, reps: cur.reps } : best;
+                  const wt = Number(cur.weight_kg) || 0;
+                  const rp = Number(cur.reps) || 0;
+                  const rm = estimate1RM(wt, rp);
+                  return rm > best.rm ? { rm, weight: wt, reps: rp } : best;
                 },
                 { rm: 0, weight: 0, reps: 0 }
               );
@@ -1408,20 +1443,22 @@ export default function WorkoutTrackerPage() {
               return (
                 <div
                   key={`${ex.exercise_name}-${exIdx}`}
-                  className="rounded-2xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-5 space-y-4 shadow-sm"
+                  className="rounded-2xl border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] p-4 sm:p-5 space-y-4 shadow-sm overflow-hidden min-w-0"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-[#E1E4E8] dark:border-[#30333A] pb-3.5">
-                    <div>
+                  <div className="flex items-start justify-between gap-3 border-b border-[#E1E4E8] dark:border-[#30333A] pb-3.5 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-extrabold px-2 py-0.5 rounded bg-[#B7F34A]/20 text-[#6BA814] dark:text-[#B7F34A]">
                           #{exIdx + 1} {ex.category}
                         </span>
-                        <h3 className="text-base font-black text-[#111318] dark:text-white">{ex.exercise_name}</h3>
+                        <h3 className="text-sm sm:text-base font-black text-[#111318] dark:text-white break-words">
+                          {ex.exercise_name}
+                        </h3>
                         <span className="text-[11px] font-semibold text-[#6BA814] dark:text-[#B7F34A] bg-[#B7F34A]/10 px-2 py-0.5 rounded-full">
                           Target: {ex.recommended_reps}
                         </span>
                       </div>
-                      <p className="text-xs text-[#52525B] dark:text-[#9496A1] mt-1">
+                      <p className="text-xs text-[#52525B] dark:text-[#9496A1] mt-1 break-words">
                         Primary Muscle: <strong>{ex.target_muscle}</strong> • Volume: <strong>{exVol} kg</strong>
                         {bestSet.rm > 0 && (
                           <>
@@ -1432,32 +1469,14 @@ export default function WorkoutTrackerPage() {
                         )}
                       </p>
                       {prevPerf && (
-                        <p className="text-[11px] font-mono text-[#6BA814] dark:text-[#B7F34A] mt-0.5">
-                          Previous Session ({prevPerf.date}): {prevPerf.weight_kg} kg × {prevPerf.reps} reps ({prevPerf.setsCount} sets)
+                        <p className="text-[11px] font-mono text-[#6BA814] dark:text-[#B7F34A] mt-0.5 break-words">
+                          Previous ({prevPerf.date}): {prevPerf.weight_kg} kg × {prevPerf.reps} reps ({prevPerf.setsCount} sets)
                         </p>
                       )}
                     </div>
 
-                    {/* Rest selector + Three-Dot Contextual Menu (Phase 6 Requirement 17) */}
+                    {/* Three-Dot Contextual Menu (Rest time dropdown removed) */}
                     <div className="flex items-center gap-2 shrink-0">
-                      <select
-                        value={ex.rest_seconds}
-                        onChange={(e) => {
-                          const sec = Number(e.target.value);
-                          setExercises((prev) =>
-                            prev.map((item, i) => (i === exIdx ? { ...item, rest_seconds: sec } : item))
-                          );
-                        }}
-                        className="rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] px-2.5 py-1.5 text-xs text-[#111318] dark:text-white"
-                        title="Rest time between sets"
-                      >
-                        <option value={60}>Rest: 60s</option>
-                        <option value={90}>Rest: 90s</option>
-                        <option value={120}>Rest: 120s</option>
-                        <option value={180}>Rest: 180s</option>
-                        <option value={240}>Rest: 240s</option>
-                      </select>
-
                       <ThreeDotMenu
                         ariaLabel={`Actions for ${ex.exercise_name}`}
                         actions={[
@@ -1487,8 +1506,107 @@ export default function WorkoutTrackerPage() {
                     </div>
                   </div>
 
-                  {/* Sets Table */}
-                  <div className="overflow-x-auto">
+                  {/* Mobile Responsive Set Cards (< 640px — Zero Horizontal Overflow) */}
+                  <div className="sm:hidden space-y-2.5">
+                    {ex.sets.map((s, sIdx) => {
+                      const est1rm = estimate1RM(Number(s.weight_kg) || 0, Number(s.reps) || 0);
+                      const pct1rm = ref1RM > 0 ? Math.round(((Number(s.weight_kg) || 0) / ref1RM) * 100) : null;
+                      return (
+                        <div
+                          key={sIdx}
+                          className={`rounded-xl border p-3 space-y-2.5 ${
+                            s.is_completed
+                              ? 'border-[#B7F34A]/50 bg-[#B7F34A]/10'
+                              : 'border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-mono font-black text-[#111318] dark:text-white">
+                              Set #{s.set_number}
+                              {est1rm > 0 ? (
+                                <span className="ml-2 text-[11px] font-normal text-[#52525B] dark:text-[#9496A1]">
+                                  Est. 1RM: {est1rm} kg
+                                  {trainingStyle === 'powerlifting' && pct1rm ? ` (${pct1rm}%)` : ''}
+                                </span>
+                              ) : null}
+                            </span>
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleSet(exIdx, sIdx)}
+                                className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all ${
+                                  s.is_completed
+                                    ? 'bg-[#B7F34A] text-[#111318] font-black shadow-glow'
+                                    : 'border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#1B1D22] text-[#9496A1]'
+                                }`}
+                                title="Mark set complete"
+                              >
+                                <Check className="h-4 w-4" />
+                              </button>
+                              {ex.sets.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSet(exIdx, sIdx)}
+                                  className="p-1.5 text-[#9496A1] hover:text-red-400"
+                                  title="Delete set"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className="block text-[10px] font-semibold uppercase text-[#52525B] dark:text-[#9496A1] mb-1">
+                                Weight (kg)
+                              </label>
+                              <NumericInput
+                                min={0}
+                                max={1000}
+                                allowDecimal
+                                placeholder="0"
+                                value={s.weight_kg}
+                                onValueChange={(v) => handleUpdateSet(exIdx, sIdx, 'weight_kg', v)}
+                                className="w-full rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#1B1D22] px-2.5 py-2 text-xs font-bold text-[#111318] dark:text-white focus:border-[#B7F34A] focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-semibold uppercase text-[#52525B] dark:text-[#9496A1] mb-1">
+                                Reps
+                              </label>
+                              <NumericInput
+                                min={0}
+                                max={500}
+                                allowDecimal={false}
+                                placeholder="0"
+                                value={s.reps}
+                                onValueChange={(v) => handleUpdateSet(exIdx, sIdx, 'reps', v)}
+                                className="w-full rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#1B1D22] px-2.5 py-2 text-xs font-bold text-[#111318] dark:text-white focus:border-[#B7F34A] focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-semibold uppercase text-[#52525B] dark:text-[#9496A1] mb-1">
+                                RPE
+                              </label>
+                              <NumericInput
+                                min={5}
+                                max={10}
+                                allowDecimal
+                                placeholder="8"
+                                value={s.rpe ?? null}
+                                onValueChange={(v) => handleUpdateSet(exIdx, sIdx, 'rpe', v)}
+                                className="w-full rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-white dark:bg-[#1B1D22] px-2.5 py-2 text-xs font-bold text-[#111318] dark:text-white focus:border-[#B7F34A] focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Desktop Sets Table (>= 640px) */}
+                  <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="border-b border-[#E1E4E8] dark:border-[#30333A] text-[10px] uppercase text-[#52525B] dark:text-[#9496A1]">
@@ -1514,40 +1632,41 @@ export default function WorkoutTrackerPage() {
                                 #{s.set_number}
                               </td>
                               <td className="py-2.5 px-2">
-                                <input
-                                  type="number"
-                                  step="0.5"
+                                <NumericInput
                                   min={0}
+                                  max={1000}
+                                  allowDecimal
+                                  placeholder="0"
                                   value={s.weight_kg}
-                                  onChange={(e) =>
-                                    handleUpdateSet(exIdx, sIdx, 'weight_kg', Number(e.target.value))
-                                  }
-                                  className="w-20 rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] px-2.5 py-1.5 text-xs font-bold text-[#111318] dark:text-white"
+                                  onValueChange={(v) => handleUpdateSet(exIdx, sIdx, 'weight_kg', v)}
+                                  className="w-20 rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] px-2.5 py-1.5 text-xs font-bold text-[#111318] dark:text-white focus:border-[#B7F34A] focus:outline-none"
                                 />
                               </td>
                               <td className="py-2.5 px-2">
-                                <input
-                                  type="number"
+                                <NumericInput
                                   min={0}
+                                  max={500}
+                                  allowDecimal={false}
+                                  placeholder="0"
                                   value={s.reps}
-                                  onChange={(e) => handleUpdateSet(exIdx, sIdx, 'reps', Number(e.target.value))}
-                                  className="w-16 rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] px-2.5 py-1.5 text-xs font-bold text-[#111318] dark:text-white"
+                                  onValueChange={(v) => handleUpdateSet(exIdx, sIdx, 'reps', v)}
+                                  className="w-16 rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] px-2.5 py-1.5 text-xs font-bold text-[#111318] dark:text-white focus:border-[#B7F34A] focus:outline-none"
                                 />
                               </td>
                               <td className="py-2.5 px-2">
                                 <div className="flex items-center gap-1.5">
-                                  <input
-                                    type="number"
-                                    step="0.5"
+                                  <NumericInput
                                     min={5}
                                     max={10}
-                                    value={s.rpe ?? 8}
-                                    onChange={(e) => handleUpdateSet(exIdx, sIdx, 'rpe', Number(e.target.value))}
-                                    className="w-14 rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] px-2 py-1.5 text-xs text-[#111318] dark:text-white"
-                                    title="RPE (Rate of Perceived Exertion 6-10)"
+                                    allowDecimal
+                                    placeholder="8"
+                                    value={s.rpe ?? null}
+                                    onValueChange={(v) => handleUpdateSet(exIdx, sIdx, 'rpe', v)}
+                                    className="w-14 rounded-lg border border-[#E1E4E8] dark:border-[#30333A] bg-[#F5F6F8] dark:bg-[#141519] px-2 py-1.5 text-xs text-[#111318] dark:text-white focus:border-[#B7F34A] focus:outline-none"
+                                    title="RPE (Rate of Perceived Exertion 5-10)"
                                   />
                                   <span className="text-[10px] font-mono text-[#52525B] dark:text-[#9496A1]">
-                                    ({s.rir ?? Math.max(0, 10 - (s.rpe ?? 8))} RIR)
+                                    ({s.rir ?? Math.max(0, 10 - (Number(s.rpe) || 8))} RIR)
                                   </span>
                                 </div>
                               </td>
@@ -1653,7 +1772,7 @@ export default function WorkoutTrackerPage() {
               <Calendar className="h-4 w-4 text-[#6BA814] dark:text-[#B7F34A]" />
               <span>30-Day Training Consistency Calendar</span>
             </h3>
-            <div className="grid grid-cols-10 sm:grid-cols-15 gap-1.5">
+            <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5">
               {Array.from({ length: 30 }).map((_, idx) => {
                 const day = new Date(Date.now() - (29 - idx) * 86400_000);
                 const iso = day.toISOString().slice(0, 10);
@@ -1698,7 +1817,7 @@ export default function WorkoutTrackerPage() {
                         )}
                       </div>
                       <p className="text-[11px] text-[#52525B] dark:text-[#9496A1] mt-0.5">
-                        {w.completed_at ? new Date(w.completed_at).toLocaleString() : 'Logged Session'} • Total Volume:{' '}
+                        {w.completed_at ? new Date(w.completed_at).toLocaleDateString() : 'Logged Session'} • Total Volume:{' '}
                         <strong>{Number(w.total_volume_kg || 0).toLocaleString()} kg</strong>
                       </p>
                     </div>
@@ -1818,10 +1937,18 @@ export default function WorkoutTrackerPage() {
                 Powerlifting SBD Total
               </span>
               <div className="text-2xl font-black text-[#6BA814] dark:text-[#B7F34A] mt-1">
-                {actual1RMs.squat + actual1RMs.bench + actual1RMs.deadlift} <span className="text-xs font-normal">kg</span>
+                {hasAny1RM ? (
+                  <>
+                    {sbdTotal} <span className="text-xs font-normal">kg</span>
+                  </>
+                ) : (
+                  <span className="text-sm font-semibold text-[#9496A1]">Not set</span>
+                )}
               </div>
               <p className="text-[11px] text-[#52525B] dark:text-[#9496A1] mt-0.5">
-                S: {actual1RMs.squat} • B: {actual1RMs.bench} • D: {actual1RMs.deadlift} kg
+                {hasAny1RM
+                  ? `S: ${actual1RMs.squat ?? '—'} • B: ${actual1RMs.bench ?? '—'} • D: ${actual1RMs.deadlift ?? '—'} kg`
+                  : 'Enter your 1RMs in Powerlifting mode'}
               </p>
             </div>
 

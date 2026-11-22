@@ -80,7 +80,7 @@ export default function Navbar() {
 
             {/* Desktop Nav Links (Visible when logged in) */}
             {auth?.user && (
-              <nav className="hidden xl:flex items-center gap-1">
+              <nav className="hidden xl:flex items-center gap-0.5 2xl:gap-1 min-w-0">
                 {navLinks.map((link) => {
                   const Icon = link.icon;
                   const isActive = pathname === link.href;
@@ -88,13 +88,13 @@ export default function Navbar() {
                     <Link
                       key={link.href}
                       href={link.href}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-xs font-semibold transition-all ${
+                      className={`flex items-center gap-1 px-2 2xl:px-2.5 py-1.5 rounded-[10px] text-xs font-semibold whitespace-nowrap transition-all ${
                         isActive
                           ? 'bg-[#B7F34A]/15 text-[#111318] dark:text-[#B7F34A] border border-[#B7F34A]/40 shadow-glow'
                           : 'text-[#52525B] dark:text-[#D1D5DB] hover:text-[#111318] dark:hover:text-[#FFFFFF] hover:bg-[#F0F2F5] dark:hover:bg-[#232630]'
                       }`}
                     >
-                      <Icon className="h-3.5 w-3.5" />
+                      <Icon className="h-3.5 w-3.5 shrink-0" />
                       <span>{link.name}</span>
                       {link.badge && (
                         <span className="text-[9px] px-1 py-0.2 rounded-[4px] bg-[#B7F34A]/25 text-[#111318] dark:text-[#B7F34A] font-extrabold">
