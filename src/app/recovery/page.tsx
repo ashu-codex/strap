@@ -204,7 +204,7 @@ export default function RecoveryPage() {
         <div className="rounded-2xl border border-card-border bg-card p-6 md:col-span-2 space-y-4">
           <h3 className="text-base font-bold text-white flex items-center gap-2">
             <BatteryCharging className="h-4 w-4 text-brand" />
-            Log Today's Recovery Telemetry
+            Log Today&apos;s Recovery Telemetry
           </h3>
 
           <form onSubmit={handleLogRecovery} className="space-y-4">

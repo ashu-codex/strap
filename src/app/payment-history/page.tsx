@@ -149,7 +149,7 @@ export default function PaymentHistoryPage() {
           <CreditCard className="h-10 w-10 mx-auto text-zinc-600" />
           <h3 className="text-base font-bold text-white">No Payment Records Found</h3>
           <p className="text-xs max-w-sm mx-auto">
-            You haven't submitted any UPI payment references yet.
+            You haven&apos;t submitted any UPI payment references yet.
           </p>
           <a
             href="/checkout"
