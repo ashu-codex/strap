@@ -71,10 +71,10 @@ export default function Navbar() {
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF]/95 dark:bg-[#101114]/95 backdrop-blur-md transition-colors">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-3 sm:px-6 lg:px-8 gap-2">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-2.5 sm:px-6 lg:px-8 gap-2">
           {/* Brand Logo */}
-          <div className="flex items-center gap-4 xl:gap-6 min-w-0">
-            <Link href="/" className="group focus:outline-none shrink-0">
+          <div className="flex items-center gap-3 xl:gap-6 shrink-0 xl:shrink xl:min-w-0">
+            <Link href="/" className="group focus:outline-none shrink-0 flex items-center">
               <BrandLogo size="md" showTagline />
             </Link>
 
@@ -111,12 +111,12 @@ export default function Navbar() {
           {/* Right Action Icons & Auth Profile */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Theme Selector (Dark, Light, System) */}
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
                 type="button"
                 onClick={() => setThemeDropdownOpen(!themeDropdownOpen)}
                 aria-label="Toggle theme options"
-                className="flex items-center justify-center h-9 w-9 rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] text-[#52525B] dark:text-[#9496A1] hover:text-[#111318] dark:hover:text-white transition-colors"
+                className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] bg-[#FFFFFF] dark:bg-[#1B1D22] text-[#52525B] dark:text-[#9496A1] hover:text-[#111318] dark:hover:text-white transition-colors"
               >
                 {resolvedTheme === 'dark' ? (
                   <Moon className="h-4 w-4 text-[#B7F34A]" />
@@ -232,19 +232,19 @@ export default function Navbar() {
             ) : authLoading ? (
               <div
                 aria-hidden="true"
-                className="h-9 w-20 sm:w-28 rounded-[10px] bg-[#E5E7EB] dark:bg-[#232630] animate-pulse"
+                className="h-8 sm:h-9 w-16 sm:w-28 rounded-[10px] bg-[#E5E7EB] dark:bg-[#232630] animate-pulse"
               />
             ) : (
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <Link
                   href="/login"
-                  className="text-xs font-bold text-[#52525B] dark:text-[#E5E7EB] hover:text-[#111318] dark:hover:text-white px-2.5 sm:px-3 py-2 rounded-[10px] hover:bg-[#F0F2F5] dark:hover:bg-[#232630] transition-colors whitespace-nowrap"
+                  className="hidden min-[360px]:inline-flex items-center justify-center text-[11px] sm:text-xs font-bold text-[#52525B] dark:text-[#E5E7EB] hover:text-[#111318] dark:hover:text-white px-2 sm:px-3 py-1.5 sm:py-2 rounded-[10px] hover:bg-[#F0F2F5] dark:hover:bg-[#232630] transition-colors whitespace-nowrap"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/signup"
-                  className="btn-primary flex items-center gap-1 px-3 sm:px-4 py-2 text-xs font-bold whitespace-nowrap"
+                  className="btn-primary flex items-center gap-1 px-2.5 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold whitespace-nowrap"
                 >
                   <span>Get Started</span>
                   <ChevronRight className="hidden sm:inline h-3.5 w-3.5" />
@@ -257,9 +257,9 @@ export default function Navbar() {
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle navigation menu"
-              className="xl:hidden flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] text-[#52525B] dark:text-[#9496A1] hover:text-[#111318] dark:hover:text-white hover:bg-[#F0F2F5] dark:hover:bg-[#1B1D22] transition-colors"
+              className="xl:hidden flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-[10px] border border-[#E1E4E8] dark:border-[#30333A] text-[#52525B] dark:text-[#9496A1] hover:text-[#111318] dark:hover:text-white hover:bg-[#F0F2F5] dark:hover:bg-[#1B1D22] transition-colors"
             >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {mobileMenuOpen ? <X className="h-4 w-4 sm:h-5 sm:w-5" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5" />}
             </button>
           </div>
         </div>
